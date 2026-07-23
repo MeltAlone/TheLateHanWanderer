@@ -1,0 +1,30 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.user
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Build, test, and generated output
+artifacts/
+build/
+dist/
+coverage/
+.cache/
+tmp/
+data/generated/
+
+# Runtime logs and local databases
+*.log
+*.db
+*.db-shm
+*.db-wal
+
