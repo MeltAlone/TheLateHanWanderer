@@ -858,12 +858,12 @@ compare <两个存档或时间点>
 
 本总设计之后，建议依次建立：
 
-1. `HISTORY_RESEARCH.md`：历史考据方法、资料来源与首个时空切片。
-2. `WORLD_MODEL.md`：实体、组件、状态与数据关系。
-3. `TIME_AND_SPACE.md`：时间调度、地点层级、路线与旅行公式。
-4. `CHARACTERS_AND_AI.md`：人物状态、认知、关系、目标与决策。
-5. `EVENTS_AND_CAUSALITY.md`：事件协议、因果图、回放与解释接口。
-6. `MVP_SPEC.md`：第一版命令行原型的精确范围和验收用例。
+1. [`docs/research/`](../research/README.md)：历史考据方法、资料来源与首个时空切片。
+2. [`docs/architecture/world-model.md`](../architecture/world-model.md)：实体、组件、状态与数据关系。
+3. `docs/architecture/time-and-space.md`：时间调度、地点层级、路线与旅行公式。
+4. `docs/architecture/characters-and-ai.md`：人物状态、认知、关系、目标与决策。
+5. `docs/architecture/events-and-causality.md`：事件协议、因果图、回放与解释接口。
+6. `docs/design/mvp-spec.md`：第一版命令行原型的精确范围和验收用例。
 
 在以上文档稳定前，不开始大规模录入人物、编写剧情或制作图形界面。
 
