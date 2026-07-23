@@ -41,6 +41,28 @@ tools/             史料导入、校验、模拟和调试工具
 - [世界规模与性能预算](tests/performance/world-scale-budgets.md)
 - [架构决策记录](docs/decisions/README.md)
 
+## 运行当前技术尖峰
+
+需要 .NET 10 SDK；`global.json` 当前锁定 `10.0.302`。
+
+```powershell
+dotnet restore LateHanWanderer.sln
+dotnet build LateHanWanderer.sln --configuration Release
+dotnet test tests/LateHan.Tests/LateHan.Tests.csproj --configuration Release
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release
+```
+
+也可以无交互执行完整送信路径：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "go place.luoyang.sili_office walk" `
+  --command "give item.sealed_note_to_yuan_shao to person.yuan_shao" `
+  --command "go place.luoyang.general_in_chief_office walk" `
+  --command "tell person.li_wen proposition.general_office_requests_status" `
+  --command "history"
+```
+
 ## 基本工作流
 
 1. 在 `docs/research/` 中提出有来源的历史主张，并记录置信度与争议。

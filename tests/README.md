@@ -13,3 +13,8 @@
 
 - [189 雒阳危机 MVP 行为验收](specs/189-luoyang-crisis.md)
 - [世界规模与性能预算](performance/world-scale-budgets.md)
+
+当前可执行项目：
+
+- `LateHan.Tests`：场景加载、规范化哈希、行为、确定性和快照续跑测试；
+- `LateHan.Benchmarks`：无界面重复加载、行动和指纹检查的技术尖峰入口。

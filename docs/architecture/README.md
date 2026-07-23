@@ -4,6 +4,7 @@
 
 - [世界模型](world-model.md)
 - [场景数据契约](scenario-contract.md)
+- [.NET 纵向切片技术尖峰](dotnet-spike.md)
 - 时间与空间：待从首个历史切片提炼
 - 人物与 AI：待从垂直切片行为用例提炼
 - 事件与因果：待根据事件样例和查询需求细化
