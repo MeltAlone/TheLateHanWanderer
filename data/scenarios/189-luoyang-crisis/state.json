@@ -1,0 +1,163 @@
+{
+  "schema_version": "0.1-draft",
+  "scenario_id": "scenario.189.luoyang_crisis.mvp",
+  "place_states": [
+    {
+      "place": "place.luoyang.north_gate",
+      "open": true,
+      "queue_count": 9,
+      "security_posture": "heightened",
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.state.north_gate", "reason": "为盘查、排队和临时封门提供初始压力。", "applies_to": ["place", "open", "queue_count", "security_posture"]}]
+    },
+    {
+      "place": "place.luoyang.east_gate",
+      "open": true,
+      "queue_count": 5,
+      "security_posture": "normal_with_checks",
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.state.east_gate", "reason": "与北门形成可比较的初始门禁状态。", "applies_to": ["place", "open", "queue_count", "security_posture"]}]
+    },
+    {
+      "place": "place.luoyang.palace_approach",
+      "open": true,
+      "queue_count": 3,
+      "security_posture": "restricted",
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "宫廷危机下访问受限，但具体人数是玩法填充值。", "applies_to": ["place", "open", "queue_count", "security_posture"]}]
+    },
+    {
+      "place": "place.luoyang.west_market",
+      "open": true,
+      "queue_count": 0,
+      "security_posture": "crowded",
+      "price_pressure_bp": {"horse_fodder": 11800, "lodging": 11200, "grain": 10500},
+      "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.summer.prolonged_rain", "claim.189.ding_yuan.mengjin_pressure"], "reason": "正常基线叠加军需和雨季运输风险；不是 189 年雒阳实价。", "applies_to": ["place", "open", "queue_count", "security_posture", "price_pressure_bp"]}]
+    }
+  ],
+  "items": [
+    {
+      "id": "item.player_office_credential",
+      "name": "大将军府书吏凭记",
+      "kind": "credential",
+      "holder": "person.player_clerk",
+      "valid_for": ["access.general_in_chief_inner", "access.official_outer"],
+      "expires_at_minute": 2880,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.player_credential", "reason": "给玩家有限官署通行能力，不包含自由入宫权限。", "applies_to": ["name", "kind", "holder", "valid_for", "expires_at_minute"]}]
+    },
+    {
+      "id": "item.sealed_note_to_yuan_shao",
+      "name": "交袁司隶的封记",
+      "kind": "sealed_document",
+      "holder": "person.player_clerk",
+      "author": "person.li_wen",
+      "intended_recipient": "person.yuan_shao",
+      "proposition_ids": ["proposition.general_office_requests_status"],
+      "read_policy": "seal_break_required",
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.status_note", "reason": "用低敏感度状态文书验证交付、拆封、拒收与延误，不虚构历史密令。", "applies_to": ["name", "kind", "holder", "author", "intended_recipient", "proposition_ids", "read_policy"]}]
+    },
+    {
+      "id": "item.player_coins",
+      "name": "随身钱",
+      "kind": "money_purse",
+      "holder": "person.player_clerk",
+      "coins_qian": 320,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.player_coins", "reason": "支持数次食宿或短途雇佣的测试余额，不作历史收入主张。", "applies_to": ["name", "kind", "holder", "coins_qian"]}]
+    },
+    {
+      "id": "item.player_ration",
+      "name": "一日干粮",
+      "kind": "food",
+      "holder": "person.player_clerk",
+      "ration_units": 1,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.player_ration", "reason": "验证远行消耗和资源守恒。", "applies_to": ["name", "kind", "holder", "ration_units"]}]
+    },
+    {
+      "id": "item.office_horse_07",
+      "name": "大将军府驿马七号",
+      "kind": "horse",
+      "holder": "org.general_in_chief_office",
+      "location": "place.luoyang.west_market",
+      "condition_bp": 7800,
+      "fodder_units": 2,
+      "requires_authorization": true,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.office_horse", "reason": "骑行不是无条件模式；玩家需取得授权并承担马匹和马料状态。", "applies_to": ["name", "kind", "holder", "location", "condition_bp", "fodder_units", "requires_authorization"]}]
+    },
+    {
+      "id": "item.palace_summons_draft",
+      "name": "宫中召见口谕底稿",
+      "kind": "document_draft",
+      "holder": "person.zhang_rang",
+      "author": "person.zhang_rang",
+      "intended_recipient": "person.he_jin",
+      "proposition_ids": ["proposition.palace_requests_he_jin_audience"],
+      "read_policy": "holder_or_recipient",
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.palace_summons", "reason": "召何进入宫被建模为可取消、可截获、需载体的行动，不保证发出或送达。", "applies_to": ["name", "kind", "holder", "author", "intended_recipient", "proposition_ids", "read_policy"]}]
+    },
+    {
+      "id": "item.north_gate_watch_report",
+      "name": "北门晨间盘查簿摘记",
+      "kind": "administrative_document",
+      "holder": "person.chen_zhi",
+      "author": "person.chen_zhi",
+      "intended_recipient": "person.wang_yun",
+      "proposition_ids": ["proposition.north_gate_military_traffic_rising"],
+      "read_policy": "official_business",
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.item.gate_report", "reason": "验证地方官署通过文书获得城门态势，而非读取实时全局状态。", "applies_to": ["name", "kind", "holder", "author", "intended_recipient", "proposition_ids", "read_policy"]}]
+    },
+    {
+      "id": "item.chenggao_dispatch",
+      "name": "成皋驻军报状",
+      "kind": "sealed_document",
+      "holder": "group.east_gate_guards",
+      "author": "person.qiao_mao",
+      "intended_recipient": "person.he_jin",
+      "proposition_ids": ["proposition.qiao_mao_holds_chenggao"],
+      "read_policy": "seal_break_required",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.qiao_mao.chenggao_garrison"], "applies_to": ["author", "proposition_ids"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.item.chenggao_dispatch", "reason": "具体报状及其已到东门属于传信系统夹具。", "applies_to": ["name", "kind", "holder", "intended_recipient", "read_policy"]}]
+    }
+  ],
+  "propositions": [
+    {"id": "proposition.general_office_requests_status", "text": "大将军府询问司隶校尉署今日准备进度。", "objective_status": "authored_statement", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.proposition.status_request", "reason": "低敏感度差遣用于第一条玩家因果链。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.palace_requests_he_jin_audience", "text": "宫中请求何进尽快入内议事。", "objective_status": "planned_not_yet_issued", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.proposition.palace_audience", "reason": "是否正式发出由张让计划和宫中条件决定。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.north_gate_military_traffic_rising", "text": "北门所见军用人马往来较平日增加。", "objective_status": "locally_supported", "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "reason": "压力方向支持交通增加的可能，但强度为场景假设。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.qiao_mao_holds_chenggao", "text": "桥瑁以东郡太守身份暂屯成皋。", "objective_status": "historically_asserted", "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.qiao_mao.chenggao_garrison"], "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.external_forces_can_pressure_palace", "text": "外兵接近京师能够迫使宫中接受诛除宦官。", "objective_status": "contested_prediction", "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "历史参与者可以如此判断，但它不是世界必然规律。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.delay_increases_eunuch_response_risk", "text": "继续拖延会给受威胁的宦官更多反制时间。", "objective_status": "conditionally_supported", "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "危机中的时间竞争推断，效果由实际消息和计划决定。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.he_jin_intends_mass_purge", "text": "何进将立即尽诛宫中宦官。", "objective_status": "overstated_rumor", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.proposition.purge_rumor", "reason": "用过度概括的传言验证错误认知和威胁反应。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.empress_dowager_can_be_persuaded", "text": "何太后仍可能在家族与宫廷压力下改变决定。", "objective_status": "uncertain_prediction", "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "人物信念，不是锁定结果。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.palace_household_requires_eunuch_service", "text": "彻底清除宫中宦官会破坏太后依赖的宫廷服务与权力网络。", "objective_status": "partially_supported", "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "把制度依赖作为太后反对行动的一个动机，而非唯一原因。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.dong_zhuo_near_luoyang", "text": "董卓所部已接近雒阳西面。", "objective_status": "imprecise_but_supported", "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.dong_zhuo.sunset_pavilion"], "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.north_gate_closed", "text": "北门已经完全关闭。", "objective_status": "false_at_start", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.proposition.false_gate_rumor", "reason": "初始假传言用于验证查证、传播和后果。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.palace_credential_required", "text": "仅有大将军府书吏凭记不足以进入宫中内层。", "objective_status": "true_under_initial_rules", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.proposition.palace_access", "reason": "把门禁规则转化为角色可掌握的知识。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.wet_season_may_delay_roads", "text": "连月雨水可能使远途行程比常时更慢。", "objective_status": "bounded_risk", "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.summer.prolonged_rain"], "reason": "不推断丁卯日雒阳必然降雨。", "applies_to": ["text", "objective_status"]}]},
+    {"id": "proposition.qiao_mao_is_chenggao_administrator", "text": "桥瑁是成皋本地长官。", "objective_status": "false", "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.qiao_mao.chenggao_garrison"], "reason": "专门保留一个历史上不成立的常见误解。", "applies_to": ["text", "objective_status"]}]}
+  ],
+  "beliefs": [
+    {"id": "belief.player.delivery_urgent", "holder": "person.player_clerk", "proposition": "proposition.general_office_requests_status", "confidence_bp": 10000, "source": "person.li_wen", "acquired_at_minute": -15, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.player_task", "reason": "玩家开场已接受差遣。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.player.palace_access", "holder": "person.player_clerk", "proposition": "proposition.palace_credential_required", "confidence_bp": 9000, "source": "person.li_wen", "acquired_at_minute": -120, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.player_access", "reason": "避免玩家误把官署凭记当作全局权限，同时仍允许尝试。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.player.rain_risk", "holder": "person.player_clerk", "proposition": "proposition.wet_season_may_delay_roads", "confidence_bp": 7000, "source": "direct_experience", "acquired_at_minute": -1440, "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.summer.prolonged_rain"], "reason": "玩家只知道风险，不知道未来路线的实际随机结果。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.he_jin.external_pressure", "holder": "person.he_jin", "proposition": "proposition.external_forces_can_pressure_palace", "confidence_bp": 7400, "source": "person.yuan_shao", "acquired_at_minute": -2880, "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "以人物主观置信度表达策略判断。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.he_jin.persuade_empress", "holder": "person.he_jin", "proposition": "proposition.empress_dowager_can_be_persuaded", "confidence_bp": 6500, "source": "personal_judgment", "acquired_at_minute": -1440, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.he_jin_empress", "reason": "支持继续请求而非立即放弃的可解释动机。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.yuan_shao.delay_risk", "holder": "person.yuan_shao", "proposition": "proposition.delay_increases_eunuch_response_risk", "confidence_bp": 9300, "source": "personal_judgment", "acquired_at_minute": -4320, "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "驱动袁绍催促，但不硬编码结果。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.zhang_rang.purge_threat", "holder": "person.zhang_rang", "proposition": "proposition.he_jin_intends_mass_purge", "confidence_bp": 8800, "source": "palace_rumor_network", "acquired_at_minute": -360, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.zhang_rang_threat", "reason": "过度传言使反制有认知来源，不赋予张让全知。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.empress.household_dependence", "holder": "person.empress_dowager_he", "proposition": "proposition.palace_household_requires_eunuch_service", "confidence_bp": 8700, "source": "direct_experience", "acquired_at_minute": -10080, "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "太后的抵触来自其认知和处境，不是固定剧情开关。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.wang_yun.traffic", "holder": "person.wang_yun", "proposition": "proposition.north_gate_military_traffic_rising", "confidence_bp": 4200, "source": "oral_preliminary_report", "acquired_at_minute": -30, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.wang_yun_traffic", "reason": "正式盘查簿尚未送达，故置信度有限。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.chen_zhi.gate_open", "holder": "person.chen_zhi", "proposition": "proposition.north_gate_closed", "confidence_bp": 0, "source": "direct_observation", "acquired_at_minute": 0, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.chen_zhi_gate", "reason": "值守者直接知道开场城门未闭。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.market.false_gate_rumor", "holder": "group.market_population", "proposition": "proposition.north_gate_closed", "confidence_bp": 4600, "source": "unattributed_rumor", "acquired_at_minute": -20, "provenance": [{"kind": "simulation_seed", "stream": "rumor:proposition.north_gate_closed", "generator": "initial-rumor-confidence.v1", "reason": "用于测试群体传言随目击和复述发生分化。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.dong_zhuo.court_opportunity", "holder": "person.dong_zhuo", "proposition": "proposition.delay_increases_eunuch_response_risk", "confidence_bp": 6100, "source": "court_reports_delayed", "acquired_at_minute": -720, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.dong_zhuo_opportunity", "reason": "董卓持有延迟且不完整的京师判断，不能读取宫中实时状态。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.ding_yuan.mission", "holder": "person.ding_yuan", "proposition": "proposition.external_forces_can_pressure_palace", "confidence_bp": 7000, "source": "received_order_and_judgment", "acquired_at_minute": -2880, "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "reason": "解释其军事施压动机，具体置信度为玩法参数。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]},
+    {"id": "belief.sun_he.dong_near", "holder": "person.sun_he", "proposition": "proposition.dong_zhuo_near_luoyang", "confidence_bp": 3600, "source": "traveler_rumor", "acquired_at_minute": -90, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.belief.sun_he_dong", "reason": "低可信旅人传言可被玩家询问并继续传播。", "applies_to": ["holder", "proposition", "confidence_bp", "source", "acquired_at_minute"]}]}
+  ],
+  "commitments": [
+    {"id": "commitment.player.deliver_note", "debtor": "person.player_clerk", "creditor": "person.li_wen", "action": "deliver", "target": "item.sealed_note_to_yuan_shao", "recipient": "person.yuan_shao", "due_minute": 240, "status": "open", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.commitment.player_note", "reason": "开局主要差遣；迟到、拒收、拆封或委托他人必须产生不同后果。", "applies_to": ["debtor", "creditor", "action", "target", "recipient", "due_minute", "status"]}]},
+    {"id": "commitment.player.report_back", "debtor": "person.player_clerk", "creditor": "person.li_wen", "action": "report_delivery_result", "target": "commitment.player.deliver_note", "recipient": "person.li_wen", "due_minute": 360, "status": "open", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.commitment.player_report", "reason": "证明交付物品与完成差遣不是同一个状态。", "applies_to": ["debtor", "creditor", "action", "target", "recipient", "due_minute", "status"]}]}
+  ],
+  "plans": [
+    {"id": "plan.player.complete_delivery", "owner": "person.player_clerk", "intent": "按时送达封记并回报", "stage": "ready", "belief_requirements": ["belief.player.delivery_urgent"], "required_conditions": ["item.sealed_note_to_yuan_shao held_by owner"], "next_evaluation_minute": 0, "cancellation_conditions": ["document_lost", "owner_detained", "commitment_cancelled"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.plan.player_delivery", "reason": "玩家可自由放弃或改道；计划只用于显示约定和 NPC 对其期待。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.he_jin.seek_palace_decision", "owner": "person.he_jin", "intent": "再次促使太后同意处置宦官", "stage": "preparing_audience", "belief_requirements": ["belief.he_jin.persuade_empress"], "required_conditions": ["person.he_jin alive", "palace_audience_possible"], "promoting_conditions": ["credible_support_from_person.yuan_shao", "external_force_reports"], "next_evaluation_minute": 120, "cancellation_conditions": ["empress_dowager_accepts_alternative", "credible_immediate_ambush_warning", "person.he_jin removed"], "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "以条件计划表达历史引力，不预定何进入宫或死亡。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.yuan_shao.accelerate_action", "owner": "person.yuan_shao", "intent": "催促何进并准备在授权范围内控制局势", "stage": "collecting_status", "belief_requirements": ["belief.yuan_shao.delay_risk"], "required_conditions": ["person.yuan_shao holds_office", "org.sili_colonel_office operational"], "promoting_conditions": ["message_from_general_in_chief_office", "eunuch_countermeasure_report"], "next_evaluation_minute": 180, "cancellation_conditions": ["person.yuan_shao removed", "credible_court_settlement"], "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.yuan_shao.sili_colonel"], "reason": "授权范围与实际行动仍由规则、命令和门禁决定。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.zhang_rang.secure_survival", "owner": "person.zhang_rang", "intent": "借宫中权限消除对宦官集团的迫近威胁", "stage": "seeking_regent_support", "belief_requirements": ["belief.zhang_rang.purge_threat"], "required_conditions": ["person.zhang_rang has_palace_access", "person.empress_dowager_he reachable"], "promoting_conditions": ["purge_rumor_strength_high", "he_jin_enters_palace_with_limited_guard"], "next_evaluation_minute": 60, "cancellation_conditions": ["credible_safe_exit", "threat_belief_retracted", "person.zhang_rang removed"], "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "不写入必然伏杀；实际候选行动由权限、支持者和威胁认知生成。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.empress.resist_disruption", "owner": "person.empress_dowager_he", "intent": "维持宫廷服务、家族安全和摄政权威", "stage": "considering_petitions", "belief_requirements": ["belief.empress.household_dependence"], "required_conditions": ["person.empress_dowager_he retains_regency"], "promoting_conditions": ["family_warning", "palace_household_petition"], "next_evaluation_minute": 150, "cancellation_conditions": ["credible_direct_threat_to_emperor", "acceptable_replacement_arrangement", "person.empress_dowager_he removed"], "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.he_empress_dowager.regent"], "reason": "多重目标允许她在新信息下改变选择。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.wang_yun.review_gate_security", "owner": "person.wang_yun", "intent": "核实军用交通并维持雒阳城门秩序", "stage": "awaiting_written_report", "belief_requirements": ["belief.wang_yun.traffic"], "required_conditions": ["org.henan_intendant_office operational"], "promoting_conditions": ["item.north_gate_watch_report delivered", "multiple_independent_reports"], "next_evaluation_minute": 210, "cancellation_conditions": ["report_disproves_pressure", "person.wang_yun removed"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.plan.wang_yun_gate", "reason": "体现河南尹的城市职责，不赋予其宫卫控制权。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.dong_zhuo.advance_conditionally", "owner": "person.dong_zhuo", "intent": "保持军队凝聚并寻找进入京师政治中心的机会", "stage": "advancing_with_uncertain_reports", "belief_requirements": ["belief.dong_zhuo.court_opportunity"], "required_conditions": ["org.dong_zhuo_column supplied", "route_to_luoyang_passable"], "promoting_conditions": ["credible_court_disorder", "imperial_household_location_report"], "next_evaluation_minute": 360, "cancellation_conditions": ["direct_order_to_withdraw_with_enforceable_authority", "supply_failure", "person.dong_zhuo removed"], "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.dong_zhuo.sunset_pavilion"], "reason": "只给出向雒阳推进的历史引力；速度、停留和政治行动由规则决定。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]},
+    {"id": "plan.ding_yuan.maintain_pressure", "owner": "person.ding_yuan", "intent": "在孟津方向维持军事压力并等待可信命令", "stage": "holding_and_scouting", "belief_requirements": ["belief.ding_yuan.mission"], "required_conditions": ["org.ding_yuan_force cohesive", "minimum_supply_available"], "promoting_conditions": ["confirmed_general_in_chief_order", "court_crisis_report"], "next_evaluation_minute": 480, "cancellation_conditions": ["credible_order_cancelled", "supply_failure", "person.ding_yuan removed"], "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "reason": "军事施压是状态与计划，不是每个时间点都触发固定事件。", "applies_to": ["owner", "intent", "stage", "belief_requirements", "required_conditions", "promoting_conditions", "next_evaluation_minute", "cancellation_conditions"]}]}
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": "0.1-draft",
+  "scenario_id": "scenario.189.luoyang_crisis.mvp",
+  "organizations": [
+    {
+      "id": "org.han_court",
+      "name": "汉廷",
+      "kind": "court",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.liu_bian.emperor"], "applies_to": ["name"]}]
+    },
+    {
+      "id": "org.general_in_chief_office",
+      "name": "大将军府",
+      "kind": "office",
+      "parent": "org.han_court",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.he_jin.general_in_chief"], "applies_to": ["name", "parent"]}]
+    },
+    {
+      "id": "org.palace_eunuchs",
+      "name": "中常侍集团",
+      "kind": "faction",
+      "parent": "org.han_court",
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "将危机中相互协作的宦官抽象为行动组织。", "applies_to": ["name", "parent"]}]
+    },
+    {
+      "id": "org.sili_colonel_office",
+      "name": "司隶校尉署",
+      "kind": "office",
+      "parent": "org.han_court",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.yuan_shao.sili_colonel"], "applies_to": ["name", "parent"]}]
+    },
+    {
+      "id": "org.henan_intendant_office",
+      "name": "河南尹府",
+      "kind": "office",
+      "parent": "org.han_court",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.wang_yun.henan_intendant"], "applies_to": ["name", "parent"]}]
+    },
+    {
+      "id": "org.dong_zhuo_column",
+      "name": "董卓部",
+      "kind": "military_column",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.dong_zhuo.sunset_pavilion"], "applies_to": ["name"]}]
+    },
+    {
+      "id": "org.ding_yuan_force",
+      "name": "丁原部",
+      "kind": "military_force",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "applies_to": ["name"]}]
+    },
+    {
+      "id": "org.qiao_mao_garrison",
+      "name": "桥瑁成皋驻军",
+      "kind": "military_garrison",
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.qiao_mao.chenggao_garrison"], "applies_to": ["name"]}]
+    }
+  ],
+  "access_rules": [
+    {
+      "id": "access.public",
+      "name": "公开地点",
+      "requirements": [],
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.access.public", "reason": "MVP 的开放地点基线。", "applies_to": ["name", "requirements"]}]
+    },
+    {
+      "id": "access.city_gate",
+      "name": "城门盘查",
+      "requirements": ["gate_open", "not_detained"],
+      "may_queue": true,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.access.city_gate", "reason": "验证开放时段、排队和临时封门。", "applies_to": ["name", "requirements", "may_queue"]}]
+    },
+    {
+      "id": "access.official_outer",
+      "name": "官署外院",
+      "requirements": ["official_business_or_sponsor"],
+      "may_queue": true,
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "官署并非同城即可自由进入。", "applies_to": ["name", "requirements", "may_queue"]}]
+    },
+    {
+      "id": "access.general_in_chief_inner",
+      "name": "大将军府内署",
+      "requirements": ["member_of_general_in_chief_office_or_escorted", "credential_valid"],
+      "may_queue": true,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.access.general_office", "reason": "验证玩家凭证、通报和权限变化。", "applies_to": ["name", "requirements", "may_queue"]}]
+    },
+    {
+      "id": "access.palace_outer",
+      "name": "宫门外层",
+      "requirements": ["summons_or_authorized_office", "palace_gate_accepts_credential"],
+      "may_queue": true,
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "宫禁控制是危机因果的必要系统，但具体门制仍待研究。", "applies_to": ["name", "requirements", "may_queue"]}]
+    },
+    {
+      "id": "access.palace_inner",
+      "name": "宫中内层",
+      "requirements": ["explicit_palace_escort"],
+      "may_queue": false,
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.access.palace_inner", "reason": "MVP 不允许低阶玩家仅凭官署身份自由进入宫中。", "applies_to": ["name", "requirements", "may_queue"]}]
+    }
+  ],
+  "places": [
+    {"id": "place.luoyang", "name": "雒阳", "kind": "city", "parent": null, "access_rule": "access.public", "controller": "org.han_court", "tags": ["capital", "container"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.he_jin.general_in_chief"], "applies_to": ["name", "kind", "controller", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.luoyang_container", "reason": "顶层城市容器和公开访问只用于组织场景图。", "applies_to": ["parent", "access_rule"]}]},
+    {"id": "place.luoyang.palace_approach", "name": "宫城前街", "kind": "street", "parent": "place.luoyang", "access_rule": "access.public", "controller": "org.han_court", "tags": ["crowd_sensitive"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.map.palace_approach", "reason": "把宫门外可观察和聚集的空间压缩为一个节点。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.south_palace", "name": "南宫", "kind": "palace_complex", "parent": "place.luoyang", "access_rule": "access.palace_outer", "controller": "org.han_court", "tags": ["restricted"], "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "保留南宫为危机空间节点，内部布局未展开。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.north_palace", "name": "北宫", "kind": "palace_complex", "parent": "place.luoyang", "access_rule": "access.palace_outer", "controller": "org.han_court", "tags": ["restricted"], "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "保留北宫为危机空间节点，内部布局未展开。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.changle_palace", "name": "长乐宫", "kind": "palace_inner", "parent": "place.luoyang.north_palace", "access_rule": "access.palace_inner", "controller": "org.han_court", "tags": ["empress_dowager_residence", "critical"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.he_empress_dowager.regent"], "applies_to": ["name", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.changle_parent", "reason": "父节点和统一门禁是 MVP 空间抽象。", "applies_to": ["kind", "parent", "access_rule", "controller"]}]},
+    {"id": "place.luoyang.general_in_chief_office", "name": "大将军府", "kind": "official_compound", "parent": "place.luoyang", "access_rule": "access.general_in_chief_inner", "controller": "org.general_in_chief_office", "tags": ["player_home_office"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.he_jin.general_in_chief"], "applies_to": ["name", "controller"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.general_office", "reason": "具体府址和内部布局未锁定，作为单节点官署。", "applies_to": ["kind", "parent", "access_rule", "tags"]}]},
+    {"id": "place.luoyang.sili_office", "name": "司隶校尉署", "kind": "official_compound", "parent": "place.luoyang", "access_rule": "access.official_outer", "controller": "org.sili_colonel_office", "tags": ["law_enforcement"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.yuan_shao.sili_colonel"], "applies_to": ["name", "controller", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.sili_office", "reason": "具体府址未锁定，作为单节点官署。", "applies_to": ["kind", "parent", "access_rule"]}]},
+    {"id": "place.luoyang.henan_office", "name": "河南尹府", "kind": "official_compound", "parent": "place.luoyang", "access_rule": "access.official_outer", "controller": "org.henan_intendant_office", "tags": ["city_administration"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.wang_yun.henan_intendant"], "applies_to": ["name", "controller", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.henan_office", "reason": "具体府址未锁定，作为单节点官署。", "applies_to": ["kind", "parent", "access_rule"]}]},
+    {"id": "place.luoyang.west_market", "name": "西市抽象节点", "kind": "market", "parent": "place.luoyang", "access_rule": "access.public", "controller": "org.henan_intendant_office", "tags": ["food", "horses", "rumors"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.map.west_market", "reason": "市场名称、位置和商品范围待考，MVP 用于验证交易与传言。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.east_market", "name": "东市抽象节点", "kind": "market", "parent": "place.luoyang", "access_rule": "access.public", "controller": "org.henan_intendant_office", "tags": ["lodging", "documents", "rumors"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.map.east_market", "reason": "市场名称、位置和商品范围待考，MVP 用于验证会面与消息。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.north_gate", "name": "雒阳北门抽象节点", "kind": "city_gate", "parent": "place.luoyang", "access_rule": "access.city_gate", "controller": "org.henan_intendant_office", "tags": ["checkpoint", "northbound"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.map.north_gate", "reason": "在城门名和精确道路未锁定前使用功能节点。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.east_gate", "name": "雒阳东门抽象节点", "kind": "city_gate", "parent": "place.luoyang", "access_rule": "access.city_gate", "controller": "org.henan_intendant_office", "tags": ["checkpoint", "eastbound"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.map.east_gate", "reason": "在城门名和精确道路未锁定前使用功能节点。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]},
+    {"id": "place.luoyang.north_suburb", "name": "雒阳北郊", "kind": "suburb", "parent": null, "access_rule": "access.public", "controller": "org.henan_intendant_office", "tags": ["military_traffic", "lodging_pressure"], "provenance": [{"kind": "bounded_inference", "basis_claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "reason": "外兵靠近造成交通和住宿压力，但具体强度由场景种子决定。", "applies_to": ["name", "kind", "access_rule", "controller", "tags"]}]},
+    {"id": "place.xiaopingjin", "name": "小平津", "kind": "river_crossing", "parent": null, "access_rule": "access.public", "controller": "org.henan_intendant_office", "tags": ["yellow_river", "crossing"], "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "作为黄河交通候选节点，具体设施与控制仍待考。", "applies_to": ["name", "kind", "access_rule", "controller", "tags"]}]},
+    {"id": "place.mengjin", "name": "孟津", "kind": "river_crossing", "parent": null, "access_rule": "access.public", "controller": "org.ding_yuan_force", "tags": ["yellow_river", "military_pressure"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "applies_to": ["name", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.control.mengjin", "reason": "controller 表示 MVP 中的局部军事控制，不主张完整行政归属。", "applies_to": ["kind", "access_rule", "controller"]}]},
+    {"id": "place.henan_western_approach", "name": "河南西来方向", "kind": "abstract_route_node", "parent": null, "access_rule": "access.public", "controller": null, "tags": ["dong_zhuo_position_range"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.dong_zhuo.sunset_pavilion"], "applies_to": ["name", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.western_approach", "reason": "用范围节点保留董卓位置不确定性。", "applies_to": ["kind", "access_rule", "controller"]}]},
+    {"id": "place.sunset_pavilion", "name": "夕阳亭", "kind": "route_station", "parent": null, "access_rule": "access.public", "controller": null, "tags": ["western_approach"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.dong_zhuo.sunset_pavilion"], "applies_to": ["name", "tags"]}, {"kind": "bounded_inference", "basis_claim_ids": ["claim.han.local_network.pavilions_posts"], "reason": "地点功能与通行能力仍以抽象路线站表示。", "applies_to": ["kind", "access_rule", "controller"]}]},
+    {"id": "place.luoyang.eastern_road", "name": "雒阳东向官道抽象节点", "kind": "abstract_route_node", "parent": null, "access_rule": "access.public", "controller": "org.henan_intendant_office", "tags": ["chenggao_route"], "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "连接雒阳与成皋方向，精确古道路和里程待地图互证。", "applies_to": ["name", "kind", "access_rule", "controller", "tags"]}]},
+    {"id": "place.chenggao", "name": "成皋", "kind": "city_or_fortified_node", "parent": null, "access_rule": "access.city_gate", "controller": "org.qiao_mao_garrison", "tags": ["eastern_garrison"], "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.qiao_mao.chenggao_garrison"], "applies_to": ["name", "controller", "tags"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.map.chenggao", "reason": "MVP 只模拟其作为外围驻军和消息终点，不展开内部行政。", "applies_to": ["kind", "access_rule"]}]},
+    {"id": "place.luoyang.north_camp", "name": "北郊临时军营", "kind": "military_camp", "parent": "place.luoyang.north_suburb", "access_rule": "access.official_outer", "controller": "org.ding_yuan_force", "tags": ["temporary", "restricted"], "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.map.north_camp", "reason": "用于验证外兵、营门和补给压力，不断言丁原主力精确驻于此处。", "applies_to": ["name", "kind", "parent", "access_rule", "controller", "tags"]}]}
+  ],
+  "routes": [
+    {"id": "route.office_palace", "from": "place.luoyang.general_in_chief_office", "to": "place.luoyang.palace_approach", "distance_li_q10": 18, "minutes": {"walk": 28, "horse": 16, "with_group": 36}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.office_palace", "reason": "机制验证用城内耗时，待历史地图替换。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.palace_south", "from": "place.luoyang.palace_approach", "to": "place.luoyang.south_palace", "distance_li_q10": 3, "minutes": {"walk": 5, "horse": 5, "with_group": 8}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.palace_south", "reason": "宫门排队另由访问行动结算。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.palace_north", "from": "place.luoyang.palace_approach", "to": "place.luoyang.north_palace", "distance_li_q10": 8, "minutes": {"walk": 12, "horse": 8, "with_group": 16}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.palace_north", "reason": "宫城空间压缩后的验证耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.north_changle", "from": "place.luoyang.north_palace", "to": "place.luoyang.changle_palace", "distance_li_q10": 2, "minutes": {"walk": 5, "horse": 5, "with_group": 6}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.north_changle", "reason": "内宫路径只用于门禁和护送阶段。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.office_sili", "from": "place.luoyang.general_in_chief_office", "to": "place.luoyang.sili_office", "distance_li_q10": 14, "minutes": {"walk": 22, "horse": 14, "with_group": 28}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.office_sili", "reason": "机制验证用城内耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.sili_henan", "from": "place.luoyang.sili_office", "to": "place.luoyang.henan_office", "distance_li_q10": 12, "minutes": {"walk": 20, "horse": 12, "with_group": 25}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.sili_henan", "reason": "机制验证用城内耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.office_west_market", "from": "place.luoyang.general_in_chief_office", "to": "place.luoyang.west_market", "distance_li_q10": 16, "minutes": {"walk": 25, "horse": 15, "with_group": 32}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.office_west_market", "reason": "机制验证用城内耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.palace_east_market", "from": "place.luoyang.palace_approach", "to": "place.luoyang.east_market", "distance_li_q10": 20, "minutes": {"walk": 30, "horse": 18, "with_group": 38}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.palace_east_market", "reason": "机制验证用城内耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.west_market_north_gate", "from": "place.luoyang.west_market", "to": "place.luoyang.north_gate", "distance_li_q10": 28, "minutes": {"walk": 42, "horse": 24, "with_group": 52}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.west_market_north_gate", "reason": "机制验证用城内耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.east_market_east_gate", "from": "place.luoyang.east_market", "to": "place.luoyang.east_gate", "distance_li_q10": 24, "minutes": {"walk": 36, "horse": 22, "with_group": 46}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.east_market_east_gate", "reason": "机制验证用城内耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.north_gate_suburb", "from": "place.luoyang.north_gate", "to": "place.luoyang.north_suburb", "distance_li_q10": 35, "minutes": {"walk": 55, "horse": 30, "with_group": 70}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.north_gate_suburb", "reason": "包含出城与近郊通行的抽象耗时。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.suburb_camp", "from": "place.luoyang.north_suburb", "to": "place.luoyang.north_camp", "distance_li_q10": 18, "minutes": {"walk": 28, "horse": 16, "with_group": 36}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.suburb_camp", "reason": "临时军营相对位置是场景布局。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.suburb_xiaopingjin", "from": "place.luoyang.north_suburb", "to": "place.xiaopingjin", "distance_li_q10": 320, "minutes": {"walk": 480, "horse": 270, "with_group": 600}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.suburb_xiaopingjin", "reason": "精确古道路和里程未核定，数值只用于远行与错失约定测试。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.suburb_mengjin", "from": "place.luoyang.north_suburb", "to": "place.mengjin", "distance_li_q10": 410, "minutes": {"walk": 620, "horse": 350, "with_group": 760}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.suburb_mengjin", "reason": "精确古道路和里程未核定，数值只用于远行与军情延迟测试。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.east_gate_eastern_road", "from": "place.luoyang.east_gate", "to": "place.luoyang.eastern_road", "distance_li_q10": 70, "minutes": {"walk": 105, "horse": 60, "with_group": 135}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.east_gate_road", "reason": "城市边界到外围路线的抽象连接。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.eastern_road_chenggao", "from": "place.luoyang.eastern_road", "to": "place.chenggao", "distance_li_q10": 1350, "minutes": {"walk": 2040, "horse": 1140, "with_group": 2520}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.chenggao", "reason": "大尺度耗时夹具，正式数值需 CHGIS、历史地图和古里程互证。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.western_sunset", "from": "place.henan_western_approach", "to": "place.sunset_pavilion", "distance_li_q10": 600, "minutes": {"walk": 900, "horse": 510, "with_group": 1080}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.western_sunset", "reason": "范围节点之间不代表已确认里程。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]},
+    {"id": "route.sunset_luoyang", "from": "place.sunset_pavilion", "to": "place.luoyang.west_market", "distance_li_q10": 900, "minutes": {"walk": 1360, "horse": 760, "with_group": 1680}, "bidirectional": true, "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.route.sunset_luoyang", "reason": "用于模拟西来消息和军队到达时间，非历史里程主张。", "applies_to": ["from", "to", "distance_li_q10", "minutes", "bidirectional"]}]}
+  ]
+}

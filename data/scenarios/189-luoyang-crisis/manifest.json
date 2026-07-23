@@ -1,0 +1,85 @@
+{
+  "schema_version": "0.1-draft",
+  "scenario_id": "scenario.189.luoyang_crisis.mvp",
+  "scenario_version": "0.1.0",
+  "ruleset_version": "latehan.rules.0.1-draft",
+  "rng": {
+    "version": "xoshiro256ss.v1-candidate",
+    "root_seed_hex": "18908D2400000001",
+    "derivation": "domain-and-stable-entity-id"
+  },
+  "content_hash": "pending-tooling",
+  "canonical_calendar": "later_han_regnal",
+  "calendar_mapping_id": "calendar_mapping.189.luoyang_crisis",
+  "start": {
+    "minute": 0,
+    "historical_label": "中平六年八月丁卯辰时正",
+    "julian_calendar_date": "0189-09-21",
+    "julian_day_number": 1790354
+  },
+  "default_end": {
+    "minute": 6060,
+    "historical_label": "中平六年八月辛未午后"
+  },
+  "player_actor_id": "person.player_clerk",
+  "components": [
+    "world.json",
+    "actors.json",
+    "state.json"
+  ],
+  "historical_dependencies": {
+    "research_slice": "docs/research/slices/189-luoyang-crisis.md",
+    "claims": "data/historical/claims/189-luoyang.json",
+    "calendar_mapping": "data/historical/calendar-mappings/189-luoyang.json"
+  },
+  "supported_systems": [
+    "event_driven_time",
+    "location_graph",
+    "access_control",
+    "staged_actions",
+    "documents_and_delivery",
+    "beliefs_and_rumors",
+    "commitments",
+    "explainable_plans",
+    "causal_event_log",
+    "save_load_replay"
+  ],
+  "known_gaps": [
+    "雒阳城内地点与路线是用于验证机制的抽象图，不是已完成考古复原的比例地图",
+    "董卓在丁卯日的精确位置仍有争议，样例只保存西来方向的范围状态",
+    "市场价格、守卒数量、通行耗时和普通人物属于可替换的玩法假设",
+    "天气只作为长期降雨背景下的有界风险，不断言丁卯日雒阳正在降雨",
+    "战斗、逮捕和大规模军队接触只保留事件接口，不在本切片完整结算"
+  ],
+  "provenance": [
+    {
+      "kind": "historical_claim",
+      "claim_ids": [
+        "claim.189.he_jin.general_in_chief",
+        "claim.189.summer.prolonged_rain"
+      ],
+      "applies_to": [
+        "canonical_calendar",
+        "start.historical_label"
+      ]
+    },
+    {
+      "kind": "gameplay_assumption",
+      "assumption_id": "assumption.mvp.four_day_boundary",
+      "reason": "用最短窗口覆盖传信、门禁、计划变更和宫廷危机扩散。",
+      "applies_to": [
+        "default_end",
+        "supported_systems",
+        "player_actor_id"
+      ]
+    },
+    {
+      "kind": "simulation_seed",
+      "stream": "scenario-root",
+      "generator": "literal-fixed-seed.v1",
+      "applies_to": [
+        "rng"
+      ]
+    }
+  ]
+}

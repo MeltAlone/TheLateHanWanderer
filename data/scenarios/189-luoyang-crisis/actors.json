@@ -1,0 +1,181 @@
+{
+  "schema_version": "0.1-draft",
+  "scenario_id": "scenario.189.luoyang_crisis.mvp",
+  "persons": [
+    {
+      "id": "person.player_clerk",
+      "name": "沈循",
+      "historicity": "fictional",
+      "location": "place.luoyang.general_in_chief_office",
+      "memberships": [{"organization": "org.general_in_chief_office", "role": "junior_clerk"}],
+      "traits": ["cautious", "observant", "socially_minor"],
+      "abilities": {"literacy": 68, "administration": 42, "persuasion": 36, "riding": 31, "local_knowledge": 47},
+      "needs": {"stamina_bp": 8500, "hunger_bp": 1200, "safety_bp": 6200},
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.actor.player_clerk", "reason": "低阶识字书吏能接触文书和门禁，但无法直接支配关键人物。", "applies_to": ["name", "historicity", "location", "memberships", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.he_jin",
+      "name": "何进",
+      "historicity": "historical",
+      "location": "place.luoyang.general_in_chief_office",
+      "memberships": [{"organization": "org.general_in_chief_office", "role": "general_in_chief"}],
+      "traits": ["status_conscious", "politically_pressured", "hesitant_under_family_conflict"],
+      "abilities": {"command": 74, "administration": 60, "persuasion": 55, "intrigue": 46},
+      "needs": {"stamina_bp": 7900, "safety_bp": 4300, "political_control_bp": 9100},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.he_jin.general_in_chief"], "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.he_jin_initial_state", "reason": "丁卯辰时的精确位置、性格标签、能力和需要是可调模拟初值。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.empress_dowager_he",
+      "name": "何太后",
+      "historicity": "historical",
+      "location": "place.luoyang.changle_palace",
+      "memberships": [{"organization": "org.han_court", "role": "empress_dowager_regent"}],
+      "traits": ["protective_of_family", "defensive_of_regency", "conflicted"],
+      "abilities": {"authority": 88, "persuasion": 62, "intrigue": 57},
+      "needs": {"safety_bp": 6900, "family_survival_bp": 9600, "political_control_bp": 8200},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.he_empress_dowager.regent"], "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.empress_dowager_initial_state", "reason": "具体宫中位置和决策参数用于验证家族、摄政和安全动机冲突。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.liu_bian",
+      "name": "刘辩",
+      "historicity": "historical",
+      "location": "place.luoyang.north_palace",
+      "memberships": [{"organization": "org.han_court", "role": "emperor"}],
+      "traits": ["young", "dependent_on_household", "politically_exposed"],
+      "abilities": {"authority": 72, "administration": 18, "intrigue": 16},
+      "needs": {"safety_bp": 8700, "trusted_guidance_bp": 9000},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.liu_bian.emperor"], "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.liu_bian_initial_state", "reason": "年龄争议不在属性中强行选边；地点和参数是 MVP 初值。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.liu_xie",
+      "name": "刘协",
+      "historicity": "historical",
+      "location": "place.luoyang.north_palace",
+      "memberships": [{"organization": "org.han_court", "role": "prince_of_chenliu"}],
+      "traits": ["young", "attentive", "politically_exposed"],
+      "abilities": {"authority": 45, "administration": 22, "intrigue": 20},
+      "needs": {"safety_bp": 8900, "trusted_guidance_bp": 8700},
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "刘协是危机关键参与者。", "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.liu_xie_initial_state", "reason": "具体位置、性格和能力为模拟初值。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.yuan_shao",
+      "name": "袁绍",
+      "historicity": "historical",
+      "location": "place.luoyang.sili_office",
+      "memberships": [{"organization": "org.sili_colonel_office", "role": "sili_colonel_with_festival"}],
+      "traits": ["decisive_against_eunuchs", "status_networked", "impatient_with_delay"],
+      "abilities": {"command": 72, "administration": 65, "persuasion": 71, "intrigue": 68},
+      "needs": {"political_action_bp": 9300, "reputation_bp": 8100, "safety_bp": 4800},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.yuan_shao.sili_colonel"], "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.yuan_shao_initial_state", "reason": "辰时位置和数值用于驱动可解释而非必然的强硬计划。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.zhang_rang",
+      "name": "张让",
+      "historicity": "historical",
+      "location": "place.luoyang.changle_palace",
+      "memberships": [{"organization": "org.palace_eunuchs", "role": "senior_eunuch"}],
+      "traits": ["threat_sensitive", "court_networked", "defensive"],
+      "abilities": {"authority": 70, "persuasion": 67, "intrigue": 82, "command": 39},
+      "needs": {"survival_bp": 9900, "palace_access_bp": 9400, "faction_survival_bp": 9600},
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "张让作为危机中的宦官关键人物。", "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.zhang_rang_initial_state", "reason": "具体位置和决策参数用于危机计划，不能解释为直接史实。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.cao_cao",
+      "name": "曹操",
+      "historicity": "historical",
+      "location": "place.luoyang.general_in_chief_office",
+      "memberships": [{"organization": "org.general_in_chief_office", "role": "military_adviser"}],
+      "traits": ["skeptical", "decisive", "risk_aware"],
+      "abilities": {"command": 70, "administration": 64, "persuasion": 66, "intrigue": 72},
+      "needs": {"political_clarity_bp": 7600, "reputation_bp": 6700, "safety_bp": 5200},
+      "provenance": [{"kind": "bounded_inference", "basis": "research.slice.189.luoyang_crisis", "reason": "曹操参与何进集团议论的历史背景支持其纳入切片。", "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.cao_cao_initial_state", "reason": "辰时位置、角色名称和数值是场景抽象。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.wang_yun",
+      "name": "王允",
+      "historicity": "historical",
+      "location": "place.luoyang.henan_office",
+      "memberships": [{"organization": "org.henan_intendant_office", "role": "henan_intendant"}],
+      "traits": ["procedural", "politically_alert", "protective_of_city_order"],
+      "abilities": {"authority": 72, "administration": 79, "persuasion": 65, "intrigue": 63},
+      "needs": {"city_order_bp": 9000, "court_stability_bp": 8500, "safety_bp": 5900},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.wang_yun.henan_intendant"], "applies_to": ["name", "historicity", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.wang_yun_initial_state", "reason": "河南尹不自动控制宫卫；位置与数值仅驱动本署职责。", "applies_to": ["location", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.dong_zhuo",
+      "name": "董卓",
+      "historicity": "historical",
+      "location": "place.henan_western_approach",
+      "location_precision": "range_anchor",
+      "memberships": [{"organization": "org.dong_zhuo_column", "role": "commander"}],
+      "traits": ["opportunistic", "force_reliant", "politically_alert"],
+      "abilities": {"command": 82, "administration": 48, "persuasion": 59, "intrigue": 68},
+      "needs": {"political_leverage_bp": 9100, "army_cohesion_bp": 8800, "supply_bp": 7300},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.dong_zhuo.sunset_pavilion"], "applies_to": ["name", "historicity", "location", "location_precision", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.dong_zhuo_decision_model", "reason": "性格、能力和需要是可调决策参数，不锁定进京结果。", "applies_to": ["traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.ding_yuan",
+      "name": "丁原",
+      "historicity": "historical",
+      "location": "place.mengjin",
+      "memberships": [{"organization": "org.ding_yuan_force", "role": "commander"}],
+      "traits": ["militarily_assertive", "duty_oriented", "wary_of_court"],
+      "abilities": {"command": 76, "administration": 54, "persuasion": 53, "intrigue": 42},
+      "needs": {"mission_progress_bp": 8500, "army_cohesion_bp": 8400, "supply_bp": 6900},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.ding_yuan.mengjin_pressure"], "applies_to": ["name", "historicity", "location", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.ding_yuan_decision_model", "reason": "精确营址及决策数值待研究。", "applies_to": ["traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.qiao_mao",
+      "name": "桥瑁",
+      "historicity": "historical",
+      "location": "place.chenggao",
+      "memberships": [{"organization": "org.qiao_mao_garrison", "role": "dong_commandery_administrator_and_garrison_commander"}],
+      "traits": ["politically_alert", "reputation_sensitive", "command_cautious"],
+      "abilities": {"command": 68, "administration": 70, "persuasion": 61, "intrigue": 52},
+      "needs": {"mission_progress_bp": 7600, "garrison_supply_bp": 8000, "political_legitimacy_bp": 7900},
+      "provenance": [{"kind": "historical_claim", "claim_ids": ["claim.189.qiao_mao.chenggao_garrison"], "applies_to": ["name", "historicity", "location", "memberships"]}, {"kind": "gameplay_assumption", "assumption_id": "assumption.actor.qiao_mao_decision_model", "reason": "不将桥瑁误作成皋地方长官；性格和数值为模拟参数。", "applies_to": ["traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.li_wen",
+      "name": "李文",
+      "historicity": "fictional",
+      "location": "place.luoyang.general_in_chief_office",
+      "memberships": [{"organization": "org.general_in_chief_office", "role": "clerk_supervisor"}],
+      "traits": ["procedural", "overworked", "loyal_to_office"],
+      "abilities": {"literacy": 82, "administration": 73, "persuasion": 43, "local_knowledge": 62},
+      "needs": {"task_completion_bp": 9000, "safety_bp": 6100, "rest_bp": 6800},
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.actor.li_wen", "reason": "虚构的直接上司，为玩家生成差遣、反馈和失约后果。", "applies_to": ["name", "historicity", "location", "memberships", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.chen_zhi",
+      "name": "陈直",
+      "historicity": "fictional",
+      "location": "place.luoyang.north_gate",
+      "memberships": [{"organization": "org.henan_intendant_office", "role": "north_gate_duty_officer"}],
+      "traits": ["rule_bound", "rumor_wary", "status_sensitive"],
+      "abilities": {"command": 48, "administration": 45, "persuasion": 38, "local_knowledge": 70},
+      "needs": {"gate_order_bp": 9200, "superior_approval_bp": 7600, "safety_bp": 7200},
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.actor.chen_zhi", "reason": "虚构门吏，用于验证城门控制和传言传播，不填补未知历史官员。", "applies_to": ["name", "historicity", "location", "memberships", "traits", "abilities", "needs"]}]
+    },
+    {
+      "id": "person.sun_he",
+      "name": "孙和",
+      "historicity": "fictional",
+      "location": "place.luoyang.east_market",
+      "memberships": [{"organization": "org.general_in_chief_office", "role": "contract_messenger"}],
+      "traits": ["mobile", "pragmatic", "risk_averse"],
+      "abilities": {"riding": 70, "local_knowledge": 74, "persuasion": 35, "literacy": 31},
+      "needs": {"income_bp": 8200, "safety_bp": 7800, "task_completion_bp": 7200},
+      "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.actor.sun_he", "reason": "虚构信使，用于展示玩家不传信时世界仍有替代载体。", "applies_to": ["name", "historicity", "location", "memberships", "traits", "abilities", "needs"]}]
+    }
+  ],
+  "groups": [
+    {"id": "group.general_office_clerks", "name": "大将军府书吏", "kind": "clerk_cohort", "count": 18, "location": "place.luoyang.general_in_chief_office", "organization": "org.general_in_chief_office", "promotion_profile": "profile.literate_clerk", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.group.general_clerks", "reason": "数量和构成用于办公与消息吞吐测试。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]},
+    {"id": "group.palace_outer_guards", "name": "宫门守卫", "kind": "guard_cohort", "count": 36, "location": "place.luoyang.palace_approach", "organization": "org.han_court", "promotion_profile": "profile.palace_guard", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.group.palace_guards", "reason": "不对应已确认编制，只验证门禁容量、命令与目击。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]},
+    {"id": "group.north_gate_guards", "name": "北门守卒", "kind": "guard_cohort", "count": 14, "location": "place.luoyang.north_gate", "organization": "org.henan_intendant_office", "promotion_profile": "profile.city_guard", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.group.north_gate_guards", "reason": "功能性守卒群体，数量不作史实主张。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]},
+    {"id": "group.east_gate_guards", "name": "东门守卒", "kind": "guard_cohort", "count": 12, "location": "place.luoyang.east_gate", "organization": "org.henan_intendant_office", "promotion_profile": "profile.city_guard", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.group.east_gate_guards", "reason": "功能性守卒群体，数量不作史实主张。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]},
+    {"id": "group.palace_eunuch_retainers", "name": "宫中宦者随从", "kind": "retainer_cohort", "count": 24, "location": "place.luoyang.changle_palace", "organization": "org.palace_eunuchs", "promotion_profile": "profile.palace_retainer", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.group.eunuch_retainers", "reason": "聚合危机中的传令、随从与联络能力，不对应精确名单。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]},
+    {"id": "group.ding_yuan_scouts", "name": "丁原部游骑", "kind": "military_scout_cohort", "count": 20, "location": "place.luoyang.north_camp", "organization": "org.ding_yuan_force", "promotion_profile": "profile.military_scout", "provenance": [{"kind": "gameplay_assumption", "assumption_id": "assumption.group.ding_scouts", "reason": "用于北郊军事存在和消息传播，非精确兵力主张。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]},
+    {"id": "group.market_population", "name": "市中商旅与居民", "kind": "civilian_aggregate", "count": 240, "location": "place.luoyang.west_market", "organization": null, "promotion_profile": "profile.market_civilian", "provenance": [{"kind": "simulation_seed", "stream": "population:place.luoyang.west_market", "generator": "bounded-market-presence.v1", "reason": "只表示此刻可互动的人流量，不代表城市人口。", "applies_to": ["name", "kind", "count", "location", "organization", "promotion_profile"]}]}
+  ]
+}
