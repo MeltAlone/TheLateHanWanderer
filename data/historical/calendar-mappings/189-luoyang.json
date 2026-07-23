@@ -1,0 +1,45 @@
+{
+  "schema_version": "0.1-draft",
+  "mapping_id": "calendar_mapping.189.luoyang_crisis",
+  "canonical_calendar": "later_han_regnal",
+  "western_calendar_reform_rule": "1582-10-15",
+  "verification": {
+    "status": "cross_checked",
+    "source_ids": [
+      "source.sinocal.online"
+    ],
+    "algorithm_ids": [
+      "algorithm.jdn.julian_calendar",
+      "algorithm.jdn.proleptic_gregorian",
+      "algorithm.sexagenary_day.jdn_plus_49"
+    ]
+  },
+  "mappings": [
+    {
+      "historical_date": {
+        "era": "中平",
+        "year": 6,
+        "lunar_month": 8,
+        "lunar_day_ordinal": 24,
+        "day_ganzhi": "丁卯"
+      },
+      "julian_calendar_date": "0189-09-21",
+      "proleptic_gregorian_date": "0189-09-20",
+      "julian_day_number": 1790354,
+      "sexagenary_index_zero_based": 3
+    },
+    {
+      "historical_date": {
+        "era": "中平",
+        "year": 6,
+        "lunar_month": 8,
+        "lunar_day_ordinal": 25,
+        "day_ganzhi": "戊辰"
+      },
+      "julian_calendar_date": "0189-09-22",
+      "proleptic_gregorian_date": "0189-09-21",
+      "julian_day_number": 1790355,
+      "sexagenary_index_zero_based": 4
+    }
+  ]
+}

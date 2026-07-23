@@ -94,7 +94,7 @@ notes: 八月戊辰被杀，终止时间可确定到日。
 
 ### 7.1 历史时间
 
-研究层优先保存原始纪年：年号、月、干支日和原文时间词。公历日期是派生字段，必须由至少两种可靠方法校验。
+研究层优先保存原始纪年：年号、月、干支日和原文时间词。西历日期是派生字段，必须由至少两种可靠方法校验，并明确区分儒略历、历史改历制和前推格里高利历。具体口径见[历法口径与洛阳危机日期映射](calendar-conventions.md)。
 
 ```yaml
 historical_date:
@@ -102,7 +102,7 @@ historical_date:
   year: 6
   lunar_month: 8
   day_ganzhi: 戊辰
-gregorian_date: null
+calendar_mappings: null
 conversion_status: pending_double_check
 ```
 

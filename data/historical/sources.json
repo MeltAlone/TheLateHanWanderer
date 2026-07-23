@@ -92,6 +92,20 @@
         "坐标是地点对齐候选，不自动等同于特定年代治所中心",
         "需要与历史地图集和原始地理记录互证"
       ]
+    },
+    {
+      "id": "source.sinocal.online",
+      "work": "中央研究院两千年中西历转换",
+      "section": "中历与西历双向转换服务",
+      "source_level": "M2-database-tool",
+      "url": "https://sinocal.sinica.edu.tw/",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_interactively",
+      "limitations": [
+        "西历结果取决于页面选择的改历日期",
+        "默认设置在1582年10月15日前使用儒略历，不能把早期结果直接称为前推格里高利历日期",
+        "转换结果仍需用独立历法算法或表格交叉校验"
+      ]
     }
   ]
 }
