@@ -9,3 +9,7 @@
 
 历史真实性不是普通单元测试能完全证明的，但可以将已确认的年代、地点、官职和不可能条件固化为数据约束测试。
 
+当前规格：
+
+- [189 雒阳危机 MVP 行为验收](specs/189-luoyang-crisis.md)
+- [世界规模与性能预算](performance/world-scale-budgets.md)
