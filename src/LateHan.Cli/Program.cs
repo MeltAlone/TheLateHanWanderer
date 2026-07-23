@@ -1,0 +1,374 @@
+using System.Globalization;
+using System.Text;
+using LateHan.Core;
+using LateHan.Persistence;
+using LateHan.Scenarios;
+
+Console.InputEncoding = Encoding.UTF8;
+Console.OutputEncoding = Encoding.UTF8;
+
+try
+{
+    var options = CliOptions.Parse(args);
+    var scenarioPath = options.ScenarioPath ?? RepositoryPaths.FindDefaultScenario();
+    var loaded = new ScenarioLoader().Load(scenarioPath);
+    var session = new CliSession(new WorldEngine(loaded.World), new WorldSnapshotStore());
+
+    Console.WriteLine($"已加载 {loaded.World.ScenarioId} {loaded.World.ScenarioVersion}");
+    Console.WriteLine($"内容哈希 {loaded.ComputedContentHash}");
+
+    if (options.Commands.Count > 0)
+    {
+        foreach (var command in options.Commands)
+        {
+            Console.WriteLine($"> {command}");
+            if (!session.Execute(command))
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        session.PrintHelp();
+        while (true)
+        {
+            Console.Write("\n> ");
+            var command = Console.ReadLine();
+            if (command is null || !session.Execute(command))
+            {
+                break;
+            }
+        }
+    }
+
+    return 0;
+}
+catch (ScenarioValidationException exception)
+{
+    Console.Error.WriteLine("场景加载失败：");
+    foreach (var error in exception.Errors)
+    {
+        Console.Error.WriteLine($"  {error}");
+    }
+
+    return 2;
+}
+catch (Exception exception)
+{
+    Console.Error.WriteLine(exception.Message);
+    return 1;
+}
+
+internal sealed class CliSession
+{
+    private readonly WorldSnapshotStore _snapshotStore;
+    private WorldEngine _engine;
+
+    public CliSession(WorldEngine engine, WorldSnapshotStore snapshotStore)
+    {
+        _engine = engine;
+        _snapshotStore = snapshotStore;
+    }
+
+    public bool Execute(string input)
+    {
+        var tokens = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (tokens.Length == 0)
+        {
+            return true;
+        }
+
+        try
+        {
+            switch (tokens[0].ToLowerInvariant())
+            {
+                case "look":
+                    PrintLook();
+                    break;
+                case "status":
+                    PrintStatus();
+                    break;
+                case "commitments":
+                    PrintCommitments();
+                    break;
+                case "go":
+                    ExecuteGo(tokens);
+                    break;
+                case "give":
+                    ExecuteGive(tokens);
+                    break;
+                case "tell":
+                    ExecuteTell(tokens);
+                    break;
+                case "wait":
+                    ExecuteWait(tokens);
+                    break;
+                case "history":
+                    PrintHistory();
+                    break;
+                case "save":
+                    ExecuteSave(tokens);
+                    break;
+                case "load":
+                    ExecuteLoad(tokens);
+                    break;
+                case "help":
+                    PrintHelp();
+                    break;
+                case "quit":
+                case "exit":
+                    return false;
+                default:
+                    Console.WriteLine("invalid:unknown_command 未知命令；输入 help 查看当前尖峰支持的命令。");
+                    break;
+            }
+        }
+        catch (DomainCommandException exception)
+        {
+            Console.WriteLine($"blocked:{exception.Code} {exception.Message}");
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Console.WriteLine($"error:persistence {exception.Message}");
+        }
+
+        return true;
+    }
+
+    public void PrintHelp()
+    {
+        Console.WriteLine("当前技术尖峰命令：");
+        Console.WriteLine("  look");
+        Console.WriteLine("  status");
+        Console.WriteLine("  commitments");
+        Console.WriteLine("  go <place-id> [walk|horse|with-group]");
+        Console.WriteLine("  give <item-id> to <person-id>");
+        Console.WriteLine("  tell <person-id> <proposition-id>");
+        Console.WriteLine("  wait <minutes|Nh|Nm>");
+        Console.WriteLine("  history");
+        Console.WriteLine("  save <path>");
+        Console.WriteLine("  load <path>");
+        Console.WriteLine("  quit");
+    }
+
+    private void PrintLook()
+    {
+        var view = _engine.Look();
+        Console.WriteLine($"时间：开局后 {view.Minute} 分钟");
+        Console.WriteLine($"地点：{view.PlaceName} [{view.PlaceId}]");
+        if (view.VisibleActors.Count == 0)
+        {
+            Console.WriteLine("此处没有你能直接辨认的其他人物。");
+            return;
+        }
+
+        Console.WriteLine("可见人物：");
+        foreach (var actor in view.VisibleActors)
+        {
+            Console.WriteLine($"  {actor.Name} [{actor.Id}]");
+        }
+    }
+
+    private void PrintStatus()
+    {
+        var view = _engine.Status();
+        Console.WriteLine($"{view.ActorName} [{view.ActorId}]");
+        Console.WriteLine($"开局后 {view.Minute} 分钟；{view.PlaceName} [{view.PlaceId}]");
+        Console.WriteLine("持有：");
+        foreach (var item in view.HeldItems)
+        {
+            Console.WriteLine($"  {item.Name} [{item.Id}]");
+        }
+
+        Console.WriteLine($"开放承诺：{view.OpenCommitments.Count}");
+    }
+
+    private void PrintCommitments()
+    {
+        var commitments = _engine.Status().OpenCommitments;
+        if (commitments.Count == 0)
+        {
+            Console.WriteLine("没有开放承诺。");
+            return;
+        }
+
+        foreach (var commitment in commitments)
+        {
+            Console.WriteLine(
+                $"{commitment.Id}: {commitment.Action} {commitment.TargetId} -> {commitment.RecipientId}; " +
+                $"期限 {commitment.DueMinute}; 状态 {commitment.Status}");
+        }
+    }
+
+    private void ExecuteGo(string[] tokens)
+    {
+        if (tokens.Length is < 2 or > 3)
+        {
+            Console.WriteLine("invalid:syntax 用法：go <place-id> [walk|horse|with-group]");
+            return;
+        }
+
+        var mode = tokens.Length == 3 ? ParseMode(tokens[2]) : TravelMode.Walk;
+        var result = _engine.Move(_engine.State.PlayerActorId, tokens[1], mode);
+        Console.WriteLine($"抵达；耗时 {result.EndMinute - result.StartMinute} 分钟。事件 {result.Events[^1].Id}");
+    }
+
+    private void ExecuteGive(string[] tokens)
+    {
+        if (tokens.Length != 4 || !string.Equals(tokens[2], "to", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("invalid:syntax 用法：give <item-id> to <person-id>");
+            return;
+        }
+
+        var result = _engine.Deliver(_engine.State.PlayerActorId, tokens[1], tokens[3]);
+        Console.WriteLine($"已经实际交付；耗时 {result.EndMinute - result.StartMinute} 分钟。");
+    }
+
+    private void ExecuteTell(string[] tokens)
+    {
+        if (tokens.Length != 3)
+        {
+            Console.WriteLine("invalid:syntax 用法：tell <person-id> <proposition-id>");
+            return;
+        }
+
+        var result = _engine.Tell(_engine.State.PlayerActorId, tokens[1], tokens[2]);
+        Console.WriteLine($"已经当面陈述；耗时 {result.EndMinute - result.StartMinute} 分钟。");
+    }
+
+    private void ExecuteWait(string[] tokens)
+    {
+        if (tokens.Length != 2 || !TryParseDuration(tokens[1], out var minutes))
+        {
+            Console.WriteLine("invalid:syntax 用法：wait <minutes|Nh|Nm>");
+            return;
+        }
+
+        _engine.Wait(minutes);
+        Console.WriteLine($"等待结束；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+    }
+
+    private void PrintHistory()
+    {
+        if (_engine.State.Events.Count == 0)
+        {
+            Console.WriteLine("尚无运行时事件。");
+            return;
+        }
+
+        foreach (var worldEvent in _engine.State.Events)
+        {
+            Console.WriteLine(
+                $"{worldEvent.Id} t={worldEvent.Minute} {worldEvent.Type} " +
+                $"subjects=[{string.Join(',', worldEvent.SubjectIds)}] causes=[{string.Join(',', worldEvent.CauseIds)}]");
+        }
+
+        Console.WriteLine($"事件指纹 {_engine.State.ComputeEventFingerprint()}");
+    }
+
+    private void ExecuteSave(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：save <path>");
+            return;
+        }
+
+        _snapshotStore.Save(_engine.State, tokens[1]);
+        Console.WriteLine($"已保存到 {Path.GetFullPath(tokens[1])}");
+    }
+
+    private void ExecuteLoad(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：load <path>");
+            return;
+        }
+
+        _engine = new WorldEngine(_snapshotStore.Load(tokens[1]));
+        Console.WriteLine($"已加载；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+    }
+
+    private static TravelMode ParseMode(string value) => value switch
+    {
+        "walk" => TravelMode.Walk,
+        "horse" => TravelMode.Horse,
+        "with-group" => TravelMode.WithGroup,
+        _ => throw new DomainCommandException("unknown_travel_mode", $"Unknown travel mode '{value}'."),
+    };
+
+    private static bool TryParseDuration(string value, out long minutes)
+    {
+        if (long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out minutes))
+        {
+            return minutes > 0;
+        }
+
+        if (value.EndsWith('h') &&
+            long.TryParse(value[..^1], NumberStyles.None, CultureInfo.InvariantCulture, out var hours))
+        {
+            minutes = hours * 60;
+            return minutes > 0;
+        }
+
+        if (value.EndsWith('m') &&
+            long.TryParse(value[..^1], NumberStyles.None, CultureInfo.InvariantCulture, out minutes))
+        {
+            return minutes > 0;
+        }
+
+        minutes = 0;
+        return false;
+    }
+}
+
+internal sealed record CliOptions(string? ScenarioPath, IReadOnlyList<string> Commands)
+{
+    public static CliOptions Parse(string[] args)
+    {
+        string? scenarioPath = null;
+        var commands = new List<string>();
+        for (var index = 0; index < args.Length; index++)
+        {
+            switch (args[index])
+            {
+                case "--scenario" when index + 1 < args.Length:
+                    scenarioPath = args[++index];
+                    break;
+                case "--command" when index + 1 < args.Length:
+                    commands.Add(args[++index]);
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown or incomplete option '{args[index]}'.");
+            }
+        }
+
+        return new CliOptions(scenarioPath, commands);
+    }
+}
+
+internal static class RepositoryPaths
+{
+    public static string FindDefaultScenario()
+    {
+        foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            var current = new DirectoryInfo(start);
+            while (current is not null)
+            {
+                var candidate = Path.Combine(current.FullName, "data", "scenarios", "189-luoyang-crisis");
+                if (File.Exists(Path.Combine(candidate, "manifest.json")))
+                {
+                    return candidate;
+                }
+
+                current = current.Parent;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Cannot locate data/scenarios/189-luoyang-crisis. Use --scenario <path>.");
+    }
+}

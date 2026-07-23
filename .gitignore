@@ -14,6 +14,8 @@ Thumbs.db
 *.local
 
 # Build, test, and generated output
+**/bin/
+**/obj/
 artifacts/
 build/
 dist/
@@ -27,4 +29,3 @@ data/generated/
 *.db
 *.db-shm
 *.db-wal
-
