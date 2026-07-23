@@ -1,0 +1,97 @@
+{
+  "schema_version": "0.1-draft",
+  "generated_at": "2026-07-24",
+  "sources": [
+    {
+      "id": "source.hhs.008.wikisource",
+      "work": "后汉书",
+      "section": "卷八·孝灵帝纪",
+      "source_level": "P1-access-copy",
+      "url": "https://zh.wikisource.org/wiki/%E5%BE%8C%E6%BC%A2%E6%9B%B8/%E5%8D%B78",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_online",
+      "limitations": [
+        "在线转录只用于检索和初步核对",
+        "正式数据发布前需要与可靠点校本复核"
+      ]
+    },
+    {
+      "id": "source.hhs.069.wikisource",
+      "work": "后汉书",
+      "section": "卷六十九·何进传",
+      "source_level": "P1-access-copy",
+      "url": "https://zh.wikisource.org/wiki/%E5%BE%8C%E6%BC%A2%E6%9B%B8/%E5%8D%B769",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_online",
+      "limitations": [
+        "传记叙事需要与帝纪和编年材料互证",
+        "正式数据发布前需要与可靠点校本复核"
+      ]
+    },
+    {
+      "id": "source.hhs.109.wikisource",
+      "work": "后汉书",
+      "section": "卷一百零九·郡国一",
+      "source_level": "P1-access-copy",
+      "url": "https://zh.wikisource.org/wiki/%E5%BE%8C%E6%BC%A2%E6%9B%B8/%E5%8D%B7109",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_online",
+      "limitations": [
+        "户口统计早于中平六年",
+        "正文与注文包含不同时代的地理信息"
+      ]
+    },
+    {
+      "id": "source.hhs.111.wikisource",
+      "work": "后汉书",
+      "section": "卷一百一十一·郡国三",
+      "source_level": "P1-access-copy",
+      "url": "https://zh.wikisource.org/wiki/%E5%BE%8C%E6%BC%A2%E6%9B%B8/%E5%8D%B7111",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_online",
+      "limitations": [
+        "户口统计不能直接代表中平六年实时人口",
+        "正式数据发布前需要与可靠点校本复核"
+      ]
+    },
+    {
+      "id": "source.hhs.118.wikisource",
+      "work": "后汉书",
+      "section": "卷一百一十八·百官五",
+      "source_level": "P1-access-copy",
+      "url": "https://zh.wikisource.org/wiki/%E5%BE%8C%E6%BC%A2%E6%9B%B8/%E5%8D%B7118",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_online",
+      "limitations": [
+        "注引制度材料可能跨越不同时期",
+        "不能机械假定所有地区制度均完整执行"
+      ]
+    },
+    {
+      "id": "source.zztj.059.wikisource",
+      "work": "资治通鉴",
+      "section": "卷五十九·汉纪五十一",
+      "source_level": "P2-access-copy",
+      "url": "https://zh.wikisource.org/wiki/%E8%B3%87%E6%B2%BB%E9%80%9A%E9%91%91/%E5%8D%B7059",
+      "accessed_at": "2026-07-24",
+      "verification_status": "checked_online",
+      "limitations": [
+        "北宋时期的编年重构",
+        "需要与更早的纪传材料和点校本互证"
+      ]
+    },
+    {
+      "id": "source.chgis.online",
+      "work": "China Historical GIS",
+      "section": "Historical placenames and administrative units",
+      "source_level": "M2-database",
+      "url": "https://chgis.fas.harvard.edu/",
+      "accessed_at": "2026-07-24",
+      "verification_status": "service_checked",
+      "limitations": [
+        "坐标是地点对齐候选，不自动等同于特定年代治所中心",
+        "需要与历史地图集和原始地理记录互证"
+      ]
+    }
+  ]
+}

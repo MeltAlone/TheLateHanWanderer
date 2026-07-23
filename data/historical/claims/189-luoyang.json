@@ -1,0 +1,295 @@
+{
+  "schema_version": "0.1-draft",
+  "slice_id": "slice.189.luoyang_crisis",
+  "canonical_calendar": "later_han_regnal",
+  "claims": [
+    {
+      "id": "claim.189.liu_bian.emperor",
+      "subject": "person.liu_bian",
+      "predicate": "holds_office",
+      "value": "office.emperor",
+      "valid_time": {
+        "start": "中平六年四月戊午",
+        "end": "中平六年九月甲戌"
+      },
+      "time_precision": "day",
+      "source_ids": [
+        "source.hhs.008.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted"
+    },
+    {
+      "id": "claim.189.he_empress_dowager.regent",
+      "subject": "person.empress_dowager_he",
+      "predicate": "holds_role",
+      "value": "role.empress_dowager_regent",
+      "valid_time": {
+        "start": "中平六年四月戊午",
+        "end": "中平六年九月丙子"
+      },
+      "time_precision": "day",
+      "source_ids": [
+        "source.hhs.008.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted"
+    },
+    {
+      "id": "claim.189.he_jin.general_in_chief",
+      "subject": "person.he_jin",
+      "predicate": "holds_office",
+      "value": "office.general_in_chief",
+      "valid_time": {
+        "start": "中平元年三月戊申",
+        "end": "中平六年八月戊辰"
+      },
+      "time_precision": "day",
+      "source_ids": [
+        "source.hhs.008.wikisource",
+        "source.hhs.069.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted"
+    },
+    {
+      "id": "claim.189.he_jin.death",
+      "subject": "person.he_jin",
+      "predicate": "died_on",
+      "value": "中平六年八月戊辰",
+      "valid_time": {
+        "at": "中平六年八月戊辰"
+      },
+      "time_precision": "day",
+      "source_ids": [
+        "source.hhs.008.wikisource",
+        "source.hhs.069.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted"
+    },
+    {
+      "id": "claim.189.yuan_shao.sili_colonel",
+      "subject": "person.yuan_shao",
+      "predicate": "holds_office",
+      "value": "office.sili_colonel_with_festival",
+      "valid_time": {
+        "start": "中平六年八月前",
+        "end": "中平六年八月宫变后"
+      },
+      "time_precision": "month_window",
+      "source_ids": [
+        "source.hhs.069.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted"
+    },
+    {
+      "id": "claim.189.wang_yun.henan_intendant",
+      "subject": "person.wang_yun",
+      "predicate": "holds_office",
+      "value": "office.henan_intendant",
+      "valid_time": {
+        "start": "中平六年八月前",
+        "end": null
+      },
+      "time_precision": "month_window",
+      "source_ids": [
+        "source.hhs.069.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted",
+      "notes": "该官职不等于对宫城禁军和所有京师机构的直接控制。"
+    },
+    {
+      "id": "claim.189.qiao_mao.chenggao_garrison",
+      "subject": "person.qiao_mao",
+      "predicate": "temporarily_garrisoned_at",
+      "value": "place.chenggao",
+      "valid_time": {
+        "start": "中平六年八月前",
+        "end": null
+      },
+      "time_precision": "month_window",
+      "source_ids": [
+        "source.hhs.069.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted",
+      "notes": "桥瑁身份为东郡太守，屯成皋不代表担任成皋地方长官。"
+    },
+    {
+      "id": "claim.189.ding_yuan.mengjin_pressure",
+      "subject": "person.ding_yuan",
+      "predicate": "conducted_military_pressure_at",
+      "value": "place.mengjin",
+      "valid_time": {
+        "start": "中平六年八月前",
+        "end": null
+      },
+      "time_precision": "month_window",
+      "source_ids": [
+        "source.hhs.069.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "B",
+      "status": "asserted",
+      "notes": "史料记其率数千人并烧孟津；精确营地与行动时刻待考。"
+    },
+    {
+      "id": "claim.189.dong_zhuo.sunset_pavilion",
+      "subject": "person.dong_zhuo",
+      "predicate": "position_range",
+      "value": [
+        "place.henan_western_approach",
+        "place.sunset_pavilion"
+      ],
+      "valid_time": {
+        "start": "中平六年八月前",
+        "end": "中平六年八月辛未"
+      },
+      "time_precision": "range",
+      "source_ids": [
+        "source.hhs.069.wikisource",
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "C",
+      "status": "disputed_or_under_timed",
+      "notes": "已知其向雒阳推进并曾退驻夕阳亭，但丁卯日精确位置仍需校时。"
+    },
+    {
+      "id": "claim.140.henan_intendancy.census",
+      "subject": "place.henan_intendancy",
+      "predicate": "census_households_and_population",
+      "value": {
+        "households": 208486,
+        "population": 1000827,
+        "cities": 21
+      },
+      "valid_time": {
+        "at": "永和五年"
+      },
+      "time_precision": "year",
+      "source_ids": [
+        "source.hhs.109.wikisource"
+      ],
+      "confidence": "A",
+      "status": "asserted",
+      "notes": "仅为较早行政统计基线，禁止直接作为中平六年人口。"
+    },
+    {
+      "id": "claim.hhs.chenliu.census",
+      "subject": "place.chenliu_commandery",
+      "predicate": "census_households_and_population",
+      "value": {
+        "households": 177529,
+        "population": 869433,
+        "cities": 17
+      },
+      "valid_time": {
+        "at": "郡国志统计时点"
+      },
+      "time_precision": "source_context",
+      "source_ids": [
+        "source.hhs.111.wikisource"
+      ],
+      "confidence": "B",
+      "status": "asserted",
+      "notes": "统计时点需要与点校本和郡国志总例进一步确认；禁止直接作为中平六年人口。"
+    },
+    {
+      "id": "claim.189.summer.prolonged_rain",
+      "subject": "event.189.summer_rain_and_flood",
+      "predicate": "recorded_weather_event",
+      "value": {
+        "conditions": [
+          "flood",
+          "prolonged_rain"
+        ],
+        "spatial_extent": null
+      },
+      "valid_time": {
+        "start": "中平六年六月",
+        "end": "中平六年九月"
+      },
+      "time_precision": "month_range",
+      "source_ids": [
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "B",
+      "status": "asserted",
+      "notes": "《资治通鉴》在六月条记“大水”，九月条记“自六月雨至于是月”，但未明言空间范围。写入雒阳具体路况时只能作为 bounded_inference 的输入之一，不能断言丁卯当日必然降雨。"
+    },
+    {
+      "id": "claim.han.local_network.pavilions_posts",
+      "subject": "institution.han_local_route_network",
+      "predicate": "typical_spacing",
+      "value": {
+        "pavilion_li": 10,
+        "postal_stop_li": 5
+      },
+      "valid_time": {
+        "at": "东汉制度描述"
+      },
+      "time_precision": "institutional_period",
+      "source_ids": [
+        "source.hhs.118.wikisource"
+      ],
+      "confidence": "B",
+      "status": "asserted_with_scope_limits",
+      "notes": "不代表所有地区、所有年份都按固定间距完整运行。"
+    },
+    {
+      "id": "claim.189.liu_bian.age.hhs",
+      "subject": "person.liu_bian",
+      "predicate": "age_at_accession",
+      "value": 17,
+      "valid_time": {
+        "at": "中平六年四月戊午"
+      },
+      "time_precision": "day",
+      "source_ids": [
+        "source.hhs.008.wikisource"
+      ],
+      "confidence": "C",
+      "status": "disputed"
+    },
+    {
+      "id": "claim.189.liu_bian.age.zztj",
+      "subject": "person.liu_bian",
+      "predicate": "age_at_accession",
+      "value": 14,
+      "valid_time": {
+        "at": "中平六年四月戊午"
+      },
+      "time_precision": "day",
+      "source_ids": [
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "C",
+      "status": "disputed"
+    },
+    {
+      "id": "claim.189.zhang_miao.chenliu_appointment_after_snapshot",
+      "subject": "person.zhang_miao",
+      "predicate": "appointed_to_office",
+      "value": "office.chenliu_administrator",
+      "valid_time": {
+        "at": "中平六年十二月相关人事"
+      },
+      "time_precision": "month",
+      "source_ids": [
+        "source.zztj.059.wikisource"
+      ],
+      "confidence": "B",
+      "status": "asserted",
+      "notes": "不能把张邈设置为八月丁卯已经确定在任的陈留太守。"
+    }
+  ]
+}
