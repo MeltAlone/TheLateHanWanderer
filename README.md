@@ -133,7 +133,7 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-这两个入口达到 B2 的目标人口数量和 B3 的目标消息拓扑，但 B2 当前仍超出推进预算且缺少混合访问/计划负载，B3 尚无传言失真与冲突信念，因此不代表完整 B2/B3 达标。
+这两个入口达到 B2 的目标人口数量和 B3 的目标消息拓扑；B2 目标人口核心已在当前参考机进入推进预算，但仍缺少混合传信、访问、计划变更、远方低频运行和多个玩家中断，B3 尚无传言失真与冲突信念，因此不代表完整 B2/B3 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 

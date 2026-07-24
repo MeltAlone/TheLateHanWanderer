@@ -33,4 +33,4 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。正式对比应分别启动 `b2-scale` 和 `b3-scale`，避免前一负载的 JIT 与进程内存影响后一项。
+输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。事件指纹审计的时间与分配单独输出，不计入模拟本体预算。正式对比应分别启动 `b2-scale` 和 `b3-scale`，避免前一负载的 JIT 与进程内存影响后一项。
