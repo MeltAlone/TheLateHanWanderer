@@ -522,7 +522,10 @@ internal sealed class CliSession
         {
             Console.WriteLine(
                 $"{group.Id} count={group.Count} location={group.LocationId} " +
-                $"detail=l3 profile={group.PromotionProfileId}");
+                $"detail=l3 profile={group.PromotionProfileId} food={group.FoodStockUnits} " +
+                $"produced={group.CumulativeFoodProduced} consumed={group.CumulativeFoodConsumed} " +
+                $"unmet={group.CumulativeFoodUnmet} shortage_bp={group.FoodShortageBp} " +
+                $"settled_minute={group.LastRemoteSettlementMinute}");
         }
     }
 
@@ -544,7 +547,9 @@ internal sealed class CliSession
             $"{actor.Id} detail={actor.DetailLevel.ToString().ToLowerInvariant()} " +
             $"temporary={actor.IsTemporaryPromotion.ToString().ToLowerInvariant()} " +
             $"dirty={_engine.State.DetailDirtyActorIds.Contains(actor.Id).ToString().ToLowerInvariant()} " +
-            $"from={actor.PromotedFromGroupId ?? "-"} seed={actor.IdentitySeedHex ?? "-"}");
+            $"from={actor.PromotedFromGroupId ?? "-"} seed={actor.IdentitySeedHex ?? "-"} " +
+            $"remote_cycles={actor.RemoteCycleCount} remote_minute={actor.LastRemoteUpdateMinute?.ToString() ?? "-"} " +
+            $"remote_event={actor.LastRemoteUpdateEventId ?? "-"}");
     }
 
     private void ExecuteDeveloperCommand(string[] tokens)

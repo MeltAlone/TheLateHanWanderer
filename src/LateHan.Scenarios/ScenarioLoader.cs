@@ -130,9 +130,15 @@ public sealed class ScenarioLoader
                 group.Count,
                 group.Location,
                 group.Organization,
-                group.PromotionProfile)));
+                group.PromotionProfile,
+                group.FoodStockUnits,
+                group.DailyFoodProductionPerThousand,
+                group.DailyFoodConsumptionPerThousand,
+                lastRemoteSettlementMinute: manifest.Start.Minute)));
 
-        new WorldEngine(domainWorld).InitializePlans();
+        var engine = new WorldEngine(domainWorld);
+        engine.InitializePlans();
+        _ = engine.InitializeRemoteSimulation();
 
         return new LoadedScenario(domainWorld, computedHash, manifest.ContentHash);
     }
@@ -353,6 +359,13 @@ public sealed class ScenarioLoader
             if (group.Count < 0)
             {
                 errors.Add($"SCN-NUM-005 Group '{group.Id}' count cannot be negative.");
+            }
+
+            if (group.FoodStockUnits < 0 ||
+                group.DailyFoodProductionPerThousand < 0 ||
+                group.DailyFoodConsumptionPerThousand < 0)
+            {
+                errors.Add($"SCN-NUM-007 Group '{group.Id}' remote food values cannot be negative.");
             }
         }
 

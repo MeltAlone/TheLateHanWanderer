@@ -8,7 +8,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.7.0-spike";
+    public const string Version = "0.8.0-spike";
 }
 
 public enum TravelMode
@@ -36,11 +36,19 @@ public sealed class ActorState
         SimulationDetailLevel detailLevel = SimulationDetailLevel.L1,
         string? promotedFromGroupId = null,
         string? identitySeedHex = null,
-        bool isTemporaryPromotion = false)
+        bool isTemporaryPromotion = false,
+        long remoteCycleCount = 0,
+        long? lastRemoteUpdateMinute = null,
+        string? lastRemoteUpdateEventId = null)
     {
         if ((placeId is null) == (transit is null))
         {
             throw new ArgumentException("An actor must be at exactly one place or transit position.", nameof(placeId));
+        }
+
+        if (remoteCycleCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(remoteCycleCount));
         }
 
         Id = id;
@@ -52,6 +60,9 @@ public sealed class ActorState
         PromotedFromGroupId = promotedFromGroupId;
         IdentitySeedHex = identitySeedHex;
         IsTemporaryPromotion = isTemporaryPromotion;
+        RemoteCycleCount = remoteCycleCount;
+        LastRemoteUpdateMinute = lastRemoteUpdateMinute;
+        LastRemoteUpdateEventId = lastRemoteUpdateEventId;
     }
 
     public string Id { get; }
@@ -71,6 +82,12 @@ public sealed class ActorState
     public string? IdentitySeedHex { get; }
 
     public bool IsTemporaryPromotion { get; }
+
+    public long RemoteCycleCount { get; internal set; }
+
+    public long? LastRemoteUpdateMinute { get; internal set; }
+
+    public string? LastRemoteUpdateEventId { get; internal set; }
 
     public string LocationId
     {
@@ -330,6 +347,12 @@ public sealed class WorldState
         _groups = new SortedDictionary<string, GroupState>(
             (groups ?? []).ToDictionary(group => group.Id),
             StringComparer.Ordinal);
+        if (_groups.Values.Any(group => group.LastRemoteSettlementMinute > currentMinute))
+        {
+            throw new ArgumentException(
+                "A group remote settlement cursor cannot be later than the world minute.",
+                nameof(groups));
+        }
         ValidateCognitionReferences();
         _detailDirtyActorIds = new SortedSet<string>(detailDirtyActorIds ?? [], StringComparer.Ordinal);
         if (_detailDirtyActorIds.Any(actorId => !_actors.ContainsKey(actorId)))
@@ -616,6 +639,9 @@ public sealed class WorldState
             Append(hash, actor.DetailLevel.ToString());
             Append(hash, actor.PromotedFromGroupId ?? string.Empty);
             Append(hash, actor.IdentitySeedHex ?? string.Empty);
+            Append(hash, actor.RemoteCycleCount.ToString(CultureInfo.InvariantCulture));
+            Append(hash, actor.LastRemoteUpdateMinute?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+            Append(hash, actor.LastRemoteUpdateEventId ?? string.Empty);
         }
 
         foreach (var group in _groups.Values)
@@ -623,6 +649,17 @@ public sealed class WorldState
             Append(hash, group.Id);
             Append(hash, group.Count.ToString(CultureInfo.InvariantCulture));
             Append(hash, group.LocationId);
+            Append(hash, group.FoodStockUnits.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.DailyFoodProductionPerThousand.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.DailyFoodConsumptionPerThousand.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.LastRemoteSettlementMinute.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.FoodProductionRemainder.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.FoodDemandRemainder.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.CumulativeFoodProduced.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.CumulativeFoodDemand.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.CumulativeFoodConsumed.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.CumulativeFoodUnmet.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.FoodShortageBp.ToString(CultureInfo.InvariantCulture));
         }
 
         foreach (var item in _items.Values)

@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.8";
+    public string SnapshotSchemaVersion { get; init; } = "0.9";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -142,7 +142,10 @@ internal sealed class WorldSnapshot
                 item.DetailLevel,
                 item.PromotedFromGroupId,
                 item.IdentitySeedHex,
-                item.IsTemporaryPromotion)).ToList(),
+                item.IsTemporaryPromotion,
+                item.RemoteCycleCount,
+                item.LastRemoteUpdateMinute,
+                item.LastRemoteUpdateEventId)).ToList(),
             Places = world.Places.Values.Select(item => new PlaceSnapshot(item.Id, item.Name, item.AccessRuleId, item.ControllerId)).ToList(),
             Routes = world.Routes.Values.Select(item => new RouteSnapshot(
                 item.Id,
@@ -223,7 +226,18 @@ internal sealed class WorldSnapshot
                 item.Count,
                 item.LocationId,
                 item.OrganizationId,
-                item.PromotionProfileId)).ToList(),
+                item.PromotionProfileId,
+                item.FoodStockUnits,
+                item.DailyFoodProductionPerThousand,
+                item.DailyFoodConsumptionPerThousand,
+                item.LastRemoteSettlementMinute,
+                item.FoodProductionRemainder,
+                item.FoodDemandRemainder,
+                item.CumulativeFoodProduced,
+                item.CumulativeFoodDemand,
+                item.CumulativeFoodConsumed,
+                item.CumulativeFoodUnmet,
+                item.FoodShortageBp)).ToList(),
             Commitments = world.Commitments.Values.Select(item => new CommitmentSnapshot(
                 item.Id,
                 item.DebtorId,
@@ -293,7 +307,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.8", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.9", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -331,7 +345,10 @@ internal sealed class WorldSnapshot
                 item.DetailLevel,
                 item.PromotedFromGroupId,
                 item.IdentitySeedHex,
-                item.IsTemporaryPromotion)),
+                item.IsTemporaryPromotion,
+                item.RemoteCycleCount,
+                item.LastRemoteUpdateMinute,
+                item.LastRemoteUpdateEventId)),
             Places.Select(item => new PlaceDefinition(item.Id, item.Name, item.AccessRuleId, item.ControllerId)),
             Routes.Select(item => new RouteDefinition(
                 item.Id,
@@ -482,7 +499,18 @@ internal sealed class WorldSnapshot
                 item.Count,
                 item.LocationId,
                 item.OrganizationId,
-                item.PromotionProfileId)),
+                item.PromotionProfileId,
+                item.FoodStockUnits,
+                item.DailyFoodProductionPerThousand,
+                item.DailyFoodConsumptionPerThousand,
+                item.LastRemoteSettlementMinute,
+                item.FoodProductionRemainder,
+                item.FoodDemandRemainder,
+                item.CumulativeFoodProduced,
+                item.CumulativeFoodDemand,
+                item.CumulativeFoodConsumed,
+                item.CumulativeFoodUnmet,
+                item.FoodShortageBp)),
             NextPromotionSequence,
             DetailDirtyActorIds);
     }
@@ -497,7 +525,10 @@ internal sealed record ActorSnapshot(
     SimulationDetailLevel DetailLevel,
     string? PromotedFromGroupId,
     string? IdentitySeedHex,
-    bool IsTemporaryPromotion);
+    bool IsTemporaryPromotion,
+    long RemoteCycleCount,
+    long? LastRemoteUpdateMinute,
+    string? LastRemoteUpdateEventId);
 
 internal sealed record MembershipSnapshot(string OrganizationId, string RoleId);
 
@@ -562,7 +593,18 @@ internal sealed record GroupSnapshot(
     int Count,
     string LocationId,
     string? OrganizationId,
-    string PromotionProfileId);
+    string PromotionProfileId,
+    long FoodStockUnits,
+    int DailyFoodProductionPerThousand,
+    int DailyFoodConsumptionPerThousand,
+    long LastRemoteSettlementMinute,
+    long FoodProductionRemainder,
+    long FoodDemandRemainder,
+    long CumulativeFoodProduced,
+    long CumulativeFoodDemand,
+    long CumulativeFoodConsumed,
+    long CumulativeFoodUnmet,
+    int FoodShortageBp);
 
 internal sealed record BeliefSnapshot(
     string Id,

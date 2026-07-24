@@ -21,7 +21,7 @@ public sealed class ScenarioLoaderTests
         Assert.Equal("xoshiro256ss.v1", loaded.World.RngVersion);
         Assert.Equal("18908D2400000001", loaded.World.RandomStreams.RootSeedHex);
         Assert.Equal("sha256-le.v1", loaded.World.RandomStreams.Derivation);
-        Assert.Equal("0.7.0-spike", loaded.World.EngineVersion);
+        Assert.Equal("0.8.0-spike", loaded.World.EngineVersion);
         Assert.Equal(6, loaded.World.AccessRules.Count);
         Assert.Equal(4, loaded.World.PlaceAccessStates.Count);
         Assert.Equal(7, loaded.World.Groups.Count);

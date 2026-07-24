@@ -6,6 +6,12 @@ internal static class SyntheticScaleWorldFactory
     public const int CityCrisisL0Count = 50;
     public const int CityCrisisL1Count = 500;
     public const int CityCrisisGroupPopulation = 2_000_000;
+
+    public const long CityCrisisInitialFoodStock = 5_000_000;
+
+    public const int CityCrisisDailyFoodProductionPerThousand = 900;
+
+    public const int CityCrisisDailyFoodConsumptionPerThousand = 1000;
     public const int MixedCityCrisisPlanCount = 10;
     public const int MixedCityCrisisVisitorCount = 20;
     public const int MixedCityCrisisMessageCount = 40;
@@ -232,7 +238,10 @@ internal static class SyntheticScaleWorldFactory
             CityCrisisGroupPopulation,
             PlaceId(49),
             organizationId: null,
-            "synthetic-resident"),
+            "synthetic-resident",
+            foodStockUnits: CityCrisisInitialFoodStock,
+            dailyFoodProductionPerThousand: CityCrisisDailyFoodProductionPerThousand,
+            dailyFoodConsumptionPerThousand: CityCrisisDailyFoodConsumptionPerThousand),
     ];
 
     private static WorldState CreateWorld(

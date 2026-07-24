@@ -284,6 +284,7 @@ public sealed partial class WorldEngine
             "place_access_changed" => [ProcessPlaceAccessChange(scheduled)],
             "actor_relocated" => [ProcessActorRelocation(scheduled)],
             "detail_message_retention_expired" => [ProcessDetailMessageRetentionExpired(scheduled)],
+            "remote_world_tick" => ProcessRemoteWorldTick(scheduled),
             _ => [AppendScheduledEvent(scheduled)],
         };
     }

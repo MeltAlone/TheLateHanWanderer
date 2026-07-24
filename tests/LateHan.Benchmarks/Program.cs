@@ -375,18 +375,10 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
             });
     }
 
-    foreach (var minute in remoteTickMinutes)
+    var initializedRemoteTicks = engine.InitializeRemoteSimulation(cadenceMinutes: 240);
+    if (initializedRemoteTicks.Count != 1 || initializedRemoteTicks[0].DueMinute != remoteTickMinutes[0])
     {
-        engine.Schedule(
-            minute,
-            ScheduledEventPhase.SummaryAndNotification,
-            SyntheticScaleWorldFactory.RegionalPopulationGroupId,
-            "remote_world_tick",
-            SyntheticScaleWorldFactory.PlaceId(49),
-            details: new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["cadence_minutes"] = "240",
-            });
+        throw new InvalidOperationException("Mixed B2 remote simulation did not initialize exactly once.");
     }
 
     var actions = engine.State.Actors.Values
@@ -485,6 +477,11 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         worldEvent.Type == "travel_resumed" &&
         worldEvent.SubjectIds.Contains(engine.State.PlayerActorId, StringComparer.Ordinal));
     var remoteTickCount = events.Count(worldEvent => worldEvent.Type == "remote_world_tick");
+    var remoteTicksAuditable = events
+        .Where(worldEvent => worldEvent.Type == "remote_world_tick")
+        .All(worldEvent =>
+            worldEvent.Details["policy_version"] == RemoteSimulationPolicy.Version &&
+            worldEvent.Details["material_balance"] == "conserved");
     var accessRequestCount = events.Count(worldEvent => worldEvent.Type == "access_requested");
     var placeEnteredCount = events.Count(worldEvent => worldEvent.Type == "place_entered");
     var planOwnersAtDestination = planOwnerIds.All(ownerId => string.Equals(
@@ -517,6 +514,7 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         playerInterruptedCount != playerInterruptMinutes.Length ||
         playerResumedCount != playerInterruptMinutes.Length ||
         remoteTickCount != remoteTickMinutes.Length ||
+        !remoteTicksAuditable ||
         accessRequestCount != SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount * 2 ||
         placeEnteredCount != accessRequestCount ||
         completedPlanCount != SyntheticScaleWorldFactory.MixedCityCrisisPlanCount ||
@@ -527,7 +525,14 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         finalPopulationEquivalent != initialPopulationEquivalent ||
         engine.State.Actors.Count != initialActorCount ||
         engine.State.Groups.Count != initialGroupCount ||
-        group.Count != SyntheticScaleWorldFactory.CityCrisisGroupPopulation)
+        group.Count != SyntheticScaleWorldFactory.CityCrisisGroupPopulation ||
+        group.FoodStockUnits != 4_900_000 ||
+        group.CumulativeFoodProduced != 900_000 ||
+        group.CumulativeFoodDemand != 1_000_000 ||
+        group.CumulativeFoodConsumed != 1_000_000 ||
+        group.CumulativeFoodUnmet != 0 ||
+        group.FoodShortageBp != 0 ||
+        group.LastRemoteSettlementMinute != twelveHours)
     {
         throw new InvalidOperationException(
             "Mixed B2 invariants failed: " +
@@ -536,7 +541,8 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
             $"visits={placeEnteredCount}/{accessRequestCount} messages={messages.Length}/{linkedMessageCount} " +
             $"plans={completedPlanCount} remote_ticks={remoteTickCount} " +
             $"positions={planOwnersAtDestination}/{otherActorsAtCrisis} actions={allActionsCompleted} " +
-            $"beliefs={allMessageBeliefsTraceable} population={finalPopulationEquivalent}/{initialPopulationEquivalent}.");
+            $"beliefs={allMessageBeliefsTraceable} population={finalPopulationEquivalent}/{initialPopulationEquivalent} " +
+            $"food={group.FoodStockUnits}/{group.CumulativeFoodProduced}/{group.CumulativeFoodConsumed}/{group.CumulativeFoodUnmet}.");
     }
 
     return new ScaleWorkloadResult(
@@ -545,11 +551,13 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         $"concurrent_travelers={actions.Length} player_interruptions={playerInterruptedCount} " +
         $"access_round_trips={visitorIds.Length} messages={messages.Length} linked_messages={linkedMessageCount} " +
         $"completed_plans={completedPlanCount} remote_ticks={remoteTickCount} " +
+        $"remote_food_stock={group.FoodStockUnits} remote_food_produced={group.CumulativeFoodProduced} " +
+        $"remote_food_consumed={group.CumulativeFoodConsumed} remote_food_unmet={group.CumulativeFoodUnmet} " +
         $"population_equivalent={finalPopulationEquivalent} l3_group_population={group.Count} " +
         $"processed_events={events.Count} " +
         $"detail_assessments={startDetail.Assessments.Count + finalDetail.Assessments.Count} " +
         "incremental_dirty_exact=true lineage_complete=true player_interruptions_exact=true " +
-        "population_conserved=true l3_not_expanded=true",
+        "population_conserved=true remote_material_conserved=true remote_ticks_auditable=true l3_not_expanded=true",
         [firstAdvanceStopwatch.Elapsed.TotalMilliseconds, firstResumeStopwatch.Elapsed.TotalMilliseconds]);
 }
 

@@ -39,11 +39,45 @@ public sealed class GroupState
         int count,
         string locationId,
         string? organizationId,
-        string promotionProfileId)
+        string promotionProfileId,
+        long foodStockUnits = 0,
+        int dailyFoodProductionPerThousand = 0,
+        int dailyFoodConsumptionPerThousand = 0,
+        long lastRemoteSettlementMinute = 0,
+        long foodProductionRemainder = 0,
+        long foodDemandRemainder = 0,
+        long cumulativeFoodProduced = 0,
+        long cumulativeFoodDemand = 0,
+        long cumulativeFoodConsumed = 0,
+        long cumulativeFoodUnmet = 0,
+        int foodShortageBp = 0)
     {
         if (count < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(count));
+        }
+
+        if (foodStockUnits < 0 ||
+            dailyFoodProductionPerThousand < 0 ||
+            dailyFoodConsumptionPerThousand < 0 ||
+            lastRemoteSettlementMinute < 0 ||
+            foodProductionRemainder < 0 ||
+            foodDemandRemainder < 0 ||
+            cumulativeFoodProduced < 0 ||
+            cumulativeFoodDemand < 0 ||
+            cumulativeFoodConsumed < 0 ||
+            cumulativeFoodUnmet < 0 ||
+            foodShortageBp is < 0 or > 10000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(foodStockUnits), "Remote aggregate values cannot be negative or invalid.");
+        }
+
+        if (foodProductionRemainder >= RemoteSimulationPolicy.FlowDenominator ||
+            foodDemandRemainder >= RemoteSimulationPolicy.FlowDenominator ||
+            cumulativeFoodDemand != cumulativeFoodConsumed + cumulativeFoodUnmet ||
+            (Int128)foodStockUnits + cumulativeFoodConsumed < cumulativeFoodProduced)
+        {
+            throw new ArgumentException("Remote aggregate ledger values are inconsistent.", nameof(foodProductionRemainder));
         }
 
         Id = id;
@@ -53,6 +87,17 @@ public sealed class GroupState
         LocationId = locationId;
         OrganizationId = organizationId;
         PromotionProfileId = promotionProfileId;
+        FoodStockUnits = foodStockUnits;
+        DailyFoodProductionPerThousand = dailyFoodProductionPerThousand;
+        DailyFoodConsumptionPerThousand = dailyFoodConsumptionPerThousand;
+        LastRemoteSettlementMinute = lastRemoteSettlementMinute;
+        FoodProductionRemainder = foodProductionRemainder;
+        FoodDemandRemainder = foodDemandRemainder;
+        CumulativeFoodProduced = cumulativeFoodProduced;
+        CumulativeFoodDemand = cumulativeFoodDemand;
+        CumulativeFoodConsumed = cumulativeFoodConsumed;
+        CumulativeFoodUnmet = cumulativeFoodUnmet;
+        FoodShortageBp = foodShortageBp;
     }
 
     public string Id { get; }
@@ -68,6 +113,28 @@ public sealed class GroupState
     public string? OrganizationId { get; }
 
     public string PromotionProfileId { get; }
+
+    public long FoodStockUnits { get; internal set; }
+
+    public int DailyFoodProductionPerThousand { get; }
+
+    public int DailyFoodConsumptionPerThousand { get; }
+
+    public long LastRemoteSettlementMinute { get; internal set; }
+
+    public long FoodProductionRemainder { get; internal set; }
+
+    public long FoodDemandRemainder { get; internal set; }
+
+    public long CumulativeFoodProduced { get; internal set; }
+
+    public long CumulativeFoodDemand { get; internal set; }
+
+    public long CumulativeFoodConsumed { get; internal set; }
+
+    public long CumulativeFoodUnmet { get; internal set; }
+
+    public int FoodShortageBp { get; internal set; }
 
     public SimulationDetailLevel DetailLevel => SimulationDetailLevel.L3;
 }
@@ -219,6 +286,13 @@ public sealed partial class WorldEngine
             throw new DomainCommandException("invalid_detail_level", "A named actor cannot be promoted at L3.");
         }
 
+        var settlementEvents = SettleRemoteGroupBeforePopulationChange(group, causeIds ?? []);
+        var promotionCauses = new List<string>(causeIds ?? []);
+        if (settlementEvents.Count > 0)
+        {
+            promotionCauses.Add(settlementEvents[0].Id);
+        }
+
         var sequence = State.NextPromotionSequence;
         var actorId = $"person.promoted.{sequence:D8}";
         var identitySeedHex = ComputeIdentitySeed(group.Id, sequence);
@@ -245,7 +319,7 @@ public sealed partial class WorldEngine
             State.CurrentMinute,
             group.LocationId,
             [group.Id, actor.Id],
-            causeIds ?? [],
+            promotionCauses,
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["detail_level"] = detailLevel.ToString().ToLowerInvariant(),
@@ -281,6 +355,7 @@ public sealed partial class WorldEngine
         }
 
         if (actor.IsInTransit || FindActiveAction(actor.Id) is not null ||
+            actor.RemoteCycleCount > 0 ||
             State.Items.Values.Any(item => string.Equals(item.HolderId, actor.Id, StringComparison.Ordinal)) ||
             State.Commitments.Values.Any(item =>
                 item.Status == "open" &&
@@ -311,6 +386,20 @@ public sealed partial class WorldEngine
                 $"Actor '{actorId}' is not at group '{group.Id}' location.");
         }
 
+        if (WouldUpdateActorInRemoteSettlement(actor, group, State.CurrentMinute))
+        {
+            throw new DomainCommandException(
+                "actor_has_independent_state",
+                $"Actor '{actorId}' has unsettled remote history that cannot be merged into a group.");
+        }
+
+        var settlementEvents = SettleRemoteGroupBeforePopulationChange(group, causeIds ?? []);
+        var demotionCauses = new List<string>(causeIds ?? []);
+        if (settlementEvents.Count > 0)
+        {
+            demotionCauses.Add(settlementEvents[0].Id);
+        }
+
         foreach (var belief in beliefs)
         {
             State.RemoveBelief(belief.Id);
@@ -322,7 +411,7 @@ public sealed partial class WorldEngine
             State.CurrentMinute,
             group.LocationId,
             [actor.Id, group.Id],
-            causeIds ?? [],
+            demotionCauses,
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["group_count"] = group.Count.ToString(CultureInfo.InvariantCulture),

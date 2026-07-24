@@ -164,6 +164,12 @@ internal sealed class GroupDocument : NamedDocument
     public string? Organization { get; init; }
 
     public string PromotionProfile { get; init; } = string.Empty;
+
+    public long FoodStockUnits { get; init; }
+
+    public int DailyFoodProductionPerThousand { get; init; }
+
+    public int DailyFoodConsumptionPerThousand { get; init; }
 }
 
 internal sealed class ItemDocument : NamedDocument
