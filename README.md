@@ -134,6 +134,16 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "detail person.chen_zhi"
 ```
 
+开始行动后可以检查增量脏集，只刷新真正受影响的人物：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "dev rebalance-detail" `
+  --command "travel start place.luoyang.west_market walk" `
+  --command "dev detail-dirty" `
+  --command "dev rebalance-detail dirty"
+```
+
 ## 基本工作流
 
 1. 在 `docs/research/` 中提出有来源的历史主张，并记录置信度与争议。
