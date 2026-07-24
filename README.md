@@ -87,6 +87,15 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "give item.sealed_note_to_yuan_shao to person.yuan_shao"
 ```
 
+承诺会在各自截止分钟自动终结为 `missed`，而不是永久停留在开放状态。失约事件记录当时的债务人位置、接收人位置、目标物品持有人或前置承诺状态，但不会让远方 NPC 自动获知结果：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "wait 360" `
+  --command "commitments" `
+  --command "history"
+```
+
 可用开发者命令复现“等待四小时，在第 95 分钟被紧急召回”：
 
 ```powershell
