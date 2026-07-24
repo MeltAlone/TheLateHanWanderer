@@ -16,8 +16,8 @@
 
 当前可执行项目：
 
-- `LateHan.Tests`：73 项场景加载、规范化哈希、持久旅行、多次玩家中断、门禁、竞争访问队列、计划资源锁定/替换/取消、同刻权限变化、消息谱系、版本化转述失真、冲突认知、远方批处理、随机流、精度策略、增量脏集、群体升降格守恒和快照续跑测试；
-- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小负载，以及 B1 目标空闲世界、B2 目标人口核心/混合城市危机、B3 目标消息拓扑/冲突语义和 B4 目标交互的无界面性能与正确性入口；目标数量达成不代表完整 B1-B6 语义和性能已经达标。
+- `LateHan.Tests`：76 项场景、行动、访问、计划、消息、远方批处理、精度、快照，以及长期事件归档追加/重开/因果/恢复/审计测试；
+- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小负载、B1-B4 目标结构，以及 B5 百万事件长期归档的无界面性能与正确性入口。
 
 日常尖峰可运行不含目标规模负载的 `all`：
 
@@ -37,4 +37,10 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。`b1-scale` 验证完整精度层级的事件驱动空闲推进；`b2-mixed` 另行聚合推进至玩家中断的延迟；`b3-scale`/`b3-conflict` 验证拓扑和冲突认知；`b4-scale` 验证多群体随机选择、跨地点回并和互动后保留。事件指纹审计单独输出。正式对比应分别启动六个目标负载，避免前一负载的 JIT 与进程内存影响后一项。
+`b5-scale` 单独流式生成 100 万事件并使用临时 SQLite 归档，不并入以上五样本组合：
+
+```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b5-scale
+```
+
+输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。`b1-scale` 验证完整精度层级的事件驱动空闲推进；`b2-mixed` 聚合玩家中断延迟；`b3-scale`/`b3-conflict` 验证拓扑和冲突认知；`b4-scale` 验证升降格交互；`b5-scale` 报告追加、直接查询、有限 `why`、检查点恢复、全量审计和压缩备份。

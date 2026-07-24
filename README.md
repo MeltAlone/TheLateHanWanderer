@@ -152,7 +152,13 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-这些入口已经覆盖 B1-B4 的目标结构语义：B1 在 20,550 名具名人物和 200 万 L3 人口上按 16,002 个到期事件推进 30 日；B2 验证混合城市危机；B3 验证消息拓扑与冲突认知；B4 验证多群体随机升格、跨地点往返与互动后保留。B5 百万事件长期日志与 B6 二十分支隔离仍未完成，因此仍不代表完整 B1-B6 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
+B5 是独立的磁盘 I/O 负载，不并入五样本 `scale`：
+
+```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b5-scale
+```
+
+这些入口已经覆盖 B1-B5 的目标语义：B1 在 20,550 名具名人物和 200 万 L3 人口上按 16,002 个到期事件推进 30 日；B2 验证混合城市危机；B3 验证消息拓扑与冲突认知；B4 验证多群体随机升格、跨地点往返与互动后保留；B5 验证 100 万事件追加、40 个检查点、因果查询、恢复、全量审计和压缩备份。B6 二十分支隔离仍未完成，因此仍不代表完整 B1-B6 达标。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 
