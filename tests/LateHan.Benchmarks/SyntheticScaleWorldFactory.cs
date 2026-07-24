@@ -16,6 +16,11 @@ internal static class SyntheticScaleWorldFactory
     public const int MixedCityCrisisVisitorCount = 20;
     public const int MixedCityCrisisMessageCount = 40;
     public const int MessageCarriersPerPlace = 4;
+    public const int LodGroupCount = 100;
+    public const int LodGroupPopulation = 10_000;
+    public const int LodPromotionCount = 1_000;
+    public const int LodRetainedActorCount = 100;
+    public const int LodCrossPlaceRoundTripCount = 200;
     public const string PlayerActorId = "person.synthetic.player";
     public const string PublicAccessRuleId = "access.synthetic.public";
     public const string QueuedAccessRuleId = "access.synthetic.queued";
@@ -107,6 +112,46 @@ internal static class SyntheticScaleWorldFactory
         return CreateWorld("synthetic-b3-message-topology", CreateMessageActors(), beliefs: beliefs);
     }
 
+    public static WorldState CreateLodInteractionWorld()
+    {
+        var actors = new List<ActorState>
+        {
+            new(
+                PlayerActorId,
+                "Synthetic Player",
+                PlaceId(0),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L0),
+        };
+        actors.AddRange(Enumerable.Range(0, PlaceCount).Select(index => new ActorState(
+            LodAnchorId(index),
+            $"Synthetic LOD Anchor {index:D2}",
+            PlaceId(index),
+            transit: null,
+            detailLevel: SimulationDetailLevel.L1)));
+        var beliefs = Enumerable.Range(0, PlaceCount).Select(index => new BeliefState(
+            $"belief.synthetic.lod.anchor.{index:D2}",
+            LodAnchorId(index),
+            OfficialPropositionId,
+            confidenceBp: 10000,
+            "direct_observation",
+            acquiredAtMinute: 0,
+            sourceEventId: $"evidence.synthetic.lod.anchor.{index:D2}"));
+        var groups = Enumerable.Range(0, LodGroupCount).Select(index => new GroupState(
+            LodGroupId(index),
+            $"Synthetic LOD Group {index:D3}",
+            "lod_population",
+            LodGroupPopulation,
+            PlaceId(index % PlaceCount),
+            organizationId: null,
+            "synthetic-lod-resident"));
+        return CreateWorld(
+            "synthetic-b4-lod-interactions",
+            actors,
+            beliefs: beliefs,
+            groups: groups);
+    }
+
     public static WorldState CreateConflictingMessageWorld()
     {
         PropositionDefinition[] propositions =
@@ -167,6 +212,10 @@ internal static class SyntheticScaleWorldFactory
     public static string MixedCityCrisisPlanOwnerId(int index) => $"person.synthetic.l1.{index:D3}";
 
     public static string MixedCityCrisisPlanId(int index) => $"plan.synthetic.crisis.{index:D2}";
+
+    public static string LodGroupId(int index) => $"group.synthetic.lod.{index:D3}";
+
+    public static string LodAnchorId(int placeIndex) => $"person.synthetic.lod.anchor.{placeIndex:D2}";
 
     private static string MixedPlanResourceId(int index) => index switch
     {

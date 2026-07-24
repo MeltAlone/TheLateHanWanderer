@@ -35,11 +35,15 @@ switch (workload)
     case "b3-conflict":
         RunConflictingMessageScale();
         break;
+    case "b4-scale":
+        RunLodInteractionScale();
+        break;
     case "scale":
         RunCityCrisisScale();
         RunMixedCityCrisisScale();
         RunMessageTopologyScale();
         RunConflictingMessageScale();
+        RunLodInteractionScale();
         break;
     case "all":
         RunDelivery();
@@ -50,7 +54,7 @@ switch (workload)
         break;
     default:
         throw new ArgumentException(
-            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|scale|all");
+            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|scale|all");
 }
 
 void RunDelivery()
@@ -130,6 +134,113 @@ void RunLodRoundTrips()
         allocatedBytes,
         engine.State.ComputeEventFingerprint(),
         $"population_conserved=true material_state_conserved=true promotion_cursor={engine.State.PromotionSequenceCursor}");
+}
+
+void RunLodInteractionScale()
+{
+    RunSampledScale(
+        "b4-lod-target-interactions",
+        SyntheticScaleWorldFactory.CreateLodInteractionWorld,
+        ExecuteLodInteractionScale);
+}
+
+static ScaleWorkloadResult ExecuteLodInteractionScale(WorldEngine engine)
+{
+    var groupIds = engine.State.Groups.Keys.Order(StringComparer.Ordinal).ToArray();
+    var initialPopulation = PopulationEquivalent(engine.State);
+    var initialGroupPopulation = engine.State.Groups.Values.Sum(group => group.Count);
+    var initialActorCount = engine.State.Actors.Count;
+    var retainedActorIds = new List<string>();
+    var promotedActorIds = new HashSet<string>(StringComparer.Ordinal);
+    var crossPlaceRoundTrips = 0;
+    for (var index = 0; index < SyntheticScaleWorldFactory.LodPromotionCount; index++)
+    {
+        var draw = engine.State.RandomStreams.NextUInt64("b4-group-selection", $"promotion.{index:D4}");
+        var group = engine.State.Groups[groupIds[(int)(draw % (ulong)groupIds.Length)]];
+        var promoted = engine.PromoteGroupMember(group.Id, detailLevel: SimulationDetailLevel.L1);
+        if (!promotedActorIds.Add(promoted.Actor.Id))
+        {
+            throw new InvalidOperationException($"B4 reused promoted actor ID '{promoted.Actor.Id}'.");
+        }
+
+        if (index % 10 == 0)
+        {
+            var placeIndex = int.Parse(group.LocationId[^2..], System.Globalization.CultureInfo.InvariantCulture);
+            _ = engine.Tell(
+                SyntheticScaleWorldFactory.LodAnchorId(placeIndex),
+                promoted.Actor.Id,
+                SyntheticScaleWorldFactory.OfficialPropositionId);
+            var blocked = false;
+            try
+            {
+                _ = engine.DemotePromotedActor(promoted.Actor.Id);
+            }
+            catch (DomainCommandException exception) when (exception.Code == "actor_has_independent_state")
+            {
+                blocked = true;
+            }
+
+            if (!blocked)
+            {
+                throw new InvalidOperationException("B4 retained actor was incorrectly merged after interaction.");
+            }
+
+            retainedActorIds.Add(promoted.Actor.Id);
+            continue;
+        }
+
+        if (index % 4 == 0)
+        {
+            var originIndex = int.Parse(group.LocationId[^2..], System.Globalization.CultureInfo.InvariantCulture);
+            var adjacentPlaceId = SyntheticScaleWorldFactory.PlaceId((originIndex + 1) % SyntheticScaleWorldFactory.PlaceCount);
+            _ = engine.Move(promoted.Actor.Id, adjacentPlaceId, TravelMode.Walk);
+            _ = engine.Move(promoted.Actor.Id, group.LocationId, TravelMode.Walk);
+            crossPlaceRoundTrips++;
+        }
+
+        _ = engine.DemotePromotedActor(promoted.Actor.Id);
+    }
+
+    var promotionCount = engine.State.Events.Count(item => item.Type == "group_member_promoted");
+    var demotionCount = engine.State.Events.Count(item => item.Type == "promoted_actor_demoted");
+    var retainedMessages = engine.State.Messages.Values.Count(message => retainedActorIds.Contains(message.RecipientId));
+    var completedTravelCount = engine.State.Actions.Values.Count(action => action.Status == ActionStatus.Completed);
+    var finalGroupPopulation = engine.State.Groups.Values.Sum(group => group.Count);
+    var allRetainedActorsTraceable = retainedActorIds.All(actorId =>
+        engine.State.Actors.TryGetValue(actorId, out var actor) &&
+        actor.IsTemporaryPromotion &&
+        engine.State.Messages.Values.Any(message =>
+            string.Equals(message.RecipientId, actorId, StringComparison.Ordinal) &&
+            message.DeliveredEventId is not null));
+    if (groupIds.Length != SyntheticScaleWorldFactory.LodGroupCount ||
+        promotionCount != SyntheticScaleWorldFactory.LodPromotionCount ||
+        demotionCount != SyntheticScaleWorldFactory.LodPromotionCount - SyntheticScaleWorldFactory.LodRetainedActorCount ||
+        retainedActorIds.Count != SyntheticScaleWorldFactory.LodRetainedActorCount ||
+        crossPlaceRoundTrips != SyntheticScaleWorldFactory.LodCrossPlaceRoundTripCount ||
+        retainedMessages != SyntheticScaleWorldFactory.LodRetainedActorCount ||
+        completedTravelCount != SyntheticScaleWorldFactory.LodCrossPlaceRoundTripCount * 2 ||
+        !allRetainedActorsTraceable ||
+        finalGroupPopulation != initialGroupPopulation - SyntheticScaleWorldFactory.LodRetainedActorCount ||
+        engine.State.Actors.Count != initialActorCount + SyntheticScaleWorldFactory.LodRetainedActorCount ||
+        PopulationEquivalent(engine.State) != initialPopulation)
+    {
+        throw new InvalidOperationException(
+            "B4 target invariants failed: " +
+            $"groups={groupIds.Length} promotions={promotionCount} demotions={demotionCount} " +
+            $"retained={retainedActorIds.Count}/{retainedMessages}/{allRetainedActorsTraceable} " +
+            $"round_trips={crossPlaceRoundTrips} completed_travel={completedTravelCount} " +
+            $"group_population={finalGroupPopulation}/{initialGroupPopulation} " +
+            $"population={PopulationEquivalent(engine.State)}/{initialPopulation}.");
+    }
+
+    return new ScaleWorkloadResult(
+        $"groups={groupIds.Length} initial_group_population={initialGroupPopulation} " +
+        $"promotions={promotionCount} clean_demotions={demotionCount} " +
+        $"cross_place_round_trips={crossPlaceRoundTrips} retained_actors={retainedActorIds.Count} " +
+        $"retained_messages={retainedMessages} completed_travel_actions={completedTravelCount} " +
+        $"processed_events={engine.State.Events.Count} population_equivalent={initialPopulation} " +
+        "stable_random_selection=true identity_unique=true population_conserved=true " +
+        "interaction_retention_exact=true cross_place_merge_safe=true l3_not_expanded=true");
 }
 
 void RunCityCrisis()
