@@ -78,7 +78,8 @@ public sealed partial class WorldEngine
         }
 
         var origin = actor.LocationId;
-        actor.LocationId = destinationPlaceId;
+        State.MoveActorToPlace(actor.Id, destinationPlaceId);
+        MarkActorPositionDetailDirty(actor.Id, origin, null);
         _ = AppendEvent(
             "place_entered",
             State.CurrentMinute,

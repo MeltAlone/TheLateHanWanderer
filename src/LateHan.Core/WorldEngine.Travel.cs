@@ -76,12 +76,13 @@ public sealed partial class WorldEngine
             travel);
         State.AddAction(action);
         State.NextActionSequence++;
-        actor.BeginTransit(new TransitPositionState(
+        State.BeginActorTransit(actor.Id, new TransitPositionState(
             action.Id,
             firstLeg.RouteId,
             firstLeg.FromPlaceId,
             firstLeg.ToPlaceId,
             0));
+        MarkActorPositionDetailDirty(actor.Id, travel.OriginPlaceId, null);
         ScheduleTravelCompletion(action, [started.Id]);
         return action;
     }
@@ -229,6 +230,7 @@ public sealed partial class WorldEngine
         action.Phase = "traveling";
         action.LastUpdatedMinute = State.CurrentMinute;
         transit.ProgressQ1000 = travel.CurrentLegProgressQ1000;
+        InvalidateActorDetailLevels([action.ActorId]);
         ScheduleTravelCompletion(action, [resumed.Id]);
         _ = AdvanceAction(action.Id);
         var events = State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray();
@@ -269,6 +271,7 @@ public sealed partial class WorldEngine
         action.Phase = "cancelled_in_transit";
         action.LastUpdatedMinute = State.CurrentMinute;
         action.Travel.PendingScheduledEventId = null;
+        InvalidateActorDetailLevels([action.ActorId]);
         return new ActionResult(startMinute, State.CurrentMinute, [cancelled], ActionStatus.Cancelled);
     }
 
@@ -280,6 +283,7 @@ public sealed partial class WorldEngine
             "plan_evaluation_due" => ProcessPlanEvaluation(scheduled),
             "place_access_changed" => [ProcessPlaceAccessChange(scheduled)],
             "actor_relocated" => [ProcessActorRelocation(scheduled)],
+            "detail_message_retention_expired" => [ProcessDetailMessageRetentionExpired(scheduled)],
             _ => [AppendScheduledEvent(scheduled)],
         };
     }
@@ -310,9 +314,11 @@ public sealed partial class WorldEngine
         var accessDecision = EvaluateAccess(actor, leg.ToPlaceId);
         if (isFinalLeg && !accessDecision.Allowed)
         {
-            actor.LocationId = leg.FromPlaceId;
+            var previousRouteId = actor.Transit?.RouteId;
+            State.MoveActorToPlace(actor.Id, leg.FromPlaceId);
             action.Status = ActionStatus.Blocked;
             action.Phase = "blocked_by_access";
+            MarkActorPositionDetailDirty(actor.Id, null, previousRouteId);
             var blockedDetails = scheduled.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
             blockedDetails["scheduled_event_id"] = scheduled.Id;
             blockedDetails["destination"] = leg.ToPlaceId;
@@ -329,7 +335,8 @@ public sealed partial class WorldEngine
             ];
         }
 
-        actor.LocationId = leg.ToPlaceId;
+        var priorRouteId = actor.Transit?.RouteId;
+        State.MoveActorToPlace(actor.Id, leg.ToPlaceId);
         var details = scheduled.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         details["scheduled_event_id"] = scheduled.Id;
         details["scheduled_phase"] = ToPhaseId(scheduled.Phase);
@@ -352,6 +359,7 @@ public sealed partial class WorldEngine
         {
             action.Status = ActionStatus.Completed;
             action.Phase = "completed";
+            MarkActorPositionDetailDirty(actor.Id, null, priorRouteId);
             var events = new List<WorldEvent> { completed };
             CompleteLinkedPlan(action, completed, events);
             return events;
@@ -362,12 +370,13 @@ public sealed partial class WorldEngine
         travel.SegmentStartedMinute = scheduled.DueMinute;
         travel.SegmentRemainingMinutes = travel.CurrentLeg.GetMinutes(travel.Mode);
         var nextLeg = travel.CurrentLeg;
-        actor.BeginTransit(new TransitPositionState(
+        State.BeginActorTransit(actor.Id, new TransitPositionState(
             action.Id,
             nextLeg.RouteId,
             nextLeg.FromPlaceId,
             nextLeg.ToPlaceId,
             0));
+        MarkActorPositionDetailDirty(actor.Id, null, priorRouteId);
         var nextStarted = AppendEvent(
             "travel_segment_started",
             scheduled.DueMinute,
@@ -410,7 +419,8 @@ public sealed partial class WorldEngine
         }
 
         var origin = actor.LocationId;
-        actor.LocationId = destinationPlaceId;
+        State.MoveActorToPlace(actor.Id, destinationPlaceId);
+        MarkActorPositionDetailDirty(actor.Id, origin, null);
         return AppendEvent(
             scheduled.Kind,
             scheduled.DueMinute,
@@ -476,6 +486,8 @@ public sealed partial class WorldEngine
         {
             transit.ProgressQ1000 = action.Travel.CurrentLegProgressQ1000;
         }
+
+        InvalidateActorDetailLevels([actorId]);
 
         return interrupted;
     }

@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.6.1-spike";
+    public const string Version = "0.6.2-spike";
 }
 
 public enum TravelMode
@@ -247,6 +247,9 @@ public sealed class WorldState
     private readonly SortedDictionary<string, PlaceAccessState> _placeAccessStates;
     private readonly SortedDictionary<string, MessageState> _messages;
     private readonly SortedDictionary<string, GroupState> _groups;
+    private readonly SortedSet<string> _detailDirtyActorIds;
+    private readonly Dictionary<string, SortedSet<string>> _actorIdsByAttentionSpace;
+    private readonly Dictionary<string, SortedSet<string>> _adjacentPlaceIds;
 
     public WorldState(
         string scenarioId,
@@ -278,7 +281,8 @@ public sealed class WorldState
         IEnumerable<PlaceAccessState>? placeAccessStates = null,
         IEnumerable<MessageState>? messages = null,
         IEnumerable<GroupState>? groups = null,
-        long nextPromotionSequence = 1)
+        long nextPromotionSequence = 1,
+        IEnumerable<string>? detailDirtyActorIds = null)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -316,6 +320,14 @@ public sealed class WorldState
         _groups = new SortedDictionary<string, GroupState>(
             (groups ?? []).ToDictionary(group => group.Id),
             StringComparer.Ordinal);
+        _detailDirtyActorIds = new SortedSet<string>(detailDirtyActorIds ?? [], StringComparer.Ordinal);
+        if (_detailDirtyActorIds.Any(actorId => !_actors.ContainsKey(actorId)))
+        {
+            throw new ArgumentException("Detail dirty set contains an unknown actor.", nameof(detailDirtyActorIds));
+        }
+
+        _actorIdsByAttentionSpace = BuildAttentionSpaceIndex(_actors.Values);
+        _adjacentPlaceIds = BuildAdjacencyIndex(_places.Keys, _routes.Values);
         if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
         {
             throw new ArgumentException("Scheduled events cannot be earlier than the current world minute.", nameof(scheduledEvents));
@@ -397,6 +409,8 @@ public sealed class WorldState
 
     public IReadOnlyDictionary<string, GroupState> Groups => _groups;
 
+    public IReadOnlyCollection<string> DetailDirtyActorIds => _detailDirtyActorIds.ToArray();
+
     public RandomStreamRegistry RandomStreams { get; }
 
     public bool ReplayModified { get; internal set; }
@@ -452,15 +466,58 @@ public sealed class WorldState
         {
             throw new InvalidOperationException($"Duplicate actor '{actor.Id}'.");
         }
+
+        AddActorToAttentionIndex(actor);
     }
 
     internal void RemoveActor(string actorId)
     {
-        if (!_actors.Remove(actorId))
+        if (!_actors.TryGetValue(actorId, out var actor))
         {
             throw new InvalidOperationException($"Actor '{actorId}' is missing.");
         }
+
+        RemoveActorFromAttentionIndex(actor);
+        _actors.Remove(actorId);
+        _detailDirtyActorIds.Remove(actorId);
     }
+
+    internal void MoveActorToPlace(string actorId, string placeId)
+    {
+        var actor = _actors[actorId];
+        RemoveActorFromAttentionIndex(actor);
+        actor.LocationId = placeId;
+        AddActorToAttentionIndex(actor);
+    }
+
+    internal void BeginActorTransit(string actorId, TransitPositionState transit)
+    {
+        var actor = _actors[actorId];
+        RemoveActorFromAttentionIndex(actor);
+        actor.BeginTransit(transit);
+        AddActorToAttentionIndex(actor);
+    }
+
+    internal void MarkActorDetailDirty(string actorId)
+    {
+        if (!_actors.ContainsKey(actorId))
+        {
+            throw new InvalidOperationException($"Actor '{actorId}' is missing.");
+        }
+
+        _detailDirtyActorIds.Add(actorId);
+    }
+
+    internal void ClearActorDetailDirty(string actorId) => _detailDirtyActorIds.Remove(actorId);
+
+    internal IReadOnlyCollection<string> GetActorIdsAtPlace(string placeId) =>
+        GetActorIdsInAttentionSpace(PlaceAttentionKey(placeId));
+
+    internal IReadOnlyCollection<string> GetActorIdsOnRoute(string routeId) =>
+        GetActorIdsInAttentionSpace(RouteAttentionKey(routeId));
+
+    internal IReadOnlyCollection<string> GetAdjacentPlaceIds(string placeId) =>
+        _adjacentPlaceIds.TryGetValue(placeId, out var adjacent) ? adjacent.ToArray() : [];
 
     internal void AddBelief(BeliefState belief)
     {
@@ -590,6 +647,73 @@ public sealed class WorldState
         hash.AppendData(Encoding.UTF8.GetBytes(value));
         hash.AppendData([0]);
     }
+
+    private static Dictionary<string, SortedSet<string>> BuildAttentionSpaceIndex(IEnumerable<ActorState> actors)
+    {
+        var index = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+        foreach (var actor in actors)
+        {
+            AddToIndex(index, GetAttentionKey(actor), actor.Id);
+        }
+
+        return index;
+    }
+
+    private static Dictionary<string, SortedSet<string>> BuildAdjacencyIndex(
+        IEnumerable<string> placeIds,
+        IEnumerable<RouteDefinition> routes)
+    {
+        var index = placeIds.ToDictionary(
+            placeId => placeId,
+            _ => new SortedSet<string>(StringComparer.Ordinal),
+            StringComparer.Ordinal);
+        foreach (var route in routes)
+        {
+            index[route.FromPlaceId].Add(route.ToPlaceId);
+            index[route.ToPlaceId].Add(route.FromPlaceId);
+        }
+
+        return index;
+    }
+
+    private void AddActorToAttentionIndex(ActorState actor) =>
+        AddToIndex(_actorIdsByAttentionSpace, GetAttentionKey(actor), actor.Id);
+
+    private void RemoveActorFromAttentionIndex(ActorState actor)
+    {
+        var key = GetAttentionKey(actor);
+        if (!_actorIdsByAttentionSpace.TryGetValue(key, out var actorIds) || !actorIds.Remove(actor.Id))
+        {
+            throw new InvalidOperationException($"Actor '{actor.Id}' is missing from attention index '{key}'.");
+        }
+
+        if (actorIds.Count == 0)
+        {
+            _actorIdsByAttentionSpace.Remove(key);
+        }
+    }
+
+    private IReadOnlyCollection<string> GetActorIdsInAttentionSpace(string key) =>
+        _actorIdsByAttentionSpace.TryGetValue(key, out var actorIds) ? actorIds.ToArray() : [];
+
+    private static void AddToIndex(Dictionary<string, SortedSet<string>> index, string key, string actorId)
+    {
+        if (!index.TryGetValue(key, out var actorIds))
+        {
+            actorIds = new SortedSet<string>(StringComparer.Ordinal);
+            index.Add(key, actorIds);
+        }
+
+        actorIds.Add(actorId);
+    }
+
+    private static string GetAttentionKey(ActorState actor) => actor.PlaceId is { } placeId
+        ? PlaceAttentionKey(placeId)
+        : RouteAttentionKey(actor.Transit!.RouteId);
+
+    private static string PlaceAttentionKey(string placeId) => $"place:{placeId}";
+
+    private static string RouteAttentionKey(string routeId) => $"route:{routeId}";
 }
 
 public sealed class DomainCommandException : Exception

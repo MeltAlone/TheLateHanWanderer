@@ -6,6 +6,86 @@ namespace LateHan.Tests;
 public sealed class SimulationDetailTests
 {
     [Fact]
+    public void PlayerTravelMarksOnlyAffectedAttentionNeighborhoodDirty()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.RebalanceActorDetailLevels();
+
+        _ = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.west_market",
+            TravelMode.Walk);
+
+        Assert.Contains("person.player_clerk", engine.State.DetailDirtyActorIds);
+        Assert.Contains("person.he_jin", engine.State.DetailDirtyActorIds);
+        Assert.Contains("person.cao_cao", engine.State.DetailDirtyActorIds);
+        Assert.Contains("person.yuan_shao", engine.State.DetailDirtyActorIds);
+        Assert.DoesNotContain("person.chen_zhi", engine.State.DetailDirtyActorIds);
+        Assert.DoesNotContain("person.sun_he", engine.State.DetailDirtyActorIds);
+        Assert.True(engine.State.DetailDirtyActorIds.Count < engine.State.Actors.Count);
+    }
+
+    [Fact]
+    public void DirtyRebalanceProcessesOnlyInvalidatedActors()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.RebalanceActorDetailLevels();
+        _ = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.west_market",
+            TravelMode.Walk);
+        var dirtyIds = engine.State.DetailDirtyActorIds.ToArray();
+
+        var result = engine.RebalanceDirtyActorDetailLevels();
+
+        Assert.Equal(dirtyIds, result.Assessments.Select(item => item.ActorId));
+        Assert.Empty(engine.State.DetailDirtyActorIds);
+        Assert.Equal(SimulationDetailLevel.L2, engine.State.Actors["person.chen_zhi"].DetailLevel);
+    }
+
+    [Fact]
+    public void SnapshotPreservesDetailDirtyActors()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.RebalanceActorDetailLevels();
+        _ = engine.BeginTravel("person.sun_he", "place.luoyang.west_market", TravelMode.Walk);
+        var store = new WorldSnapshotStore();
+        var path = Path.Combine(Path.GetTempPath(), $"latehan-detail-dirty-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            store.Save(engine.State, path);
+            var restored = store.Load(path);
+
+            Assert.Equal(engine.State.DetailDirtyActorIds, restored.DetailDirtyActorIds);
+            Assert.Contains("person.sun_he", restored.DetailDirtyActorIds);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists($"{path}.tmp")) File.Delete($"{path}.tmp");
+        }
+    }
+
+    [Fact]
+    public void MessageRetentionExpiryInvalidatesParticipants()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.RebalanceActorDetailLevels();
+        _ = engine.Tell(
+            "person.player_clerk",
+            "person.li_wen",
+            "proposition.palace_credential_required");
+        _ = engine.RebalanceDirtyActorDetailLevels();
+
+        _ = engine.Wait(SimulationDetailPolicy.RecentMessageRetentionMinutes + 1);
+
+        Assert.Contains("person.player_clerk", engine.State.DetailDirtyActorIds);
+        Assert.Contains("person.li_wen", engine.State.DetailDirtyActorIds);
+        Assert.Contains(engine.State.Events, item => item.Type == "detail_message_retention_expired");
+    }
+
+    [Fact]
     public void RebalanceUsesPlayerAttentionAndCausalDebt()
     {
         var engine = RepositoryFixture.CreateEngine();

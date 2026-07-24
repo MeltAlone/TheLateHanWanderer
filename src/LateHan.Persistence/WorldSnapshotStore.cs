@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.6";
+    public string SnapshotSchemaVersion { get; init; } = "0.7";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -69,6 +69,8 @@ internal sealed class WorldSnapshot
     public long NextActionSequence { get; init; }
 
     public long NextPromotionSequence { get; init; }
+
+    public List<string> DetailDirtyActorIds { get; init; } = [];
 
     public List<ActorSnapshot> Actors { get; init; } = [];
 
@@ -119,6 +121,7 @@ internal sealed class WorldSnapshot
             ReplayModified = world.ReplayModified,
             NextActionSequence = world.ActionSequenceCursor,
             NextPromotionSequence = world.PromotionSequenceCursor,
+            DetailDirtyActorIds = world.DetailDirtyActorIds.ToList(),
             Actors = world.Actors.Values.Select(item => new ActorSnapshot(
                 item.Id,
                 item.Name,
@@ -278,7 +281,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.6", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.7", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -458,7 +461,8 @@ internal sealed class WorldSnapshot
                 item.LocationId,
                 item.OrganizationId,
                 item.PromotionProfileId)),
-            NextPromotionSequence);
+            NextPromotionSequence,
+            DetailDirtyActorIds);
     }
 }
 

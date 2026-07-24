@@ -107,6 +107,12 @@ public sealed partial class WorldEngine
             recommendedLevel = MoreDetailed(recommendedLevel, SimulationDetailLevel.L1);
         }
 
+        if (actor.IsInTransit)
+        {
+            reasons.Add("in_transit");
+            recommendedLevel = MoreDetailed(recommendedLevel, SimulationDetailLevel.L1);
+        }
+
         if (State.Plans.Values.Any(item =>
                 string.Equals(item.OwnerId, actor.Id, StringComparison.Ordinal) &&
                 item.Status is PlanStatus.Active or PlanStatus.Running))
@@ -163,7 +169,34 @@ public sealed partial class WorldEngine
                 causeIds ?? []));
         }
 
+        foreach (var actorId in candidateIds)
+        {
+            State.ClearActorDetailDirty(actorId);
+        }
+
         return new DetailRebalanceResult(assessments, events);
+    }
+
+    public DetailRebalanceResult RebalanceDirtyActorDetailLevels(IReadOnlyList<string>? causeIds = null)
+    {
+        return RebalanceActorDetailLevels(State.DetailDirtyActorIds, causeIds);
+    }
+
+    public void InvalidateActorDetailLevels(IEnumerable<string> actorIds)
+    {
+        var validatedIds = actorIds
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(item => item, StringComparer.Ordinal)
+            .ToArray();
+        foreach (var actorId in validatedIds)
+        {
+            _ = GetActor(actorId);
+        }
+
+        foreach (var actorId in validatedIds)
+        {
+            State.MarkActorDetailDirty(actorId);
+        }
     }
 
     public PromotionResult PromoteGroupMember(
@@ -204,6 +237,7 @@ public sealed partial class WorldEngine
             isTemporaryPromotion: true);
 
         State.AddActor(actor);
+        State.MarkActorDetailDirty(actor.Id);
         group.Count--;
         State.NextPromotionSequence++;
         var promoted = AppendEvent(
@@ -366,6 +400,54 @@ public sealed partial class WorldEngine
         SimulationDetailLevel candidate)
     {
         return current < candidate ? current : candidate;
+    }
+
+    private void MarkActorPositionDetailDirty(
+        string actorId,
+        string? previousPlaceId,
+        string? previousRouteId)
+    {
+        State.MarkActorDetailDirty(actorId);
+        if (!string.Equals(actorId, State.PlayerActorId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        MarkAttentionNeighborhoodDirty(previousPlaceId, previousRouteId);
+        var player = GetActor(State.PlayerActorId);
+        MarkAttentionNeighborhoodDirty(player.PlaceId, player.Transit?.RouteId);
+    }
+
+    private void MarkAttentionNeighborhoodDirty(string? placeId, string? routeId)
+    {
+        if (routeId is not null)
+        {
+            InvalidateActorDetailLevels(State.GetActorIdsOnRoute(routeId));
+        }
+
+        if (placeId is null)
+        {
+            return;
+        }
+
+        InvalidateActorDetailLevels(State.GetActorIdsAtPlace(placeId));
+        foreach (var adjacentPlaceId in State.GetAdjacentPlaceIds(placeId))
+        {
+            InvalidateActorDetailLevels(State.GetActorIdsAtPlace(adjacentPlaceId));
+        }
+    }
+
+    private WorldEvent ProcessDetailMessageRetentionExpired(ScheduledWorldEvent scheduled)
+    {
+        if (!scheduled.Details.TryGetValue("sender_id", out var senderId) ||
+            !scheduled.Details.TryGetValue("recipient_id", out var recipientId))
+        {
+            throw new InvalidOperationException(
+                $"Detail retention event '{scheduled.Id}' has no sender or recipient.");
+        }
+
+        InvalidateActorDetailLevels([senderId, recipientId]);
+        return AppendScheduledEvent(scheduled);
     }
 
     private string ComputeIdentitySeed(string groupId, long sequence)

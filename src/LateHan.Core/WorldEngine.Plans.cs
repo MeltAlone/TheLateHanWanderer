@@ -113,6 +113,7 @@ public sealed partial class WorldEngine
         if (missing.Count > 0)
         {
             plan.Stage = "awaiting_written_report";
+            InvalidateActorDetailLevels([plan.OwnerId]);
             SchedulePlanEvaluation(
                 plan,
                 checked(State.CurrentMinute + plan.ReevaluationIntervalMinutes),
@@ -122,6 +123,7 @@ public sealed partial class WorldEngine
 
         plan.Stage = "traveling_to_inspect";
         plan.Status = PlanStatus.Running;
+        InvalidateActorDetailLevels([plan.OwnerId]);
         var action = BeginTravel(plan.OwnerId, plan.DestinationPlaceId!, TravelMode.Walk, [evaluated.Id]);
         plan.ActiveActionId = action.Id;
         return State.Events
@@ -146,6 +148,7 @@ public sealed partial class WorldEngine
         plan.Status = PlanStatus.Completed;
         plan.Stage = "inspection_completed";
         plan.ActiveActionId = null;
+        InvalidateActorDetailLevels([plan.OwnerId]);
         events.Add(AppendEvent(
             "plan_completed",
             travelCompleted.Minute,

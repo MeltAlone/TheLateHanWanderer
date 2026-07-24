@@ -202,6 +202,7 @@ public sealed partial class WorldEngine
         foreach (var commitment in matchingCommitments)
         {
             commitment.Status = "completed";
+            InvalidateActorDetailLevels([commitment.DebtorId, commitment.CreditorId, commitment.RecipientId]);
             events.Add(AppendEvent(
                 "commitment_completed",
                 State.CurrentMinute,
@@ -367,6 +368,20 @@ public sealed partial class WorldEngine
             created.Id,
             delivered.Id,
             parentMessageId));
+        InvalidateActorDetailLevels([actorId, recipientId]);
+        _ = Schedule(
+            checked(startMinute + SimulationDetailPolicy.RecentMessageRetentionMinutes + 1),
+            ScheduledEventPhase.SummaryAndNotification,
+            recipientId,
+            "detail_message_retention_expired",
+            actor.LocationId,
+            causeIds: [delivered.Id],
+            details: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["message_id"] = messageId,
+                ["recipient_id"] = recipientId,
+                ["sender_id"] = actorId,
+            });
 
         var belief = State.Beliefs.Values
             .Where(item => string.Equals(item.HolderId, recipientId, StringComparison.Ordinal))
@@ -419,6 +434,7 @@ public sealed partial class WorldEngine
         foreach (var commitment in reportCommitments)
         {
             commitment.Status = "completed";
+            InvalidateActorDetailLevels([commitment.DebtorId, commitment.CreditorId, commitment.RecipientId]);
             _ = AppendEvent(
                 "commitment_completed",
                 State.CurrentMinute,

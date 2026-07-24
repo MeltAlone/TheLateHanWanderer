@@ -128,7 +128,7 @@ void RunCityCrisis()
         .OrderBy(item => item.Id, StringComparer.Ordinal)
         .Select(item => engine.BeginTravel(item.Id, destinationPlaceId, TravelMode.Walk))
         .ToArray();
-    _ = engine.RebalanceActorDetailLevels(actions.Select(item => item.ActorId));
+    var startDetail = engine.RebalanceDirtyActorDetailLevels();
     var playerAction = actions.Single(item => item.ActorId == engine.State.PlayerActorId);
     _ = engine.AdvanceAction(playerAction.Id);
     if (engine.State.CurrentMinute < twelveHours)
@@ -136,7 +136,7 @@ void RunCityCrisis()
         _ = engine.Wait(twelveHours - engine.State.CurrentMinute);
     }
 
-    var finalDetail = engine.RebalanceActorDetailLevels();
+    var finalDetail = engine.RebalanceDirtyActorDetailLevels();
     stopwatch.Stop();
     var allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
     var finalPopulation = engine.State.Actors.Count + engine.State.Groups.Values.Sum(item => item.Count);
@@ -166,7 +166,9 @@ void RunCityCrisis()
         allocatedBytes,
         engine.State.ComputeEventFingerprint(),
         $"named_actors={engine.State.Actors.Count} city_actors={actions.Length} " +
-        $"processed_events={engine.State.Events.Count} final_detail_changes={finalDetail.Events.Count} " +
+        $"processed_events={engine.State.Events.Count} " +
+        $"detail_assessments={startDetail.Assessments.Count + finalDetail.Assessments.Count} " +
+        $"final_detail_changes={finalDetail.Events.Count} " +
         "population_conserved=true");
 }
 

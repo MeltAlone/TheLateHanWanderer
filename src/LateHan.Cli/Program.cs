@@ -200,7 +200,8 @@ internal sealed class CliSession
         Console.WriteLine("  dev interrupt-travel <action-id> <minute> <reason>");
         Console.WriteLine("  dev promote <group-id> [l0|l1|l2]");
         Console.WriteLine("  dev demote <person-id>");
-        Console.WriteLine("  dev rebalance-detail [person-id]");
+        Console.WriteLine("  dev detail-dirty");
+        Console.WriteLine("  dev rebalance-detail [dirty|person-id]");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
         Console.WriteLine("  quit");
@@ -534,6 +535,7 @@ internal sealed class CliSession
         Console.WriteLine(
             $"{actor.Id} detail={actor.DetailLevel.ToString().ToLowerInvariant()} " +
             $"temporary={actor.IsTemporaryPromotion.ToString().ToLowerInvariant()} " +
+            $"dirty={_engine.State.DetailDirtyActorIds.Contains(actor.Id).ToString().ToLowerInvariant()} " +
             $"from={actor.PromotedFromGroupId ?? "-"} seed={actor.IdentitySeedHex ?? "-"}");
     }
 
@@ -541,7 +543,7 @@ internal sealed class CliSession
     {
         if (tokens.Length < 2)
         {
-            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|rebalance-detail> ...");
+            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|detail-dirty|rebalance-detail> ...");
             return;
         }
 
@@ -568,8 +570,11 @@ internal sealed class CliSession
             case "rebalance-detail":
                 RebalanceDetailLevels(tokens);
                 break;
+            case "detail-dirty":
+                PrintDirtyDetailActors(tokens);
+                break;
             default:
-                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|rebalance-detail> ...");
+                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|detail-dirty|rebalance-detail> ...");
                 break;
         }
     }
@@ -605,17 +610,33 @@ internal sealed class CliSession
     {
         if (tokens.Length is < 2 or > 3)
         {
-            Console.WriteLine("invalid:syntax usage: dev rebalance-detail [person-id]");
+            Console.WriteLine("invalid:syntax usage: dev rebalance-detail [dirty|person-id]");
             return;
         }
 
-        var actorIds = tokens.Length == 3 ? new[] { tokens[2] } : null;
-        var result = _engine.RebalanceActorDetailLevels(actorIds);
+        var result = tokens.Length == 3 && string.Equals(tokens[2], "dirty", StringComparison.OrdinalIgnoreCase)
+            ? _engine.RebalanceDirtyActorDetailLevels()
+            : _engine.RebalanceActorDetailLevels(tokens.Length == 3 ? new[] { tokens[2] } : null);
         Console.WriteLine(
             $"detail_rebalanced policy={SimulationDetailPolicy.Version} changed={result.Events.Count} " +
             $"l0={result.Assessments.Count(item => item.RecommendedLevel == SimulationDetailLevel.L0)} " +
             $"l1={result.Assessments.Count(item => item.RecommendedLevel == SimulationDetailLevel.L1)} " +
             $"l2={result.Assessments.Count(item => item.RecommendedLevel == SimulationDetailLevel.L2)}");
+    }
+
+    private void PrintDirtyDetailActors(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax usage: dev detail-dirty");
+            return;
+        }
+
+        Console.WriteLine($"detail_dirty count={_engine.State.DetailDirtyActorIds.Count}");
+        foreach (var actorId in _engine.State.DetailDirtyActorIds)
+        {
+            Console.WriteLine($"  {actorId}");
+        }
     }
 
     private void PrintScheduledQueue(string[] tokens)
