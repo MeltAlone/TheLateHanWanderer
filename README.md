@@ -11,7 +11,7 @@
 - 定义首个 189 年洛阳危机时空切片。
 - 定义时间、空间、人物、组织、信息、行动与事件的数据边界。
 - 已定义“雒阳四日”命令行 MVP、场景夹具、行为验收和规模预算。
-- 已实现无界面 C#/.NET 内核的首个行动、因果事件、快照、稳定调度、确定性随机流和首个自主 NPC 信念/计划闭环切片。
+- 已实现无界面 C#/.NET 内核的持久行动、门禁、凭证、消息谱系、认知隔离、稳定调度和首个自主 NPC 闭环。
 
 ## 仓库导航
 
@@ -82,6 +82,16 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
   --command "beliefs person.wang_yun" `
   --command "plans person.wang_yun"
+```
+
+门禁和消息谱系也可以直接从 CLI 验证：非相邻进入不会耗时，面对面陈述只更新实际接收者的信念。
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "enter place.luoyang.changle_palace" `
+  --command "tell person.li_wen proposition.palace_credential_required" `
+  --command "messages person.player_clerk" `
+  --command "beliefs person.li_wen"
 ```
 
 也可以逐步运行一段可中断旅行：
