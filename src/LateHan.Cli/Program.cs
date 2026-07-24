@@ -134,6 +134,9 @@ internal sealed class CliSession
                 case "history":
                     PrintHistory();
                     break;
+                case "why":
+                    PrintWhy(tokens);
+                    break;
                 case "messages":
                     PrintMessages(tokens);
                     break;
@@ -154,6 +157,12 @@ internal sealed class CliSession
                     break;
                 case "load":
                     ExecuteLoad(tokens);
+                    break;
+                case "archive":
+                    ExecuteArchive(tokens);
+                    break;
+                case "branch":
+                    ExecuteBranch(tokens);
                     break;
                 case "help":
                     PrintHelp();
@@ -198,6 +207,7 @@ internal sealed class CliSession
         Console.WriteLine("  tell <person-id> <proposition-id>");
         Console.WriteLine("  wait <minutes|Nh|Nm>");
         Console.WriteLine("  history");
+        Console.WriteLine("  why <event-id> [depth]");
         Console.WriteLine("  messages [person-id]");
         Console.WriteLine("  groups");
         Console.WriteLine("  access <place-id>");
@@ -212,6 +222,11 @@ internal sealed class CliSession
         Console.WriteLine("  dev rebalance-detail [dirty|person-id]");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
+        Console.WriteLine("  archive save <path>");
+        Console.WriteLine("  archive load <path>");
+        Console.WriteLine("  branch create <base-archive> <directory> <branch-id>");
+        Console.WriteLine("  branch load <directory>");
+        Console.WriteLine("  branch save <directory>");
         Console.WriteLine("  quit");
     }
 
@@ -519,6 +534,53 @@ internal sealed class CliSession
         Console.WriteLine($"回放状态 {(_engine.State.ReplayModified ? "modified" : "canonical")}");
     }
 
+    private void PrintWhy(string[] tokens)
+    {
+        if (tokens.Length is < 2 or > 3 ||
+            (tokens.Length == 3 &&
+             (!int.TryParse(tokens[2], NumberStyles.None, CultureInfo.InvariantCulture, out var parsedDepth) ||
+              parsedDepth is < 0 or > 32)))
+        {
+            Console.WriteLine("invalid:syntax 用法：why <event-id> [depth 0..32]");
+            return;
+        }
+
+        var maximumDepth = tokens.Length == 3
+            ? int.Parse(tokens[2], CultureInfo.InvariantCulture)
+            : 8;
+        var eventsById = _engine.State.Events.ToDictionary(worldEvent => worldEvent.Id, StringComparer.Ordinal);
+        if (!eventsById.ContainsKey(tokens[1]))
+        {
+            Console.WriteLine($"blocked:unknown_event 未找到事件 '{tokens[1]}'。");
+            return;
+        }
+
+        var pending = new Queue<(string EventId, int Depth)>();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        pending.Enqueue((tokens[1], 0));
+        while (pending.Count > 0)
+        {
+            var current = pending.Dequeue();
+            if (!visited.Add(current.EventId) || !eventsById.TryGetValue(current.EventId, out var worldEvent))
+            {
+                continue;
+            }
+
+            Console.WriteLine(
+                $"depth={current.Depth} {worldEvent.Id} t={worldEvent.Minute} {worldEvent.Type} " +
+                $"subjects=[{string.Join(',', worldEvent.SubjectIds)}]");
+            if (current.Depth >= maximumDepth)
+            {
+                continue;
+            }
+
+            foreach (var causeId in worldEvent.CauseIds)
+            {
+                pending.Enqueue((causeId, current.Depth + 1));
+            }
+        }
+    }
+
     private void PrintMessages(string[] tokens)
     {
         if (tokens.Length > 2)
@@ -808,6 +870,110 @@ internal sealed class CliSession
 
         _engine = new WorldEngine(_snapshotStore.Load(tokens[1]));
         Console.WriteLine($"已加载；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+    }
+
+    private void ExecuteArchive(string[] tokens)
+    {
+        if (tokens.Length != 3 || tokens[1] is not ("save" or "load"))
+        {
+            Console.WriteLine("invalid:syntax 用法：archive save|load <path>");
+            return;
+        }
+
+        if (tokens[1] == "load")
+        {
+            using var archive = WorldEventArchive.OpenReadOnly(tokens[2]);
+            var restored = archive.RestoreLatest()
+                ?? throw new InvalidDataException("事件归档没有可加载的检查点。");
+            if (restored.EventsAfterCheckpoint.Count != 0)
+            {
+                throw new InvalidDataException(
+                    $"最新检查点后仍有 {restored.EventsAfterCheckpoint.Count} 个事件；当前 CLI 不会静默跳过回放。");
+            }
+
+            _engine = new WorldEngine(_snapshotStore.Load(restored.Checkpoint.SnapshotPayload));
+            Console.WriteLine(
+                $"已从归档加载 {restored.Checkpoint.EventId}；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+            return;
+        }
+
+        SaveArchive(tokens[2]);
+    }
+
+    private void SaveArchive(string path)
+    {
+        if (_engine.State.Events.Count == 0)
+        {
+            throw new InvalidDataException("当前世界尚无事件；请先执行一个耗时行动再创建事件归档。");
+        }
+
+        using var archive = new WorldEventArchive(path);
+        var worldLastSequence = _engine.State.EventSequenceCursor - 1;
+        if (archive.LastSequence > worldLastSequence)
+        {
+            throw new InvalidDataException("事件归档比当前世界更新，不能覆盖或截断。");
+        }
+
+        if (archive.EventCount > 0)
+        {
+            var audit = archive.Audit();
+            var worldPrefix = WorldEventFingerprint.Compute(
+                _engine.State.Events.Where(worldEvent => worldEvent.Sequence <= archive.LastSequence));
+            if (audit.EventCount != archive.LastSequence ||
+                !string.Equals(audit.EventFingerprint, worldPrefix, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("事件归档与当前世界不属于同一历史前缀。");
+            }
+        }
+
+        var newEvents = _engine.State.Events
+            .Where(worldEvent => worldEvent.Sequence > archive.LastSequence)
+            .OrderBy(worldEvent => worldEvent.Sequence)
+            .ToArray();
+        archive.Append(newEvents);
+        if (archive.LatestCheckpoint?.EventSequence != worldLastSequence)
+        {
+            archive.CreateCheckpoint(
+                worldLastSequence,
+                _engine.State.ComputeEventFingerprint(),
+                _snapshotStore.Serialize(_engine.State));
+        }
+
+        archive.Flush();
+        Console.WriteLine(
+            $"已归档到 {Path.GetFullPath(path)}；事件 {archive.EventCount}，检查点 {archive.CheckpointCount}。");
+    }
+
+    private void ExecuteBranch(string[] tokens)
+    {
+        if (tokens.Length == 5 && tokens[1] == "create")
+        {
+            using var branch = WorldBranchStore.Create(tokens[2], tokens[3], tokens[4]);
+            _engine = new WorldEngine(branch.Load());
+            Console.WriteLine($"已创建并加载分支 {tokens[4]}：{Path.GetFullPath(tokens[3])}");
+            return;
+        }
+
+        if (tokens.Length == 3 && tokens[1] == "load")
+        {
+            using var branch = WorldBranchStore.Open(tokens[2]);
+            _engine = new WorldEngine(branch.Load());
+            Console.WriteLine(
+                $"已加载分支 {branch.Descriptor.BranchId}；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+            return;
+        }
+
+        if (tokens.Length == 3 && tokens[1] == "save")
+        {
+            using var branch = WorldBranchStore.Open(tokens[2]);
+            var checkpoint = branch.Save(_engine.State);
+            Console.WriteLine($"已保存分支 {branch.Descriptor.BranchId} 到 {checkpoint.EventId}。");
+            return;
+        }
+
+        Console.WriteLine(
+            "invalid:syntax 用法：branch create <base-archive> <directory> <branch-id> | " +
+            "branch load|save <directory>");
     }
 
     private static TravelMode ParseMode(string value) => value switch
