@@ -11,7 +11,7 @@
 - 定义首个 189 年洛阳危机时空切片。
 - 定义时间、空间、人物、组织、信息、行动与事件的数据边界。
 - 已定义“雒阳四日”命令行 MVP、场景夹具、行为验收和规模预算。
-- 已实现无界面 C#/.NET 内核的首个行动、因果事件、快照、稳定调度和确定性随机流切片。
+- 已实现无界面 C#/.NET 内核的首个行动、因果事件、快照、稳定调度、确定性随机流和首个自主 NPC 信念/计划闭环切片。
 
 ## 仓库导航
 
@@ -75,6 +75,14 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 ```
 
 `dev schedule` 是显式外部干预，会写入事件日志并把回放标记为 `modified`。`dev rng` 只预览流副本，不改变模拟状态。
+
+使用 `beliefs person.wang_yun` 和 `plans person.wang_yun` 可以查看王允等待正式报告时的运行时认知与计划状态：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "beliefs person.wang_yun" `
+  --command "plans person.wang_yun"
+```
 
 也可以逐步运行一段可中断旅行：
 

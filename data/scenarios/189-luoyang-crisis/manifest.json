@@ -8,7 +8,7 @@
     "root_seed_hex": "18908D2400000001",
     "derivation": "sha256-le.v1"
   },
-  "content_hash": "sha256:9bd0cfc1797a7baf937c5c03444e4b8af30b746195299253cf865b87d3561669",
+  "content_hash": "sha256:0a004bb8ec5eecf37aa66dd813570922e2a4a967fe7176cd4d2af7c2c2a78caf",
   "canonical_calendar": "later_han_regnal",
   "calendar_mapping_id": "calendar_mapping.189.luoyang_crisis",
   "start": {
