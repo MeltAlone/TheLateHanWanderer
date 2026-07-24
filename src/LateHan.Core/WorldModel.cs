@@ -8,7 +8,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.9.0-spike";
+    public const string Version = "1.0.0-spike";
 }
 
 public enum TravelMode
@@ -264,6 +264,7 @@ public sealed class WorldState
     private readonly SortedDictionary<string, BeliefState> _beliefs;
     private readonly SortedDictionary<string, PropositionDefinition> _propositions;
     private readonly SortedDictionary<string, PlanState> _plans;
+    private readonly SortedDictionary<string, PlanResourceLockState> _planResourceLocks;
     private readonly SortedDictionary<string, AccessRuleDefinition> _accessRules;
     private readonly SortedDictionary<string, PlaceAccessState> _placeAccessStates;
     private readonly SortedDictionary<string, MessageState> _messages;
@@ -306,7 +307,8 @@ public sealed class WorldState
         IEnumerable<PropositionDefinition>? propositions = null,
         IEnumerable<GroupState>? groups = null,
         long nextPromotionSequence = 1,
-        IEnumerable<string>? detailDirtyActorIds = null)
+        IEnumerable<string>? detailDirtyActorIds = null,
+        IEnumerable<PlanResourceLockState>? planResourceLocks = null)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -335,6 +337,19 @@ public sealed class WorldState
         _plans = new SortedDictionary<string, PlanState>(
             (plans ?? []).ToDictionary(plan => plan.Id),
             StringComparer.Ordinal);
+        _planResourceLocks = new SortedDictionary<string, PlanResourceLockState>(
+            (planResourceLocks ?? []).ToDictionary(item => item.ResourceId),
+            StringComparer.Ordinal);
+        if (_planResourceLocks.Values.Any(item =>
+                !_plans.TryGetValue(item.PlanId, out var plan) ||
+                !plan.RequiredResourceIds.Contains(item.ResourceId, StringComparer.Ordinal) ||
+                plan.Status != PlanStatus.Running ||
+                !_events.Any(worldEvent =>
+                    string.Equals(worldEvent.Id, item.AcquiredEventId, StringComparison.Ordinal) &&
+                    worldEvent.Type == "plan_resources_acquired")))
+        {
+            throw new ArgumentException("Plan resource locks must belong to running plans that require them.", nameof(planResourceLocks));
+        }
         _accessRules = new SortedDictionary<string, AccessRuleDefinition>(
             (accessRules ?? []).ToDictionary(rule => rule.Id),
             StringComparer.Ordinal);
@@ -438,6 +453,8 @@ public sealed class WorldState
     public IReadOnlyDictionary<string, PropositionDefinition> Propositions => _propositions;
 
     public IReadOnlyDictionary<string, PlanState> Plans => _plans;
+
+    public IReadOnlyDictionary<string, PlanResourceLockState> PlanResourceLocks => _planResourceLocks;
 
     public IReadOnlyDictionary<string, AccessRuleDefinition> AccessRules => _accessRules;
 
@@ -597,6 +614,22 @@ public sealed class WorldState
         }
     }
 
+    internal void AddPlanResourceLock(PlanResourceLockState resourceLock)
+    {
+        if (!_planResourceLocks.TryAdd(resourceLock.ResourceId, resourceLock))
+        {
+            throw new InvalidOperationException($"Plan resource '{resourceLock.ResourceId}' is already locked.");
+        }
+    }
+
+    internal void RemovePlanResourceLock(string resourceId)
+    {
+        if (!_planResourceLocks.Remove(resourceId))
+        {
+            throw new InvalidOperationException($"Plan resource '{resourceId}' is not locked.");
+        }
+    }
+
     public string ComputeEventFingerprint()
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -699,6 +732,14 @@ public sealed class WorldState
             Append(hash, plan.Status.ToString());
             Append(hash, plan.Stage);
             Append(hash, plan.ActiveActionId ?? string.Empty);
+        }
+
+        foreach (var resourceLock in _planResourceLocks.Values)
+        {
+            Append(hash, resourceLock.ResourceId);
+            Append(hash, resourceLock.PlanId);
+            Append(hash, resourceLock.AcquiredMinute.ToString(CultureInfo.InvariantCulture));
+            Append(hash, resourceLock.AcquiredEventId);
         }
 
         foreach (var placeAccess in _placeAccessStates.Values)

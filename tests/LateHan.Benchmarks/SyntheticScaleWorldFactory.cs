@@ -64,7 +64,10 @@ internal static class SyntheticScaleWorldFactory
             triggerPropositionId: OfficialPropositionId,
             destinationPlaceId: MixedCityCrisisPlanDestinationPlaceId,
             confidenceThresholdBp: 0,
-            reevaluationIntervalMinutes: 60))
+            reevaluationIntervalMinutes: 60,
+            requiredResourceIds: [MixedPlanResourceId(index)],
+            priority: index == 3 ? 10 : 1,
+            mayReplaceLowerPriority: index == 3))
             .ToArray();
         BeliefState[] beliefs =
         [
@@ -164,6 +167,13 @@ internal static class SyntheticScaleWorldFactory
     public static string MixedCityCrisisPlanOwnerId(int index) => $"person.synthetic.l1.{index:D3}";
 
     public static string MixedCityCrisisPlanId(int index) => $"plan.synthetic.crisis.{index:D2}";
+
+    private static string MixedPlanResourceId(int index) => index switch
+    {
+        0 or 1 => "resource.synthetic.inspection.wait",
+        2 or 3 => "resource.synthetic.inspection.replace",
+        _ => $"resource.synthetic.inspection.{index:D2}",
+    };
 
     private static string MixedCityCrisisPlanItemId(int index) => $"item.synthetic.crisis_report.{index:D2}";
 

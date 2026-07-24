@@ -98,6 +98,9 @@ internal sealed class CliSession
                 case "plans":
                     PrintPlans(tokens);
                     break;
+                case "plan":
+                    ExecutePlan(tokens);
+                    break;
                 case "go":
                     ExecuteGo(tokens);
                     break;
@@ -183,6 +186,7 @@ internal sealed class CliSession
         Console.WriteLine("  commitments");
         Console.WriteLine("  beliefs [person-id]");
         Console.WriteLine("  plans [person-id]");
+        Console.WriteLine("  plan cancel <plan-id> [reason]");
         Console.WriteLine("  go <place-id> [walk|horse|with-group]");
         Console.WriteLine("  enter <place-id>");
         Console.WriteLine("  travel start <place-id> [walk|horse|with-group]");
@@ -315,10 +319,36 @@ internal sealed class CliSession
 
         foreach (var plan in plans)
         {
+            var locks = _engine.State.PlanResourceLocks.Values
+                .Where(item => string.Equals(item.PlanId, plan.Id, StringComparison.Ordinal))
+                .Select(item => item.ResourceId)
+                .Order(StringComparer.Ordinal);
             Console.WriteLine(
                 $"{plan.Id} status={plan.Status.ToString().ToLowerInvariant()} stage={plan.Stage} " +
-                $"action={plan.ActiveActionId ?? "-"} next={plan.NextEvaluationMinute}");
+                $"action={plan.ActiveActionId ?? "-"} next={plan.NextEvaluationMinute} " +
+                $"priority={plan.Priority} replace_lower={plan.MayReplaceLowerPriority.ToString().ToLowerInvariant()} " +
+                $"requires={FormatIds(plan.RequiredResourceIds)} locks={FormatIds(locks)}");
         }
+    }
+
+    private void ExecutePlan(string[] tokens)
+    {
+        if (tokens.Length is < 3 or > 4 || !string.Equals(tokens[1], "cancel", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("invalid:syntax usage: plan cancel <plan-id> [reason]");
+            return;
+        }
+
+        var result = _engine.CancelPlan(tokens[2], tokens.Length == 4 ? tokens[3] : "cancelled_by_player");
+        Console.WriteLine(
+            $"plan status={result.Status.ToString().ToLowerInvariant()} " +
+            $"minute={result.EndMinute} event={result.Events[^1].Id}");
+    }
+
+    private static string FormatIds(IEnumerable<string> ids)
+    {
+        var values = ids.ToArray();
+        return values.Length == 0 ? "-" : string.Join(',', values);
     }
 
     private void ExecuteGo(string[] tokens)

@@ -165,7 +165,10 @@ public sealed class ScenarioLoader
             plan.TriggerPropositionId,
             plan.DestinationPlaceId,
             plan.ConfidenceThresholdBp,
-            plan.ReevaluationIntervalMinutes);
+            plan.ReevaluationIntervalMinutes,
+            requiredResourceIds: plan.RequiredResourceIds,
+            priority: plan.Priority,
+            mayReplaceLowerPriority: plan.MayReplaceLowerPriority);
     }
 
     private static RouteDefinition MapRoute(RouteDocument route)
@@ -447,6 +450,12 @@ public sealed class ScenarioLoader
             if (plan.ReevaluationIntervalMinutes <= 0)
             {
                 errors.Add($"SCN-NUM-003 Plan '{plan.Id}' reevaluation_interval_minutes must be positive.");
+            }
+
+            if (plan.RequiredResourceIds.Any(string.IsNullOrWhiteSpace) ||
+                plan.RequiredResourceIds.Distinct(StringComparer.Ordinal).Count() != plan.RequiredResourceIds.Count)
+            {
+                errors.Add($"SCN-PLAN-002 Plan '{plan.Id}' required_resource_ids must contain unique non-empty IDs.");
             }
         }
     }

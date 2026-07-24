@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "1.0";
+    public string SnapshotSchemaVersion { get; init; } = "1.1";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -85,6 +85,8 @@ internal sealed class WorldSnapshot
     public List<PropositionSnapshot> Propositions { get; init; } = [];
 
     public List<PlanSnapshot> Plans { get; init; } = [];
+
+    public List<PlanResourceLockSnapshot> PlanResourceLocks { get; init; } = [];
 
     public List<AccessRuleSnapshot> AccessRules { get; init; } = [];
 
@@ -195,7 +197,15 @@ internal sealed class WorldSnapshot
                 item.Status,
                 item.PendingScheduledEventId,
                 item.ActiveActionId,
-                item.LastEvaluationMinute)).ToList(),
+                item.LastEvaluationMinute,
+                item.RequiredResourceIds.ToList(),
+                item.Priority,
+                item.MayReplaceLowerPriority)).ToList(),
+            PlanResourceLocks = world.PlanResourceLocks.Values.Select(item => new PlanResourceLockSnapshot(
+                item.ResourceId,
+                item.PlanId,
+                item.AcquiredMinute,
+                item.AcquiredEventId)).ToList(),
             AccessRules = world.AccessRules.Values.Select(item => new AccessRuleSnapshot(
                 item.Id,
                 item.Name,
@@ -310,7 +320,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "1.0", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "1.1", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -464,7 +474,10 @@ internal sealed class WorldSnapshot
                 item.Status,
                 item.PendingScheduledEventId,
                 item.ActiveActionId,
-                item.LastEvaluationMinute)),
+                item.LastEvaluationMinute,
+                item.RequiredResourceIds,
+                item.Priority,
+                item.MayReplaceLowerPriority)),
             AccessRules.Select(item => new AccessRuleDefinition(
                 item.Id,
                 item.Name,
@@ -518,7 +531,12 @@ internal sealed class WorldSnapshot
                 item.CumulativeFoodUnmet,
                 item.FoodShortageBp)),
             NextPromotionSequence,
-            DetailDirtyActorIds);
+            DetailDirtyActorIds,
+            PlanResourceLocks.Select(item => new PlanResourceLockState(
+                item.ResourceId,
+                item.PlanId,
+                item.AcquiredMinute,
+                item.AcquiredEventId)));
     }
 }
 
@@ -648,7 +666,16 @@ internal sealed record PlanSnapshot(
     PlanStatus Status,
     string? PendingScheduledEventId,
     string? ActiveActionId,
-    long? LastEvaluationMinute);
+    long? LastEvaluationMinute,
+    List<string> RequiredResourceIds,
+    int Priority,
+    bool MayReplaceLowerPriority);
+
+internal sealed record PlanResourceLockSnapshot(
+    string ResourceId,
+    string PlanId,
+    long AcquiredMinute,
+    string AcquiredEventId);
 
 internal sealed record CommitmentSnapshot(
     string Id,

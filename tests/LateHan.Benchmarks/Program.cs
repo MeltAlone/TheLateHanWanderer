@@ -415,6 +415,14 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
             $"second={firstResume.Status}@{firstResume.EndMinute} final={secondResume.Status}.");
     }
 
+    var explicitlyCancelledPlan = engine.CancelPlan(
+        SyntheticScaleWorldFactory.MixedCityCrisisPlanId(4),
+        "crisis_priority_changed");
+    if (explicitlyCancelledPlan.Status != ActionStatus.Cancelled)
+    {
+        throw new InvalidOperationException("Mixed B2 explicit plan cancellation failed.");
+    }
+
     var visitorIds = engine.State.Actors.Values
         .Where(actor => string.Equals(
             actor.PlaceId,
@@ -508,6 +516,11 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
     var group = engine.State.Groups[SyntheticScaleWorldFactory.RegionalPopulationGroupId];
     var linkedMessageCount = messages.Count(message => message.ParentMessageId is not null);
     var completedPlanCount = engine.State.Plans.Values.Count(plan => plan.Status == PlanStatus.Completed);
+    var cancelledPlanCount = engine.State.Plans.Values.Count(plan => plan.Status == PlanStatus.Cancelled);
+    var planConflictCount = events.Count(worldEvent => worldEvent.Type == "plan_resource_conflict");
+    var planReplacementCount = events.Count(worldEvent =>
+        worldEvent.Type == "plan_cancelled" &&
+        worldEvent.Details["reason"].StartsWith("replaced_by:", StringComparison.Ordinal));
     var cityAlertCount = events.Count(worldEvent => worldEvent.Type == "city_crisis_alert");
     var playerInterruptedCount = events.Count(worldEvent =>
         worldEvent.Type == "travel_interrupted" &&
@@ -524,17 +537,33 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
     var accessRequestCount = events.Count(worldEvent => worldEvent.Type == "access_requested");
     var placeEnteredCount = events.Count(worldEvent => worldEvent.Type == "place_entered");
     var accessQueuedCount = events.Count(worldEvent => worldEvent.Type == "access_queued");
-    var planOwnersAtDestination = planOwnerIds.All(ownerId => string.Equals(
-        engine.State.Actors[ownerId].PlaceId,
-        SyntheticScaleWorldFactory.MixedCityCrisisPlanDestinationPlaceId,
-        StringComparison.Ordinal));
+    var planOwnersInExpectedPositions = engine.State.Plans.Values.All(plan =>
+    {
+        var owner = engine.State.Actors[plan.OwnerId];
+        return plan.Status == PlanStatus.Completed
+            ? string.Equals(
+                owner.PlaceId,
+                SyntheticScaleWorldFactory.MixedCityCrisisPlanDestinationPlaceId,
+                StringComparison.Ordinal)
+            : plan.Status == PlanStatus.Cancelled &&
+              (owner.Transit is not null &&
+               engine.State.Actions.TryGetValue(owner.Transit.ActionId, out var cancelledAction) &&
+               cancelledAction.Status == ActionStatus.Cancelled ||
+               owner.Transit is null &&
+               string.Equals(
+                   owner.PlaceId,
+                   SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+                   StringComparison.Ordinal));
+    });
     var otherActorsAtCrisis = engine.State.Actors.Values
         .Where(actor => !planOwnerIds.Contains(actor.Id))
         .All(actor => string.Equals(
             actor.PlaceId,
             SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
             StringComparison.Ordinal));
-    var allActionsCompleted = engine.State.Actions.Values.All(action => action.Status == ActionStatus.Completed);
+    var cancelledActionCount = engine.State.Actions.Values.Count(action => action.Status == ActionStatus.Cancelled);
+    var allActionsSettled = engine.State.Actions.Values.All(action =>
+        action.Status is ActionStatus.Completed or ActionStatus.Cancelled);
     var allMessageBeliefsTraceable = messageRecipientIds.All(recipientId =>
         engine.State.Beliefs.Values.Any(belief =>
             string.Equals(belief.HolderId, recipientId, StringComparison.Ordinal) &&
@@ -547,8 +576,9 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         visitorIds.Length != SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount ||
         messageRecipientIds.Length != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount ||
         actions.Any(action => action.Status != ActionStatus.Completed) ||
-        !allActionsCompleted ||
-        !planOwnersAtDestination ||
+        !allActionsSettled ||
+        cancelledActionCount != 1 ||
+        !planOwnersInExpectedPositions ||
         !otherActorsAtCrisis ||
         cityAlertCount != playerInterruptMinutes.Length ||
         playerInterruptedCount != playerInterruptMinutes.Length ||
@@ -558,7 +588,11 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         accessRequestCount != SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount * 2 ||
         placeEnteredCount != accessRequestCount ||
         accessQueuedCount != 2 ||
-        completedPlanCount != SyntheticScaleWorldFactory.MixedCityCrisisPlanCount ||
+        completedPlanCount != SyntheticScaleWorldFactory.MixedCityCrisisPlanCount - 2 ||
+        cancelledPlanCount != 2 ||
+        planConflictCount != 2 ||
+        planReplacementCount != 1 ||
+        engine.State.PlanResourceLocks.Count != 0 ||
         messages.Length != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount ||
         linkedMessageCount != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount - 1 ||
         !allMessageBeliefsTraceable ||
@@ -580,8 +614,8 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
             $"minute={engine.State.CurrentMinute}/{twelveHours} travelers={actions.Length} " +
             $"alerts={cityAlertCount} interrupted={playerInterruptedCount} resumed={playerResumedCount} " +
             $"visits={placeEnteredCount}/{accessRequestCount} queued={accessQueuedCount} messages={messages.Length}/{linkedMessageCount} " +
-            $"plans={completedPlanCount} remote_ticks={remoteTickCount} " +
-            $"positions={planOwnersAtDestination}/{otherActorsAtCrisis} actions={allActionsCompleted} " +
+            $"plans={completedPlanCount}/{cancelledPlanCount}/{planConflictCount}/{planReplacementCount} remote_ticks={remoteTickCount} " +
+            $"positions={planOwnersInExpectedPositions}/{otherActorsAtCrisis} actions={allActionsSettled}/{cancelledActionCount} " +
             $"beliefs={allMessageBeliefsTraceable} population={finalPopulationEquivalent}/{initialPopulationEquivalent} " +
             $"food={group.FoodStockUnits}/{group.CumulativeFoodProduced}/{group.CumulativeFoodConsumed}/{group.CumulativeFoodUnmet}.");
     }
@@ -592,14 +626,17 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         $"concurrent_travelers={actions.Length} player_interruptions={playerInterruptedCount} " +
         $"access_round_trips={visitorIds.Length} queued_access_requests={accessQueuedCount} " +
         $"messages={messages.Length} linked_messages={linkedMessageCount} " +
-        $"completed_plans={completedPlanCount} remote_ticks={remoteTickCount} " +
+        $"completed_plans={completedPlanCount} cancelled_plans={cancelledPlanCount} " +
+        $"plan_resource_conflicts={planConflictCount} plan_replacements={planReplacementCount} " +
+        $"remote_ticks={remoteTickCount} " +
         $"remote_food_stock={group.FoodStockUnits} remote_food_produced={group.CumulativeFoodProduced} " +
         $"remote_food_consumed={group.CumulativeFoodConsumed} remote_food_unmet={group.CumulativeFoodUnmet} " +
         $"population_equivalent={finalPopulationEquivalent} l3_group_population={group.Count} " +
         $"processed_events={events.Count} " +
         $"detail_assessments={startDetail.Assessments.Count + finalDetail.Assessments.Count} " +
         "incremental_dirty_exact=true lineage_complete=true player_interruptions_exact=true " +
-        "population_conserved=true remote_material_conserved=true remote_ticks_auditable=true l3_not_expanded=true",
+        "population_conserved=true plan_resources_released=true remote_material_conserved=true " +
+        "remote_ticks_auditable=true l3_not_expanded=true",
         [firstAdvanceStopwatch.Elapsed.TotalMilliseconds, firstResumeStopwatch.Elapsed.TotalMilliseconds]);
 }
 

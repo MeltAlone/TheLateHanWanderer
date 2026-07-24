@@ -237,7 +237,10 @@ public sealed partial class WorldEngine
         return new ActionResult(startMinute, State.CurrentMinute, events, action.Status);
     }
 
-    public ActionResult CancelAction(string actionId)
+    public ActionResult CancelAction(
+        string actionId,
+        string reason = "cancelled_by_command",
+        IReadOnlyList<string>? linkedPlanCauseIds = null)
     {
         var action = GetAction(actionId);
         if (action.Status is not (ActionStatus.Running or ActionStatus.Interrupted))
@@ -272,7 +275,13 @@ public sealed partial class WorldEngine
         action.LastUpdatedMinute = State.CurrentMinute;
         action.Travel.PendingScheduledEventId = null;
         InvalidateActorDetailLevels([action.ActorId]);
-        return new ActionResult(startMinute, State.CurrentMinute, [cancelled], ActionStatus.Cancelled);
+        var events = new List<WorldEvent> { cancelled };
+        foreach (var planEvent in CancelLinkedPlanForAction(action, cancelled, reason, linkedPlanCauseIds ?? []))
+        {
+            events.Add(planEvent);
+        }
+
+        return new ActionResult(startMinute, State.CurrentMinute, events, ActionStatus.Cancelled);
     }
 
     private IReadOnlyList<WorldEvent> ProcessScheduledEvent(ScheduledWorldEvent scheduled)

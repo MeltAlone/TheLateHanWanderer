@@ -137,6 +137,7 @@ public enum PlanStatus
 public sealed class PlanState
 {
     private readonly IReadOnlyList<string> _beliefRequirementIds;
+    private readonly IReadOnlyList<string> _requiredResourceIds;
 
     public PlanState(
         string id,
@@ -154,7 +155,10 @@ public sealed class PlanState
         PlanStatus status = PlanStatus.Active,
         string? pendingScheduledEventId = null,
         string? activeActionId = null,
-        long? lastEvaluationMinute = null)
+        long? lastEvaluationMinute = null,
+        IEnumerable<string>? requiredResourceIds = null,
+        int priority = 0,
+        bool mayReplaceLowerPriority = false)
     {
         if (confidenceThresholdBp is < 0 or > 10000)
         {
@@ -164,6 +168,18 @@ public sealed class PlanState
         if (reevaluationIntervalMinutes <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(reevaluationIntervalMinutes));
+        }
+
+        var resourceIds = (requiredResourceIds ?? []).ToArray();
+        if (resourceIds.Any(string.IsNullOrWhiteSpace) ||
+            resourceIds.Distinct(StringComparer.Ordinal).Count() != resourceIds.Length)
+        {
+            throw new ArgumentException("Plan resource IDs must be unique and non-empty.", nameof(requiredResourceIds));
+        }
+
+        if (priority < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(priority));
         }
 
         Id = id;
@@ -182,6 +198,9 @@ public sealed class PlanState
         PendingScheduledEventId = pendingScheduledEventId;
         ActiveActionId = activeActionId;
         LastEvaluationMinute = lastEvaluationMinute;
+        _requiredResourceIds = new ReadOnlyCollection<string>(resourceIds.Order(StringComparer.Ordinal).ToArray());
+        Priority = priority;
+        MayReplaceLowerPriority = mayReplaceLowerPriority;
     }
 
     public string Id { get; }
@@ -215,4 +234,21 @@ public sealed class PlanState
     public string? ActiveActionId { get; internal set; }
 
     public long? LastEvaluationMinute { get; internal set; }
+
+    public IReadOnlyList<string> RequiredResourceIds => _requiredResourceIds;
+
+    public int Priority { get; }
+
+    public bool MayReplaceLowerPriority { get; }
+}
+
+public sealed record PlanResourceLockState(
+    string ResourceId,
+    string PlanId,
+    long AcquiredMinute,
+    string AcquiredEventId);
+
+public static class PlanResourcePolicy
+{
+    public const string Version = "exclusive-plan-resource.v1";
 }

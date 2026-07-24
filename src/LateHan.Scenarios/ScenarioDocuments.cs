@@ -242,4 +242,10 @@ internal sealed class PlanDocument : NamedDocument
     public int ConfidenceThresholdBp { get; init; }
 
     public int ReevaluationIntervalMinutes { get; init; } = 60;
+
+    public List<string> RequiredResourceIds { get; init; } = [];
+
+    public int Priority { get; init; }
+
+    public bool MayReplaceLowerPriority { get; init; }
 }
