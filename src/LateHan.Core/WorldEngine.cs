@@ -46,6 +46,31 @@ public sealed partial class WorldEngine
 
     public WorldState State { get; }
 
+    private WorldEvent ProcessCommitmentDue(CommitmentState commitment)
+    {
+        commitment.Status = "missed";
+        var debtor = GetActor(commitment.DebtorId);
+        State.Items.TryGetValue(commitment.TargetId, out var targetItem);
+        State.Commitments.TryGetValue(commitment.TargetId, out var targetCommitment);
+        InvalidateActorDetailLevels([commitment.DebtorId, commitment.CreditorId, commitment.RecipientId]);
+        return AppendEvent(
+            "commitment_missed",
+            commitment.DueMinute,
+            debtor.PlaceId,
+            new[] { commitment.Id, commitment.DebtorId, commitment.CreditorId, commitment.RecipientId }
+                .Distinct(StringComparer.Ordinal)
+                .ToArray(),
+            [],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["action"] = commitment.Action,
+                ["debtor_location"] = debtor.PlaceId ?? debtor.Transit?.RouteId ?? string.Empty,
+                ["recipient_location"] = State.Actors[commitment.RecipientId].PlaceId ?? string.Empty,
+                ["target_holder"] = targetItem?.HolderId ?? string.Empty,
+                ["target_status"] = targetCommitment?.Status ?? string.Empty,
+            });
+    }
+
     public LocationView Look(string? actorId = null)
     {
         var actor = GetActor(actorId ?? State.PlayerActorId);
@@ -828,32 +853,53 @@ public sealed partial class WorldEngine
     private TimeAdvancementResult AdvanceTimeTo(long targetMinute, string? stopWhenActionId = null)
     {
         var events = new List<WorldEvent>();
-        while (State.PeekScheduledEvent() is { } next && next.DueMinute <= targetMinute)
+        while (TryGetNextTimeBoundary(targetMinute, out var batchMinute))
         {
-            var batchMinute = next.DueMinute;
             State.CurrentMinute = batchMinute;
             var interruptIds = new List<string>();
-            while (State.PeekScheduledEvent() is { DueMinute: var dueMinute } scheduled && dueMinute == batchMinute)
+            while (true)
             {
-                if (!State.RemoveScheduledEvent(scheduled))
+                var scheduled = State.PeekScheduledEvent() is { DueMinute: var dueMinute } nextScheduled &&
+                                dueMinute == batchMinute
+                    ? nextScheduled
+                    : null;
+                var commitment = PeekDueCommitment(batchMinute);
+                if (scheduled is null && commitment is null)
                 {
-                    throw new InvalidOperationException($"Could not remove scheduled event '{scheduled.Id}'.");
+                    break;
                 }
 
-                var occurred = ProcessScheduledEvent(scheduled);
-                events.AddRange(occurred);
-                if (scheduled.Kind is "travel_disrupted" or "actor_incapacitated" or "actor_removed")
+                if (commitment is not null &&
+                    (scheduled is null || CompareCommitmentToScheduled(commitment, scheduled) < 0))
                 {
-                    if (InterruptRunningTravel(scheduled.StableSubjectId, [occurred[0].Id]) is { } subjectInterrupted)
+                    events.Add(ProcessCommitmentDue(commitment));
+                    continue;
+                }
+
+                var scheduledToProcess = scheduled!;
+                if (!State.RemoveScheduledEvent(scheduledToProcess))
+                {
+                    throw new InvalidOperationException(
+                        $"Could not remove scheduled event '{scheduledToProcess.Id}'.");
+                }
+
+                var occurred = ProcessScheduledEvent(scheduledToProcess);
+                events.AddRange(occurred);
+                if (scheduledToProcess.Kind is "travel_disrupted" or "actor_incapacitated" or "actor_removed")
+                {
+                    if (InterruptRunningTravel(scheduledToProcess.StableSubjectId, [occurred[0].Id]) is { } subjectInterrupted)
                     {
                         events.Add(subjectInterrupted);
                     }
                 }
 
-                if (scheduled.InterruptsPlayer)
+                if (scheduledToProcess.InterruptsPlayer)
                 {
                     interruptIds.Add(occurred[0].Id);
-                    if (!string.Equals(scheduled.StableSubjectId, State.PlayerActorId, StringComparison.Ordinal) &&
+                    if (!string.Equals(
+                            scheduledToProcess.StableSubjectId,
+                            State.PlayerActorId,
+                            StringComparison.Ordinal) &&
                         InterruptRunningTravel(State.PlayerActorId, [occurred[0].Id]) is { } interrupted)
                     {
                         events.Add(interrupted);
@@ -876,6 +922,48 @@ public sealed partial class WorldEngine
 
         State.CurrentMinute = targetMinute;
         return new TimeAdvancementResult(events, []);
+    }
+
+    private bool TryGetNextTimeBoundary(long targetMinute, out long minute)
+    {
+        var scheduledMinute = State.PeekScheduledEvent()?.DueMinute;
+        var commitmentMinute = State.Commitments.Values
+            .Where(commitment => commitment.Status == "open")
+            .Select(commitment => (long?)commitment.DueMinute)
+            .Min();
+        var nextMinute = new[] { scheduledMinute, commitmentMinute }
+            .Where(candidate => candidate is not null)
+            .Min();
+        if (nextMinute is null || nextMinute > targetMinute)
+        {
+            minute = 0;
+            return false;
+        }
+
+        minute = Math.Max(State.CurrentMinute, nextMinute.Value);
+        return true;
+    }
+
+    private CommitmentState? PeekDueCommitment(long minute) =>
+        State.Commitments.Values
+            .Where(commitment => commitment.Status == "open" && commitment.DueMinute <= minute)
+            .OrderBy(commitment => commitment.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+    private static int CompareCommitmentToScheduled(
+        CommitmentState commitment,
+        ScheduledWorldEvent scheduled)
+    {
+        var phase = ScheduledEventPhase.PlanEvaluation.CompareTo(scheduled.Phase);
+        if (phase != 0)
+        {
+            return phase;
+        }
+
+        var subject = string.Compare(commitment.Id, scheduled.StableSubjectId, StringComparison.Ordinal);
+        return subject != 0
+            ? subject
+            : string.Compare("commitment_due", scheduled.Kind, StringComparison.Ordinal);
     }
 
     private ActorState GetActor(string actorId)

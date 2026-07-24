@@ -121,6 +121,24 @@ public sealed class WorldEngineTests
     }
 
     [Fact]
+    public void OpenCommitmentsBecomeMissedAtTheirOwnDeadlines()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+
+        _ = engine.Wait(360);
+
+        Assert.Equal("missed", engine.State.Commitments["commitment.player.deliver_note"].Status);
+        Assert.Equal("missed", engine.State.Commitments["commitment.player.report_back"].Status);
+        var missed = engine.State.Events.Where(worldEvent => worldEvent.Type == "commitment_missed").ToArray();
+        Assert.Equal(2, missed.Length);
+        Assert.Equal(new long[] { 240, 360 }, missed.Select(worldEvent => worldEvent.Minute));
+        Assert.Equal("person.player_clerk", missed[0].Details["target_holder"]);
+        Assert.Equal("missed", missed[1].Details["target_status"]);
+        Assert.DoesNotContain(engine.State.Beliefs.Values, belief =>
+            belief.HolderId == "person.li_wen" && belief.SourceEventId == missed[0].Id);
+    }
+
+    [Fact]
     public void RepeatedRunsProduceTheSameEventFingerprint()
     {
         var first = RunDeliveryPath();

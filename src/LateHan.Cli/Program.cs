@@ -268,10 +268,14 @@ internal sealed class CliSession
 
     private void PrintCommitments()
     {
-        var commitments = _engine.Status().OpenCommitments;
-        if (commitments.Count == 0)
+        var commitments = _engine.State.Commitments.Values
+            .Where(commitment => commitment.DebtorId == _engine.State.PlayerActorId)
+            .OrderBy(commitment => commitment.DueMinute)
+            .ThenBy(commitment => commitment.Id, StringComparer.Ordinal)
+            .ToArray();
+        if (commitments.Length == 0)
         {
-            Console.WriteLine("没有开放承诺。");
+            Console.WriteLine("没有玩家承诺。");
             return;
         }
 
