@@ -95,6 +95,30 @@ public sealed partial class WorldEngine
         return new StatusView(State.CurrentMinute, actor.Id, actor.Name, positionId, positionName, heldItems, commitments);
     }
 
+    public IReadOnlyList<BeliefConflictView> GetBeliefConflicts(string? holderId = null)
+    {
+        var actor = GetActor(holderId ?? State.PlayerActorId);
+        return State.Beliefs.Values
+            .Where(item => string.Equals(item.HolderId, actor.Id, StringComparison.Ordinal))
+            .Where(item => item.ConfidenceBp > 0)
+            .Select(item => (Belief: item, Proposition: State.Propositions[item.PropositionId]))
+            .GroupBy(item => item.Proposition.TopicId, StringComparer.Ordinal)
+            .Where(group => group
+                .Select(item => item.Proposition.Stance)
+                .Distinct(StringComparer.Ordinal)
+                .Skip(1)
+                .Any())
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new BeliefConflictView(
+                actor.Id,
+                group.Key,
+                group.Select(item => item.Belief)
+                    .OrderByDescending(item => item.ConfidenceBp)
+                    .ThenBy(item => item.Id, StringComparer.Ordinal)
+                    .ToArray()))
+            .ToArray();
+    }
+
     public ActionResult Move(string actorId, string destinationPlaceId, TravelMode mode)
     {
         var startMinute = State.CurrentMinute;
@@ -271,6 +295,13 @@ public sealed partial class WorldEngine
     {
         var actor = GetActor(actorId);
         var recipient = GetActor(recipientId);
+        if (!State.Propositions.TryGetValue(propositionId, out var sourceProposition))
+        {
+            throw new DomainCommandException(
+                "unknown_proposition",
+                $"Unknown proposition '{propositionId}'.");
+        }
+
         if (actor.PlaceId is null)
         {
             throw new DomainCommandException("actor_in_transit", $"Actor '{actorId}' cannot speak while in transit.");
@@ -346,6 +377,22 @@ public sealed partial class WorldEngine
             ? State.Messages.Values.FirstOrDefault(message => message.DeliveredEventId == sourceEventId)?.Id
             : null;
         var messageId = $"message.{created.Sequence:D8}";
+        int? distortionDrawBp = null;
+        var transmittedProposition = sourceProposition;
+        if (senderBelief is not null)
+        {
+            if (sourceProposition.RetellingVariantId is { } variantId)
+            {
+                distortionDrawBp = (int)(State.RandomStreams.NextUInt64("message-retelling", messageId) % 10000);
+                if (distortionDrawBp < sourceProposition.DistortionChanceBp)
+                {
+                    transmittedProposition = State.Propositions[variantId];
+                }
+            }
+
+            confidenceBp = Math.Max(0, confidenceBp - sourceProposition.RetellingConfidenceLossBp);
+        }
+
         var delivered = AppendEvent(
             "message_delivered",
             State.CurrentMinute,
@@ -356,18 +403,31 @@ public sealed partial class WorldEngine
             {
                 ["confidence_bp"] = confidenceBp.ToString(CultureInfo.InvariantCulture),
                 ["parent_message_id"] = parentMessageId ?? string.Empty,
-                ["proposition_id"] = propositionId,
+                ["confidence_loss_bp"] = (senderBelief is null
+                    ? 0
+                    : sourceProposition.RetellingConfidenceLossBp).ToString(CultureInfo.InvariantCulture),
+                ["distorted"] = (!string.Equals(
+                    sourceProposition.Id,
+                    transmittedProposition.Id,
+                    StringComparison.Ordinal)).ToString(CultureInfo.InvariantCulture),
+                ["distortion_draw_bp"] = distortionDrawBp?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                ["propagation_rule_version"] = MessagePropagationPolicy.Version,
+                ["proposition_id"] = transmittedProposition.Id,
+                ["source_proposition_id"] = sourceProposition.Id,
             });
         State.AddMessage(new MessageState(
             messageId,
-            propositionId,
+            transmittedProposition.Id,
             actorId,
             recipientId,
             confidenceBp,
             startMinute,
             created.Id,
             delivered.Id,
-            parentMessageId));
+            parentMessageId,
+            sourceProposition.Id,
+            MessagePropagationPolicy.Version,
+            distortionDrawBp));
         InvalidateActorDetailLevels([actorId, recipientId]);
         _ = Schedule(
             checked(startMinute + SimulationDetailPolicy.RecentMessageRetentionMinutes + 1),
@@ -383,15 +443,20 @@ public sealed partial class WorldEngine
                 ["sender_id"] = actorId,
             });
 
+        var hadConflict = GetBeliefConflicts(recipientId)
+            .Any(item => string.Equals(item.TopicId, transmittedProposition.TopicId, StringComparison.Ordinal));
         var belief = State.Beliefs.Values
             .Where(item => string.Equals(item.HolderId, recipientId, StringComparison.Ordinal))
-            .FirstOrDefault(item => string.Equals(item.PropositionId, propositionId, StringComparison.Ordinal));
+            .FirstOrDefault(item => string.Equals(
+                item.PropositionId,
+                transmittedProposition.Id,
+                StringComparison.Ordinal));
         if (belief is null)
         {
             belief = new BeliefState(
                 $"belief.message.{delivered.Sequence:D8}",
                 recipientId,
-                propositionId,
+                transmittedProposition.Id,
                 confidenceBp,
                 "direct_message",
                 State.CurrentMinute,
@@ -406,7 +471,7 @@ public sealed partial class WorldEngine
             belief.SourceEventId = delivered.Id;
         }
 
-        _ = AppendEvent(
+        var beliefUpdated = AppendEvent(
             "belief_updated",
             State.CurrentMinute,
             actor.LocationId,
@@ -415,9 +480,31 @@ public sealed partial class WorldEngine
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["confidence_bp"] = confidenceBp.ToString(CultureInfo.InvariantCulture),
-                ["proposition_id"] = propositionId,
+                ["proposition_id"] = transmittedProposition.Id,
                 ["source"] = "direct_message",
             });
+
+        var conflict = GetBeliefConflicts(recipientId)
+            .FirstOrDefault(item => string.Equals(
+                item.TopicId,
+                transmittedProposition.TopicId,
+                StringComparison.Ordinal));
+        if (!hadConflict && conflict is not null)
+        {
+            _ = AppendEvent(
+                "belief_conflict_detected",
+                State.CurrentMinute,
+                actor.LocationId,
+                [recipientId, .. conflict.Beliefs.Select(item => item.Id)],
+                [beliefUpdated.Id],
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["proposition_ids"] = string.Join(',', conflict.Beliefs
+                        .Select(item => item.PropositionId)
+                        .OrderBy(item => item, StringComparer.Ordinal)),
+                    ["topic_id"] = conflict.TopicId,
+                });
+        }
 
         var completedTargets = State.Commitments.Values
             .Where(commitment => commitment.Status == "completed")

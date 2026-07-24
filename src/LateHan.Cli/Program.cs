@@ -275,11 +275,18 @@ internal sealed class CliSession
             return;
         }
 
+        var conflictTopics = _engine.GetBeliefConflicts(holderId)
+            .Select(item => item.TopicId)
+            .ToHashSet(StringComparer.Ordinal);
+
         foreach (var belief in beliefs)
         {
+            var proposition = _engine.State.Propositions[belief.PropositionId];
             Console.WriteLine(
                 $"{belief.Id} confidence={belief.ConfidenceBp} source={belief.Source} " +
-                $"acquired={belief.AcquiredAtMinute} proposition={belief.PropositionId}");
+                $"acquired={belief.AcquiredAtMinute} proposition={belief.PropositionId} " +
+                $"topic={proposition.TopicId} stance={proposition.Stance} " +
+                $"conflict={conflictTopics.Contains(proposition.TopicId).ToString().ToLowerInvariant()}");
         }
     }
 
@@ -503,8 +510,9 @@ internal sealed class CliSession
         {
             Console.WriteLine(
                 $"{message.Id} {message.SenderId}->{message.RecipientId} " +
-                $"proposition={message.PropositionId} confidence={message.ConfidenceBp} " +
-                $"parent={message.ParentMessageId ?? "-"}");
+                $"source_proposition={message.SourcePropositionId} proposition={message.PropositionId} " +
+                $"confidence={message.ConfidenceBp} distorted={message.WasDistorted.ToString().ToLowerInvariant()} " +
+                $"parent={message.ParentMessageId ?? "-"} rule={message.PropagationRuleVersion}");
         }
     }
 

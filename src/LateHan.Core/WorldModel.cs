@@ -8,7 +8,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.6.2-spike";
+    public const string Version = "0.7.0-spike";
 }
 
 public enum TravelMode
@@ -245,6 +245,7 @@ public sealed class WorldState
     private readonly SortedSet<ScheduledWorldEvent> _scheduledEvents;
     private readonly SortedDictionary<string, ActionInstanceState> _actions;
     private readonly SortedDictionary<string, BeliefState> _beliefs;
+    private readonly SortedDictionary<string, PropositionDefinition> _propositions;
     private readonly SortedDictionary<string, PlanState> _plans;
     private readonly SortedDictionary<string, AccessRuleDefinition> _accessRules;
     private readonly SortedDictionary<string, PlaceAccessState> _placeAccessStates;
@@ -285,6 +286,7 @@ public sealed class WorldState
         IEnumerable<AccessRuleDefinition>? accessRules = null,
         IEnumerable<PlaceAccessState>? placeAccessStates = null,
         IEnumerable<MessageState>? messages = null,
+        IEnumerable<PropositionDefinition>? propositions = null,
         IEnumerable<GroupState>? groups = null,
         long nextPromotionSequence = 1,
         IEnumerable<string>? detailDirtyActorIds = null)
@@ -310,6 +312,9 @@ public sealed class WorldState
         _beliefs = new SortedDictionary<string, BeliefState>(
             (beliefs ?? []).ToDictionary(belief => belief.Id),
             StringComparer.Ordinal);
+        _propositions = new SortedDictionary<string, PropositionDefinition>(
+            (propositions ?? []).ToDictionary(proposition => proposition.Id),
+            StringComparer.Ordinal);
         _plans = new SortedDictionary<string, PlanState>(
             (plans ?? []).ToDictionary(plan => plan.Id),
             StringComparer.Ordinal);
@@ -325,6 +330,7 @@ public sealed class WorldState
         _groups = new SortedDictionary<string, GroupState>(
             (groups ?? []).ToDictionary(group => group.Id),
             StringComparer.Ordinal);
+        ValidateCognitionReferences();
         _detailDirtyActorIds = new SortedSet<string>(detailDirtyActorIds ?? [], StringComparer.Ordinal);
         if (_detailDirtyActorIds.Any(actorId => !_actors.ContainsKey(actorId)))
         {
@@ -405,6 +411,8 @@ public sealed class WorldState
     public IReadOnlyDictionary<string, ActionInstanceState> Actions => _actions;
 
     public IReadOnlyDictionary<string, BeliefState> Beliefs => _beliefs;
+
+    public IReadOnlyDictionary<string, PropositionDefinition> Propositions => _propositions;
 
     public IReadOnlyDictionary<string, PlanState> Plans => _plans;
 
@@ -632,6 +640,16 @@ public sealed class WorldState
             Append(hash, belief.Source);
         }
 
+        foreach (var proposition in _propositions.Values)
+        {
+            Append(hash, proposition.Id);
+            Append(hash, proposition.TopicId);
+            Append(hash, proposition.Stance);
+            Append(hash, proposition.RetellingVariantId ?? string.Empty);
+            Append(hash, proposition.DistortionChanceBp.ToString(CultureInfo.InvariantCulture));
+            Append(hash, proposition.RetellingConfidenceLossBp.ToString(CultureInfo.InvariantCulture));
+        }
+
         foreach (var commitment in _commitments.Values)
         {
             Append(hash, commitment.Id);
@@ -655,6 +673,52 @@ public sealed class WorldState
         }
 
         return $"sha256:{Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant()}";
+    }
+
+    private void ValidateCognitionReferences()
+    {
+        foreach (var proposition in _propositions.Values)
+        {
+            if (proposition.RetellingVariantId is not { } variantId)
+            {
+                continue;
+            }
+
+            if (!_propositions.TryGetValue(variantId, out var variant))
+            {
+                throw new ArgumentException(
+                    $"Proposition '{proposition.Id}' references unknown retelling variant '{variantId}'.",
+                    nameof(_propositions));
+            }
+
+            if (!string.Equals(proposition.TopicId, variant.TopicId, StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    $"Retelling variant '{variantId}' must share topic '{proposition.TopicId}'.",
+                    nameof(_propositions));
+            }
+        }
+
+        foreach (var belief in _beliefs.Values)
+        {
+            if (!_propositions.ContainsKey(belief.PropositionId))
+            {
+                throw new ArgumentException(
+                    $"Belief '{belief.Id}' references unknown proposition '{belief.PropositionId}'.",
+                    nameof(_beliefs));
+            }
+        }
+
+        foreach (var message in _messages.Values)
+        {
+            if (!_propositions.ContainsKey(message.PropositionId) ||
+                !_propositions.ContainsKey(message.SourcePropositionId))
+            {
+                throw new ArgumentException(
+                    $"Message '{message.Id}' references an unknown proposition.",
+                    nameof(_messages));
+            }
+        }
     }
 
     private static void Append(IncrementalHash hash, string value)

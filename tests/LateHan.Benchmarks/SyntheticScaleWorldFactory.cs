@@ -13,6 +13,11 @@ internal static class SyntheticScaleWorldFactory
     public const string PlayerActorId = "person.synthetic.player";
     public const string PublicAccessRuleId = "access.synthetic.public";
     public const string OfficialPropositionId = "proposition.synthetic.official_notice";
+    public const string ConflictTopicId = "topic.synthetic.gate_state";
+    public const string ConflictReportPropositionId = "proposition.synthetic.gate_open_report";
+    public const string ConflictUncertainPropositionId = "proposition.synthetic.gate_open_uncertain";
+    public const string ConflictClosedRumorPropositionId = "proposition.synthetic.gate_closed_rumor";
+    public const string ConflictConfirmedOpenPropositionId = "proposition.synthetic.gate_open_confirmed";
     public const string CityCrisisDestinationPlaceId = "place.synthetic.city.25";
     public const string MixedCityCrisisPlanDestinationPlaceId = "place.synthetic.city.24";
     public const string MixedCityCrisisVisitPlaceId = "place.synthetic.city.26";
@@ -77,29 +82,6 @@ internal static class SyntheticScaleWorldFactory
 
     public static WorldState CreateMessageTopologyWorld()
     {
-        var actors = new List<ActorState>
-        {
-            new(
-                PlayerActorId,
-                "Synthetic Player",
-                PlaceId(0),
-                transit: null,
-                detailLevel: SimulationDetailLevel.L0),
-        };
-
-        for (var placeIndex = 0; placeIndex < PlaceCount; placeIndex++)
-        {
-            for (var carrierIndex = 0; carrierIndex < MessageCarriersPerPlace; carrierIndex++)
-            {
-                actors.Add(new ActorState(
-                    CarrierId(placeIndex, carrierIndex),
-                    $"Synthetic Carrier {placeIndex:D2}-{carrierIndex}",
-                    PlaceId(placeIndex),
-                    transit: null,
-                    detailLevel: SimulationDetailLevel.L1));
-            }
-        }
-
         BeliefState[] beliefs =
         [
             new(
@@ -112,7 +94,59 @@ internal static class SyntheticScaleWorldFactory
                 sourceEventId: "evidence.synthetic.official_notice"),
         ];
 
-        return CreateWorld("synthetic-b3-message-topology", actors, beliefs: beliefs);
+        return CreateWorld("synthetic-b3-message-topology", CreateMessageActors(), beliefs: beliefs);
+    }
+
+    public static WorldState CreateConflictingMessageWorld()
+    {
+        PropositionDefinition[] propositions =
+        [
+            new(
+                ConflictReportPropositionId,
+                ConflictTopicId,
+                "open",
+                ConflictUncertainPropositionId,
+                distortionChanceBp: 10000,
+                retellingConfidenceLossBp: 250),
+            new(
+                ConflictUncertainPropositionId,
+                ConflictTopicId,
+                "open",
+                ConflictClosedRumorPropositionId,
+                distortionChanceBp: 10000,
+                retellingConfidenceLossBp: 500),
+            new(ConflictClosedRumorPropositionId, ConflictTopicId, "closed"),
+            new(
+                ConflictConfirmedOpenPropositionId,
+                ConflictTopicId,
+                "open",
+                retellingConfidenceLossBp: 100),
+        ];
+        BeliefState[] beliefs =
+        [
+            new(
+                "belief.synthetic.gate_open_report",
+                PlayerActorId,
+                ConflictReportPropositionId,
+                confidenceBp: 10000,
+                "official_source",
+                acquiredAtMinute: 0,
+                sourceEventId: "evidence.synthetic.gate_open_report"),
+            new(
+                "belief.synthetic.gate_open_confirmed",
+                PlayerActorId,
+                ConflictConfirmedOpenPropositionId,
+                confidenceBp: 9500,
+                "direct_observation",
+                acquiredAtMinute: 0,
+                sourceEventId: "evidence.synthetic.gate_open_confirmed"),
+        ];
+
+        return CreateWorld(
+            "synthetic-b3-conflicting-messages",
+            CreateMessageActors(),
+            beliefs: beliefs,
+            propositions: propositions);
     }
 
     public static string PlaceId(int placeIndex) => $"place.synthetic.city.{placeIndex:D2}";
@@ -161,6 +195,34 @@ internal static class SyntheticScaleWorldFactory
         return actors;
     }
 
+    private static List<ActorState> CreateMessageActors()
+    {
+        var actors = new List<ActorState>
+        {
+            new(
+                PlayerActorId,
+                "Synthetic Player",
+                PlaceId(0),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L0),
+        };
+
+        for (var placeIndex = 0; placeIndex < PlaceCount; placeIndex++)
+        {
+            for (var carrierIndex = 0; carrierIndex < MessageCarriersPerPlace; carrierIndex++)
+            {
+                actors.Add(new ActorState(
+                    CarrierId(placeIndex, carrierIndex),
+                    $"Synthetic Carrier {placeIndex:D2}-{carrierIndex}",
+                    PlaceId(placeIndex),
+                    transit: null,
+                    detailLevel: SimulationDetailLevel.L1));
+            }
+        }
+
+        return actors;
+    }
+
     private static GroupState[] CreateCityCrisisGroups() =>
     [
         new(
@@ -178,6 +240,7 @@ internal static class SyntheticScaleWorldFactory
         IEnumerable<ActorState> actors,
         IEnumerable<ItemState>? items = null,
         IEnumerable<BeliefState>? beliefs = null,
+        IEnumerable<PropositionDefinition>? propositions = null,
         IEnumerable<PlanState>? plans = null,
         IEnumerable<GroupState>? groups = null)
     {
@@ -221,6 +284,10 @@ internal static class SyntheticScaleWorldFactory
             routes,
             items: items ?? [],
             commitments: [],
+            propositions: propositions ??
+            [
+                new PropositionDefinition(OfficialPropositionId, OfficialPropositionId, "affirmed"),
+            ],
             beliefs: beliefs,
             plans: plans,
             accessRules: accessRules,

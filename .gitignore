@@ -20,6 +20,7 @@ artifacts/
 build/
 dist/
 coverage/
+**/TestResults/
 .cache/
 tmp/
 data/generated/

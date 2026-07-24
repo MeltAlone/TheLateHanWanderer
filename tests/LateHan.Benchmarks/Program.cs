@@ -32,10 +32,14 @@ switch (workload)
     case "b3-scale":
         RunMessageTopologyScale();
         break;
+    case "b3-conflict":
+        RunConflictingMessageScale();
+        break;
     case "scale":
         RunCityCrisisScale();
         RunMixedCityCrisisScale();
         RunMessageTopologyScale();
+        RunConflictingMessageScale();
         break;
     case "all":
         RunDelivery();
@@ -46,7 +50,7 @@ switch (workload)
         break;
     default:
         throw new ArgumentException(
-            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|scale|all");
+            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|scale|all");
 }
 
 void RunDelivery()
@@ -626,6 +630,134 @@ static ScaleWorkloadResult ExecuteMessageTopologyScale(WorldEngine engine)
         $"messages={messages.Length} linked_messages={linkedMessageCount} " +
         $"processed_events={engine.State.Events.Count} lineage_complete=true " +
         "message_backed_beliefs=true no_bulk_belief_write=true");
+}
+
+static void RunConflictingMessageScale()
+{
+    RunSampledScale(
+        "b3-message-conflict-semantics",
+        SyntheticScaleWorldFactory.CreateConflictingMessageWorld,
+        ExecuteConflictingMessageScale);
+}
+
+static ScaleWorkloadResult ExecuteConflictingMessageScale(WorldEngine engine)
+{
+    var expectedCarrierCount = SyntheticScaleWorldFactory.PlaceCount *
+                               SyntheticScaleWorldFactory.MessageCarriersPerPlace;
+    const int messagesPerPlace = 6;
+    const int linkedMessagesPerPlace = 3;
+    const int distortedMessagesPerPlace = 2;
+    const int conflictHoldersPerPlace = 2;
+
+    for (var placeIndex = 0; placeIndex < SyntheticScaleWorldFactory.PlaceCount; placeIndex++)
+    {
+        var placeId = SyntheticScaleWorldFactory.PlaceId(placeIndex);
+        if (!string.Equals(engine.State.Actors[engine.State.PlayerActorId].PlaceId, placeId, StringComparison.Ordinal))
+        {
+            _ = engine.Move(engine.State.PlayerActorId, placeId, TravelMode.Walk);
+        }
+
+        var carrier0 = SyntheticScaleWorldFactory.CarrierId(placeIndex, 0);
+        var carrier1 = SyntheticScaleWorldFactory.CarrierId(placeIndex, 1);
+        var carrier2 = SyntheticScaleWorldFactory.CarrierId(placeIndex, 2);
+        var carrier3 = SyntheticScaleWorldFactory.CarrierId(placeIndex, 3);
+        _ = engine.Tell(
+            engine.State.PlayerActorId,
+            carrier0,
+            SyntheticScaleWorldFactory.ConflictReportPropositionId);
+        _ = engine.Tell(
+            carrier0,
+            carrier1,
+            SyntheticScaleWorldFactory.ConflictUncertainPropositionId);
+        _ = engine.Tell(
+            carrier1,
+            carrier2,
+            SyntheticScaleWorldFactory.ConflictClosedRumorPropositionId);
+        _ = engine.Tell(
+            engine.State.PlayerActorId,
+            carrier2,
+            SyntheticScaleWorldFactory.ConflictConfirmedOpenPropositionId);
+        _ = engine.Tell(
+            carrier2,
+            carrier3,
+            SyntheticScaleWorldFactory.ConflictClosedRumorPropositionId);
+        _ = engine.Tell(
+            engine.State.PlayerActorId,
+            carrier3,
+            SyntheticScaleWorldFactory.ConflictConfirmedOpenPropositionId);
+    }
+
+    var messages = engine.State.Messages.Values.ToArray();
+    var messagesById = messages.ToDictionary(message => message.Id, StringComparer.Ordinal);
+    var linkedMessages = messages.Where(message => message.ParentMessageId is not null).ToArray();
+    var distortedMessages = messages.Where(message => message.WasDistorted).ToArray();
+    var conflicts = engine.State.Actors.Keys
+        .Where(actorId => !string.Equals(actorId, engine.State.PlayerActorId, StringComparison.Ordinal))
+        .SelectMany(engine.GetBeliefConflicts)
+        .ToArray();
+    var conflictEventCount = engine.State.Events.Count(item => item.Type == "belief_conflict_detected");
+    var expectedMessageCount = SyntheticScaleWorldFactory.PlaceCount * messagesPerPlace;
+    var expectedLinkedMessageCount = SyntheticScaleWorldFactory.PlaceCount * linkedMessagesPerPlace;
+    var expectedDistortedMessageCount = SyntheticScaleWorldFactory.PlaceCount * distortedMessagesPerPlace;
+    var expectedConflictHolderCount = SyntheticScaleWorldFactory.PlaceCount * conflictHoldersPerPlace;
+    var lineageIsValid = linkedMessages.All(message =>
+    {
+        var parent = messagesById[message.ParentMessageId!];
+        return string.Equals(parent.RecipientId, message.SenderId, StringComparison.Ordinal) &&
+               string.Equals(parent.PropositionId, message.SourcePropositionId, StringComparison.Ordinal);
+    });
+    var allMessagesUseVersionedRule = messages.All(message =>
+        string.Equals(
+            message.PropagationRuleVersion,
+            MessagePropagationPolicy.Version,
+            StringComparison.Ordinal));
+    var allDistortionsAuditable = distortedMessages.All(message =>
+        message.DistortionDrawBp is >= 0 and < 10000 &&
+        !string.Equals(message.SourcePropositionId, message.PropositionId, StringComparison.Ordinal));
+    var everyMessageHasBackedBelief = messages.All(message =>
+        engine.State.Beliefs.Values.Any(belief =>
+            string.Equals(belief.HolderId, message.RecipientId, StringComparison.Ordinal) &&
+            string.Equals(belief.PropositionId, message.PropositionId, StringComparison.Ordinal) &&
+            string.Equals(belief.SourceEventId, message.DeliveredEventId, StringComparison.Ordinal)));
+    var everyConflictHasDistinctStances = conflicts.All(conflict => conflict.Beliefs
+        .Select(belief => engine.State.Propositions[belief.PropositionId].Stance)
+        .Distinct(StringComparer.Ordinal)
+        .Skip(1)
+        .Any());
+
+    if (engine.State.Actors.Count != expectedCarrierCount + 1 ||
+        messages.Length != expectedMessageCount ||
+        linkedMessages.Length != expectedLinkedMessageCount ||
+        distortedMessages.Length != expectedDistortedMessageCount ||
+        conflicts.Length != expectedConflictHolderCount ||
+        conflictEventCount != expectedConflictHolderCount ||
+        !lineageIsValid ||
+        !allMessagesUseVersionedRule ||
+        !allDistortionsAuditable ||
+        !everyMessageHasBackedBelief ||
+        !everyConflictHasDistinctStances)
+    {
+        throw new InvalidOperationException(
+            "B3 conflict-semantics invariants failed: " +
+            $"carriers={engine.State.Actors.Count - 1}/{expectedCarrierCount} " +
+            $"messages={messages.Length}/{expectedMessageCount} " +
+            $"linked={linkedMessages.Length}/{expectedLinkedMessageCount} " +
+            $"distorted={distortedMessages.Length}/{expectedDistortedMessageCount} " +
+            $"conflicts={conflicts.Length}/{expectedConflictHolderCount} " +
+            $"conflict_events={conflictEventCount}/{expectedConflictHolderCount} " +
+            $"lineage={lineageIsValid} rules={allMessagesUseVersionedRule} " +
+            $"audit={allDistortionsAuditable} beliefs={everyMessageHasBackedBelief} " +
+            $"stances={everyConflictHasDistinctStances}.");
+    }
+
+    return new ScaleWorkloadResult(
+        $"places={engine.State.Places.Count} carriers={expectedCarrierCount} " +
+        $"messages={messages.Length} linked_messages={linkedMessages.Length} " +
+        $"distorted_messages={distortedMessages.Length} conflict_holders={conflicts.Length} " +
+        $"conflict_events={conflictEventCount} processed_events={engine.State.Events.Count} " +
+        $"propagation_rule={MessagePropagationPolicy.Version} lineage_complete=true " +
+        "distortion_auditable=true message_backed_beliefs=true conflicts_exact=true " +
+        "no_world_truth_read=true no_bulk_belief_write=true");
 }
 
 static void AssertDirtyRebalance(

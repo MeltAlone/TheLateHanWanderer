@@ -98,6 +98,13 @@ public sealed class ScenarioLoader
                 commitment.Status)),
             rngRootSeedHex: manifest.Rng.RootSeedHex,
             rngDerivation: manifest.Rng.Derivation,
+            propositions: state.Propositions.Select(proposition => new PropositionDefinition(
+                proposition.Id,
+                proposition.TopicId ?? proposition.Id,
+                proposition.Stance,
+                proposition.RetellingVariantId,
+                proposition.DistortionChanceBp,
+                proposition.RetellingConfidenceLossBp)),
             beliefs: state.Beliefs.Select(belief => new BeliefState(
                 belief.Id,
                 belief.Holder,
@@ -255,6 +262,60 @@ public sealed class ScenarioLoader
         var allIds = allRecords.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
         var beliefIds = state.Beliefs.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
         var propositionIds = state.Propositions.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
+        var propositionsById = state.Propositions
+            .GroupBy(item => item.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        foreach (var proposition in state.Propositions)
+        {
+            if (!string.IsNullOrWhiteSpace(proposition.RetellingVariantId))
+            {
+                Require(
+                    propositionIds,
+                    proposition.RetellingVariantId,
+                    $"proposition '{proposition.Id}'.retelling_variant_id",
+                    errors);
+                if (propositionsById.TryGetValue(proposition.RetellingVariantId, out var variant) &&
+                    !string.Equals(
+                        proposition.TopicId ?? proposition.Id,
+                        variant.TopicId ?? variant.Id,
+                        StringComparison.Ordinal))
+                {
+                    errors.Add(
+                        $"SCN-COG-004 Proposition '{proposition.Id}' and retelling variant " +
+                        $"'{variant.Id}' must share a topic_id.");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(proposition.TopicId ?? proposition.Id))
+            {
+                errors.Add($"SCN-COG-001 Proposition '{proposition.Id}' topic_id cannot be empty.");
+            }
+
+            if (string.IsNullOrWhiteSpace(proposition.Stance))
+            {
+                errors.Add($"SCN-COG-002 Proposition '{proposition.Id}' stance cannot be empty.");
+            }
+
+            if (proposition.DistortionChanceBp is < 0 or > 10000)
+            {
+                errors.Add(
+                    $"SCN-NUM-005 Proposition '{proposition.Id}' distortion_chance_bp must be between 0 and 10000.");
+            }
+
+            if (proposition.RetellingConfidenceLossBp is < 0 or > 10000)
+            {
+                errors.Add(
+                    $"SCN-NUM-006 Proposition '{proposition.Id}' retelling_confidence_loss_bp must be between 0 and 10000.");
+            }
+
+            if (string.IsNullOrWhiteSpace(proposition.RetellingVariantId) &&
+                proposition.DistortionChanceBp != 0)
+            {
+                errors.Add(
+                    $"SCN-COG-003 Proposition '{proposition.Id}' needs a retelling_variant_id when distortion_chance_bp is nonzero.");
+            }
+        }
 
         Require(personIds, manifest.PlayerActorId, "manifest.player_actor_id", errors);
         foreach (var place in world.Places)

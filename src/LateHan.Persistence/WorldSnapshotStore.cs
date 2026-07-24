@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.7";
+    public string SnapshotSchemaVersion { get; init; } = "0.8";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -81,6 +81,8 @@ internal sealed class WorldSnapshot
     public List<ItemSnapshot> Items { get; init; } = [];
 
     public List<BeliefSnapshot> Beliefs { get; init; } = [];
+
+    public List<PropositionSnapshot> Propositions { get; init; } = [];
 
     public List<PlanSnapshot> Plans { get; init; } = [];
 
@@ -167,6 +169,13 @@ internal sealed class WorldSnapshot
                 item.Source,
                 item.AcquiredAtMinute,
                 item.SourceEventId)).ToList(),
+            Propositions = world.Propositions.Values.Select(item => new PropositionSnapshot(
+                item.Id,
+                item.TopicId,
+                item.Stance,
+                item.RetellingVariantId,
+                item.DistortionChanceBp,
+                item.RetellingConfidenceLossBp)).ToList(),
             Plans = world.Plans.Values.Select(item => new PlanSnapshot(
                 item.Id,
                 item.OwnerId,
@@ -203,7 +212,10 @@ internal sealed class WorldSnapshot
                 item.CreatedAtMinute,
                 item.CreatedEventId,
                 item.DeliveredEventId,
-                item.ParentMessageId)).ToList(),
+                item.ParentMessageId,
+                item.SourcePropositionId,
+                item.PropagationRuleVersion,
+                item.DistortionDrawBp)).ToList(),
             Groups = world.Groups.Values.Select(item => new GroupSnapshot(
                 item.Id,
                 item.Name,
@@ -281,7 +293,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.7", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.8", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -452,7 +464,17 @@ internal sealed class WorldSnapshot
                 item.CreatedAtMinute,
                 item.CreatedEventId,
                 item.DeliveredEventId,
-                item.ParentMessageId)),
+                item.ParentMessageId,
+                item.SourcePropositionId,
+                item.PropagationRuleVersion,
+                item.DistortionDrawBp)),
+            Propositions.Select(item => new PropositionDefinition(
+                item.Id,
+                item.TopicId,
+                item.Stance,
+                item.RetellingVariantId,
+                item.DistortionChanceBp,
+                item.RetellingConfidenceLossBp)),
             Groups.Select(item => new GroupState(
                 item.Id,
                 item.Name,
@@ -528,7 +550,10 @@ internal sealed record MessageSnapshot(
     long CreatedAtMinute,
     string CreatedEventId,
     string DeliveredEventId,
-    string? ParentMessageId);
+    string? ParentMessageId,
+    string SourcePropositionId,
+    string PropagationRuleVersion,
+    int? DistortionDrawBp);
 
 internal sealed record GroupSnapshot(
     string Id,
@@ -547,6 +572,14 @@ internal sealed record BeliefSnapshot(
     string Source,
     long AcquiredAtMinute,
     string? SourceEventId);
+
+internal sealed record PropositionSnapshot(
+    string Id,
+    string TopicId,
+    string Stance,
+    string? RetellingVariantId,
+    int DistortionChanceBp,
+    int RetellingConfidenceLossBp);
 
 internal sealed record PlanSnapshot(
     string Id,

@@ -68,7 +68,7 @@ internal sealed class StateDocument : ComponentDocument
 
     public List<ItemDocument> Items { get; init; } = [];
 
-    public List<NamedDocument> Propositions { get; init; } = [];
+    public List<PropositionDocument> Propositions { get; init; } = [];
 
     public List<BeliefDocument> Beliefs { get; init; } = [];
 
@@ -82,6 +82,23 @@ internal class NamedDocument
     public string Id { get; init; } = string.Empty;
 
     public string Name { get; init; } = string.Empty;
+}
+
+internal sealed class PropositionDocument : NamedDocument
+{
+    public string Text { get; init; } = string.Empty;
+
+    public string ObjectiveStatus { get; init; } = string.Empty;
+
+    public string? TopicId { get; init; }
+
+    public string Stance { get; init; } = "affirmed";
+
+    public string? RetellingVariantId { get; init; }
+
+    public int DistortionChanceBp { get; init; }
+
+    public int RetellingConfidenceLossBp { get; init; }
 }
 
 internal sealed class PlaceDocument : NamedDocument

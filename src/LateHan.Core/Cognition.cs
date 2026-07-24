@@ -2,6 +2,84 @@ using System.Collections.ObjectModel;
 
 namespace LateHan.Core;
 
+public static class MessagePropagationPolicy
+{
+    public const string Version = "retelling-distortion.v1";
+}
+
+public sealed class PropositionDefinition
+{
+    public PropositionDefinition(
+        string id,
+        string topicId,
+        string stance,
+        string? retellingVariantId = null,
+        int distortionChanceBp = 0,
+        int retellingConfidenceLossBp = 0)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            throw new ArgumentException("Proposition ID cannot be empty.", nameof(id));
+        }
+
+        if (string.IsNullOrWhiteSpace(topicId))
+        {
+            throw new ArgumentException("Proposition topic cannot be empty.", nameof(topicId));
+        }
+
+        if (string.IsNullOrWhiteSpace(stance))
+        {
+            throw new ArgumentException("Proposition stance cannot be empty.", nameof(stance));
+        }
+
+        if (distortionChanceBp is < 0 or > 10000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(distortionChanceBp));
+        }
+
+        if (retellingConfidenceLossBp is < 0 or > 10000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retellingConfidenceLossBp));
+        }
+
+        if (retellingVariantId is not null && string.IsNullOrWhiteSpace(retellingVariantId))
+        {
+            throw new ArgumentException("Retelling variant ID cannot be empty.", nameof(retellingVariantId));
+        }
+
+        if (retellingVariantId is null && distortionChanceBp != 0)
+        {
+            throw new ArgumentException(
+                "A distortion chance requires a retelling variant.",
+                nameof(distortionChanceBp));
+        }
+
+        Id = id;
+        TopicId = topicId;
+        Stance = stance;
+        RetellingVariantId = retellingVariantId;
+        DistortionChanceBp = distortionChanceBp;
+        RetellingConfidenceLossBp = retellingConfidenceLossBp;
+    }
+
+    public string Id { get; }
+
+    public string TopicId { get; }
+
+    public string Stance { get; }
+
+    public string? RetellingVariantId { get; }
+
+    public int DistortionChanceBp { get; }
+
+    public int RetellingConfidenceLossBp { get; }
+}
+
+public sealed record BeliefConflictView(
+    string HolderId,
+    string TopicId,
+    IReadOnlyList<BeliefState> Beliefs);
+
 public sealed class BeliefState
 {
     public BeliefState(
