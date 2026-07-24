@@ -21,6 +21,12 @@ internal static class SyntheticScaleWorldFactory
     public const int LodPromotionCount = 1_000;
     public const int LodRetainedActorCount = 100;
     public const int LodCrossPlaceRoundTripCount = 200;
+    public const int IdleWorldL0Count = 50;
+    public const int IdleWorldL1Count = 500;
+    public const int IdleWorldL2Count = 20_000;
+    public const int IdleWorldGroupCount = 100;
+    public const int IdleWorldGroupPopulation = 20_000;
+    public const int IdleWorldAmbientEventCount = 10_000;
     public const string PlayerActorId = "person.synthetic.player";
     public const string PublicAccessRuleId = "access.synthetic.public";
     public const string QueuedAccessRuleId = "access.synthetic.queued";
@@ -152,6 +158,55 @@ internal static class SyntheticScaleWorldFactory
             groups: groups);
     }
 
+    public static WorldState CreateIdleTargetWorld()
+    {
+        var actors = new List<ActorState>();
+        for (var index = 0; index < IdleWorldL0Count; index++)
+        {
+            actors.Add(new ActorState(
+                index == 0 ? PlayerActorId : $"person.synthetic.idle.l0.{index:D3}",
+                $"Synthetic Idle L0 {index:D3}",
+                PlaceId(index % PlaceCount),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L0));
+        }
+
+        for (var index = 0; index < IdleWorldL1Count; index++)
+        {
+            actors.Add(new ActorState(
+                $"person.synthetic.idle.l1.{index:D4}",
+                $"Synthetic Idle L1 {index:D4}",
+                PlaceId(index % PlaceCount),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L1));
+        }
+
+        for (var index = 0; index < IdleWorldL2Count; index++)
+        {
+            var groupIndex = index % IdleWorldGroupCount;
+            actors.Add(new ActorState(
+                $"person.synthetic.idle.l2.{index:D5}",
+                $"Synthetic Idle L2 {index:D5}",
+                PlaceId(groupIndex % PlaceCount),
+                transit: null,
+                memberships: [new ActorMembership(IdleOrganizationId(groupIndex), "remote_member")],
+                detailLevel: SimulationDetailLevel.L2));
+        }
+
+        var groups = Enumerable.Range(0, IdleWorldGroupCount).Select(index => new GroupState(
+            IdleGroupId(index),
+            $"Synthetic Idle Group {index:D3}",
+            "regional_population",
+            IdleWorldGroupPopulation,
+            PlaceId(index % PlaceCount),
+            IdleOrganizationId(index),
+            "synthetic-idle-resident",
+            foodStockUnits: 1_000_000,
+            dailyFoodProductionPerThousand: 1000,
+            dailyFoodConsumptionPerThousand: 1000));
+        return CreateWorld("synthetic-b1-idle-target", actors, groups: groups);
+    }
+
     public static WorldState CreateConflictingMessageWorld()
     {
         PropositionDefinition[] propositions =
@@ -216,6 +271,10 @@ internal static class SyntheticScaleWorldFactory
     public static string LodGroupId(int index) => $"group.synthetic.lod.{index:D3}";
 
     public static string LodAnchorId(int placeIndex) => $"person.synthetic.lod.anchor.{placeIndex:D2}";
+
+    public static string IdleGroupId(int index) => $"group.synthetic.idle.{index:D3}";
+
+    public static string IdleOrganizationId(int index) => $"organization.synthetic.idle.{index:D3}";
 
     private static string MixedPlanResourceId(int index) => index switch
     {

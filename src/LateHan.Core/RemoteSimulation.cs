@@ -142,9 +142,9 @@ public sealed partial class WorldEngine
 
         var managedActors = elapsedMinutes == 0 || group.OrganizationId is null
             ? []
-            : State.Actors.Values
+            : State.GetActorIdsAtPlace(group.LocationId)
+                .Select(actorId => State.Actors[actorId])
                 .Where(actor => actor.DetailLevel == SimulationDetailLevel.L2)
-                .Where(actor => string.Equals(actor.PlaceId, group.LocationId, StringComparison.Ordinal))
                 .Where(actor => actor.Memberships.Any(membership => string.Equals(
                     membership.OrganizationId,
                     group.OrganizationId,

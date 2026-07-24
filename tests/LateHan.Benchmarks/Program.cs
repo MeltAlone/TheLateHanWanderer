@@ -38,12 +38,16 @@ switch (workload)
     case "b4-scale":
         RunLodInteractionScale();
         break;
+    case "b1-scale":
+        RunIdleTargetScale();
+        break;
     case "scale":
         RunCityCrisisScale();
         RunMixedCityCrisisScale();
         RunMessageTopologyScale();
         RunConflictingMessageScale();
         RunLodInteractionScale();
+        RunIdleTargetScale();
         break;
     case "all":
         RunDelivery();
@@ -54,7 +58,7 @@ switch (workload)
         break;
     default:
         throw new ArgumentException(
-            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|scale|all");
+            "Usage: delivery|b1-idle|b1-scale|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|scale|all");
 }
 
 void RunDelivery()
@@ -99,6 +103,86 @@ void RunIdleWorld()
         allocatedBytes,
         engine.State.ComputeEventFingerprint(),
         $"population_equivalent={populationEquivalent} processed_events={processedEvents}");
+}
+
+void RunIdleTargetScale()
+{
+    RunSampledScale(
+        "b1-idle-target-world",
+        SyntheticScaleWorldFactory.CreateIdleTargetWorld,
+        ExecuteIdleTargetScale);
+}
+
+static ScaleWorkloadResult ExecuteIdleTargetScale(WorldEngine engine)
+{
+    const long thirtyDays = 30 * 24 * 60;
+    var initialPopulation = PopulationEquivalent(engine.State);
+    var initialFoodStock = engine.State.Groups.Values.Sum(group => group.FoodStockUnits);
+    var initialActorCount = engine.State.Actors.Count;
+    var initialScheduled = engine.InitializeRemoteSimulation();
+    if (initialScheduled.Count != SyntheticScaleWorldFactory.IdleWorldGroupCount)
+    {
+        throw new InvalidOperationException("B1 remote tick initialization count is incorrect.");
+    }
+
+    for (var index = 0; index < SyntheticScaleWorldFactory.IdleWorldAmbientEventCount; index++)
+    {
+        var dueMinute = 1L + index * (thirtyDays - 1) / SyntheticScaleWorldFactory.IdleWorldAmbientEventCount;
+        engine.Schedule(
+            dueMinute,
+            ScheduledEventPhase.SummaryAndNotification,
+            $"ambient.synthetic.{index:D5}",
+            "ambient_world_event",
+            SyntheticScaleWorldFactory.PlaceId(index % SyntheticScaleWorldFactory.PlaceCount));
+    }
+
+    _ = engine.Wait(thirtyDays);
+    var remoteTickCount = engine.State.Events.Count(item => item.Type == "remote_world_tick");
+    var remoteActorBatchCount = engine.State.Events.Count(item => item.Type == "remote_named_actor_batch_updated");
+    var ambientEventCount = engine.State.Events.Count(item => item.Type == "ambient_world_event");
+    var finalFoodStock = engine.State.Groups.Values.Sum(group => group.FoodStockUnits);
+    var allL2CyclesExact = engine.State.Actors.Values
+        .Where(actor => actor.DetailLevel == SimulationDetailLevel.L2)
+        .All(actor => actor.RemoteCycleCount == 30 && actor.LastRemoteUpdateMinute == thirtyDays);
+    var ledgersConserved = engine.State.Groups.Values.All(group =>
+        group.LastRemoteSettlementMinute == thirtyDays &&
+        group.CumulativeFoodProduced == 600_000 &&
+        group.CumulativeFoodDemand == 600_000 &&
+        group.CumulativeFoodConsumed == 600_000 &&
+        group.CumulativeFoodUnmet == 0 &&
+        group.FoodShortageBp == 0);
+    if (initialActorCount != SyntheticScaleWorldFactory.IdleWorldL0Count +
+                             SyntheticScaleWorldFactory.IdleWorldL1Count +
+                             SyntheticScaleWorldFactory.IdleWorldL2Count ||
+        engine.State.Groups.Count != SyntheticScaleWorldFactory.IdleWorldGroupCount ||
+        remoteTickCount != SyntheticScaleWorldFactory.IdleWorldGroupCount * 30 ||
+        remoteActorBatchCount != remoteTickCount ||
+        ambientEventCount != SyntheticScaleWorldFactory.IdleWorldAmbientEventCount ||
+        engine.State.Events.Count != remoteTickCount + remoteActorBatchCount + ambientEventCount + 2 ||
+        engine.State.ScheduledEvents.Count != SyntheticScaleWorldFactory.IdleWorldGroupCount ||
+        !allL2CyclesExact ||
+        !ledgersConserved ||
+        finalFoodStock != initialFoodStock ||
+        PopulationEquivalent(engine.State) != initialPopulation)
+    {
+        throw new InvalidOperationException(
+            "B1 target invariants failed: " +
+            $"actors={engine.State.Actors.Count}/{initialActorCount} groups={engine.State.Groups.Count} " +
+            $"remote={remoteTickCount}/{remoteActorBatchCount} ambient={ambientEventCount} " +
+            $"events={engine.State.Events.Count} future={engine.State.ScheduledEvents.Count} " +
+            $"cycles={allL2CyclesExact} ledgers={ledgersConserved} " +
+            $"food={finalFoodStock}/{initialFoodStock} population={PopulationEquivalent(engine.State)}/{initialPopulation}.");
+    }
+
+    return new ScaleWorkloadResult(
+        $"places={engine.State.Places.Count} l0={SyntheticScaleWorldFactory.IdleWorldL0Count} " +
+        $"l1={SyntheticScaleWorldFactory.IdleWorldL1Count} l2={SyntheticScaleWorldFactory.IdleWorldL2Count} " +
+        $"l3_population={engine.State.Groups.Values.Sum(group => group.Count)} " +
+        $"remote_ticks={remoteTickCount} remote_actor_batches={remoteActorBatchCount} " +
+        $"ambient_events={ambientEventCount} processed_events={engine.State.Events.Count} " +
+        $"future_events={engine.State.ScheduledEvents.Count} population_equivalent={initialPopulation} " +
+        "event_driven=true l2_cycles_exact=true population_conserved=true " +
+        "remote_material_conserved=true l3_not_expanded=true");
 }
 
 void RunLodRoundTrips()
