@@ -6,6 +6,15 @@ namespace LateHan.Persistence;
 
 public sealed class WorldSnapshotStore
 {
+    public const string SchemaVersion = "1.2";
+
+    public WorldSnapshotStore(string? requiredRulesetVersion = null)
+    {
+        RequiredRulesetVersion = requiredRulesetVersion;
+    }
+
+    public string? RequiredRulesetVersion { get; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -36,13 +45,51 @@ public sealed class WorldSnapshotStore
     {
         var snapshot = JsonSerializer.Deserialize<WorldSnapshot>(snapshotBytes, JsonOptions)
             ?? throw new InvalidDataException("Snapshot payload is empty.");
-        return snapshot.ToWorld();
+        return snapshot.ToWorld(RequiredRulesetVersion);
+    }
+}
+
+public sealed class SnapshotCompatibilityException : IOException
+{
+    public SnapshotCompatibilityException(
+        string component,
+        string actualVersion,
+        string requiredVersion,
+        IReadOnlyList<string> availableMigrators)
+        : base(BuildMessage(component, actualVersion, requiredVersion, availableMigrators))
+    {
+        Component = component;
+        ActualVersion = actualVersion;
+        RequiredVersion = requiredVersion;
+        AvailableMigrators = availableMigrators;
+    }
+
+    public string Component { get; }
+
+    public string ActualVersion { get; }
+
+    public string RequiredVersion { get; }
+
+    public IReadOnlyList<string> AvailableMigrators { get; }
+
+    private static string BuildMessage(
+        string component,
+        string actualVersion,
+        string requiredVersion,
+        IReadOnlyList<string> availableMigrators)
+    {
+        var migrators = availableMigrators.Count == 0
+            ? "none"
+            : string.Join(", ", availableMigrators);
+        return
+            $"Snapshot {component} version '{actualVersion}' is incompatible; required '{requiredVersion}'. " +
+            $"Available migrators: {migrators}.";
     }
 }
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "1.2";
+    public string SnapshotSchemaVersion { get; init; } = string.Empty;
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -114,6 +161,7 @@ internal sealed class WorldSnapshot
     {
         return new WorldSnapshot
         {
+            SnapshotSchemaVersion = WorldSnapshotStore.SchemaVersion,
             ScenarioId = world.ScenarioId,
             ScenarioVersion = world.ScenarioVersion,
             RulesetVersion = world.RulesetVersion,
@@ -324,17 +372,39 @@ internal sealed class WorldSnapshot
         };
     }
 
-    public WorldState ToWorld()
+    public WorldState ToWorld(string? requiredRulesetVersion)
     {
-        if (!string.Equals(SnapshotSchemaVersion, "1.2", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, WorldSnapshotStore.SchemaVersion, StringComparison.Ordinal))
         {
-            throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
+            throw SnapshotMigratorRegistry.Incompatible(
+                "schema",
+                SnapshotSchemaVersion,
+                WorldSnapshotStore.SchemaVersion);
         }
 
         if (!string.Equals(EngineVersion, EngineMetadata.Version, StringComparison.Ordinal))
         {
-            throw new InvalidDataException(
-                $"Snapshot engine version '{EngineVersion}' is incompatible with '{EngineMetadata.Version}'.");
+            throw SnapshotMigratorRegistry.Incompatible(
+                "engine",
+                EngineVersion,
+                EngineMetadata.Version);
+        }
+
+        if (requiredRulesetVersion is not null &&
+            !string.Equals(RulesetVersion, requiredRulesetVersion, StringComparison.Ordinal))
+        {
+            throw SnapshotMigratorRegistry.Incompatible(
+                "ruleset",
+                RulesetVersion,
+                requiredRulesetVersion);
+        }
+
+        if (!string.Equals(RngVersion, RandomMetadata.Xoshiro256StarStarV1, StringComparison.Ordinal))
+        {
+            throw SnapshotMigratorRegistry.Incompatible(
+                "rng",
+                RngVersion,
+                RandomMetadata.Xoshiro256StarStarV1);
         }
 
         return new WorldState(

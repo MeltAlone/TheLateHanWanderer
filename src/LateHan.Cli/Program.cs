@@ -12,7 +12,9 @@ try
     var options = CliOptions.Parse(args);
     var scenarioPath = options.ScenarioPath ?? RepositoryPaths.FindDefaultScenario();
     var loaded = new ScenarioLoader().Load(scenarioPath);
-    var session = new CliSession(new WorldEngine(loaded.World), new WorldSnapshotStore());
+    var session = new CliSession(
+        new WorldEngine(loaded.World),
+        new WorldSnapshotStore(loaded.World.RulesetVersion));
 
     Console.WriteLine($"已加载 {loaded.World.ScenarioId} {loaded.World.ScenarioVersion}");
     Console.WriteLine($"内容哈希 {loaded.ComputedContentHash}");
@@ -161,6 +163,9 @@ internal sealed class CliSession
                 case "load":
                     ExecuteLoad(tokens);
                     break;
+                case "migrate":
+                    ExecuteMigration(tokens);
+                    break;
                 case "archive":
                     ExecuteArchive(tokens);
                     break;
@@ -226,6 +231,8 @@ internal sealed class CliSession
         Console.WriteLine("  dev rebalance-detail [dirty|person-id]");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
+        Console.WriteLine("  migrate list");
+        Console.WriteLine("  migrate snapshot <source> <target>");
         Console.WriteLine("  archive save <path>");
         Console.WriteLine("  archive load <path>");
         Console.WriteLine("  branch create <base-archive> <directory> <branch-id>");
@@ -894,6 +901,36 @@ internal sealed class CliSession
         Console.WriteLine($"已加载；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
     }
 
+    private void ExecuteMigration(string[] tokens)
+    {
+        if (tokens.Length == 2 && tokens[1] == "list")
+        {
+            var migrators = SnapshotMigratorRegistry.Available;
+            if (migrators.Count == 0)
+            {
+                Console.WriteLine("当前没有可用的存档迁移器。");
+                return;
+            }
+
+            foreach (var migrator in migrators)
+            {
+                Console.WriteLine(
+                    $"{migrator.Id}: {migrator.Component} {migrator.SourceVersion} -> {migrator.TargetVersion}");
+            }
+
+            return;
+        }
+
+        if (tokens.Length == 4 && tokens[1] == "snapshot")
+        {
+            var result = new WorldSnapshotMigrationService(_snapshotStore).Migrate(tokens[2], tokens[3]);
+            Console.WriteLine($"迁移器 {result.MigratorId} 已生成新存档：{result.TargetPath}");
+            return;
+        }
+
+        Console.WriteLine("invalid:syntax 用法：migrate list | migrate snapshot <source> <target>");
+    }
+
     private void ExecuteArchive(string[] tokens)
     {
         if (tokens.Length != 3 || tokens[1] is not ("save" or "load"))
@@ -968,7 +1005,7 @@ internal sealed class CliSession
         if (tokens.Length == 5 && tokens[1] == "create")
         {
             using var branch = WorldBranchStore.Create(tokens[2], tokens[3], tokens[4]);
-            _engine = new WorldEngine(branch.Load());
+            _engine = new WorldEngine(branch.Load(_snapshotStore));
             Console.WriteLine($"已创建并加载分支 {tokens[4]}：{Path.GetFullPath(tokens[3])}");
             return;
         }
@@ -976,7 +1013,7 @@ internal sealed class CliSession
         if (tokens.Length == 3 && tokens[1] == "load")
         {
             using var branch = WorldBranchStore.Open(tokens[2]);
-            _engine = new WorldEngine(branch.Load());
+            _engine = new WorldEngine(branch.Load(_snapshotStore));
             Console.WriteLine(
                 $"已加载分支 {branch.Descriptor.BranchId}；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
             return;

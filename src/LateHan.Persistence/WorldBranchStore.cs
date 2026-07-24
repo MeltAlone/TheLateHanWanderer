@@ -133,11 +133,11 @@ public sealed class WorldBranchStore : IDisposable
         }
     }
 
-    public WorldState Load()
+    public WorldState Load(WorldSnapshotStore? snapshotStore = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var checkpoint = _tailArchive.LatestCheckpoint ?? _baseCheckpoint;
-        return _snapshotStore.Load(checkpoint.SnapshotPayload);
+        return (snapshotStore ?? _snapshotStore).Load(checkpoint.SnapshotPayload);
     }
 
     public EventArchiveCheckpoint Save(WorldState world)
