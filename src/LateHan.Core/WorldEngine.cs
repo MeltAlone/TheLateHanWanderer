@@ -658,26 +658,6 @@ public sealed partial class WorldEngine
             : throw new DomainCommandException("unknown_place", $"Unknown place '{placeId}'.");
     }
 
-    private IEnumerable<(string NextPlaceId, RouteDefinition Route)> GetEdges(string placeId, TravelMode mode)
-    {
-        foreach (var route in State.Routes.Values.OrderBy(route => route.Id, StringComparer.Ordinal))
-        {
-            if (!route.MinutesByMode.ContainsKey(mode))
-            {
-                continue;
-            }
-
-            if (route.FromPlaceId == placeId)
-            {
-                yield return (route.ToPlaceId, route);
-            }
-            else if (route.Bidirectional && route.ToPlaceId == placeId)
-            {
-                yield return (route.FromPlaceId, route);
-            }
-        }
-    }
-
     private WorldEvent AppendEvent(
         string type,
         long minute,
@@ -687,6 +667,12 @@ public sealed partial class WorldEngine
         IReadOnlyDictionary<string, string> details)
     {
         var sequence = State.NextEventSequence++;
+        var detailSnapshot = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var detail in details)
+        {
+            detailSnapshot.Add(detail.Key, detail.Value);
+        }
+
         var worldEvent = new WorldEvent(
             sequence,
             $"event.{sequence:D8}",
@@ -695,10 +681,7 @@ public sealed partial class WorldEngine
             locationId,
             subjectIds.ToArray(),
             causeIds.ToArray(),
-            new ReadOnlyDictionary<string, string>(
-                new SortedDictionary<string, string>(
-                    details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
-                    StringComparer.Ordinal)));
+            new ReadOnlyDictionary<string, string>(detailSnapshot));
         State.AddEvent(worldEvent);
         return worldEvent;
     }

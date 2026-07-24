@@ -238,7 +238,7 @@ static void RunCityCrisisScale()
         ExecuteCityCrisisScale);
 }
 
-static ScaleOutcome ExecuteCityCrisisScale(WorldEngine engine)
+static ScaleWorkloadResult ExecuteCityCrisisScale(WorldEngine engine)
 {
     const long twelveHours = 12 * 60;
     var initialActorCount = engine.State.Actors.Count;
@@ -309,8 +309,7 @@ static ScaleOutcome ExecuteCityCrisisScale(WorldEngine engine)
             $"group_population={group.Count} dirty={engine.State.DetailDirtyActorIds.Count}.");
     }
 
-    return new ScaleOutcome(
-        engine.State.ComputeEventFingerprint(),
+    return new ScaleWorkloadResult(
         $"places={engine.State.Places.Count} named_actors={initialActorCount} " +
         $"initial_l0={initialL0Count} initial_l1={initialL1Count} " +
         $"concurrent_travelers={actions.Length} population_equivalent={finalPopulationEquivalent} " +
@@ -327,7 +326,7 @@ static void RunMessageTopologyScale()
         ExecuteMessageTopologyScale);
 }
 
-static ScaleOutcome ExecuteMessageTopologyScale(WorldEngine engine)
+static ScaleWorkloadResult ExecuteMessageTopologyScale(WorldEngine engine)
 {
     var expectedCarrierCount = SyntheticScaleWorldFactory.PlaceCount *
                                SyntheticScaleWorldFactory.MessageCarriersPerPlace;
@@ -391,8 +390,7 @@ static ScaleOutcome ExecuteMessageTopologyScale(WorldEngine engine)
             $"lineage={lineageIsValid} message_backed_beliefs={everyCarrierHasMessageBackedBelief}.");
     }
 
-    return new ScaleOutcome(
-        engine.State.ComputeEventFingerprint(),
+    return new ScaleWorkloadResult(
         $"places={engine.State.Places.Count} carriers={expectedCarrierCount} " +
         $"messages={messages.Length} linked_messages={linkedMessageCount} " +
         $"processed_events={engine.State.Events.Count} lineage_complete=true " +
@@ -418,7 +416,7 @@ static long PopulationEquivalent(WorldState state) =>
 static void RunSampledScale(
     string workload,
     Func<WorldState> worldFactory,
-    Func<WorldEngine, ScaleOutcome> execute)
+    Func<WorldEngine, ScaleWorkloadResult> execute)
 {
     const int warmupIterations = 1;
     const int sampleCount = 5;
@@ -449,7 +447,7 @@ static void RunSampledScale(
 
 static ScaleSample MeasureScaleSample(
     Func<WorldState> worldFactory,
-    Func<WorldEngine, ScaleOutcome> execute)
+    Func<WorldEngine, ScaleWorkloadResult> execute)
 {
     var setupAllocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
     var setupStopwatch = Stopwatch.StartNew();
@@ -462,20 +460,29 @@ static ScaleSample MeasureScaleSample(
     var gc2Before = GC.CollectionCount(2);
     var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
     var stopwatch = Stopwatch.StartNew();
-    var outcome = execute(engine);
+    var workloadResult = execute(engine);
     stopwatch.Stop();
     var allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
+
+    var verificationAllocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+    var verificationStopwatch = Stopwatch.StartNew();
+    var fingerprint = engine.State.ComputeEventFingerprint();
+    verificationStopwatch.Stop();
+    var verificationAllocatedBytes =
+        GC.GetTotalAllocatedBytes(precise: true) - verificationAllocatedBefore;
 
     return new ScaleSample(
         setupStopwatch.Elapsed.TotalMilliseconds,
         stopwatch.Elapsed.TotalMilliseconds,
+        verificationStopwatch.Elapsed.TotalMilliseconds,
         setupAllocatedBytes,
         allocatedBytes,
+        verificationAllocatedBytes,
         Process.GetCurrentProcess().WorkingSet64,
         GC.CollectionCount(0) - gc0Before,
         GC.CollectionCount(1) - gc1Before,
         GC.CollectionCount(2) - gc2Before,
-        outcome);
+        new ScaleOutcome(fingerprint, workloadResult.Correctness));
 }
 
 static void PrintSampledResult(
@@ -485,8 +492,10 @@ static void PrintSampledResult(
 {
     var setupTimes = samples.Select(sample => sample.SetupElapsedMilliseconds).Order().ToArray();
     var elapsedTimes = samples.Select(sample => sample.ElapsedMilliseconds).Order().ToArray();
+    var verificationTimes = samples.Select(sample => sample.VerificationElapsedMilliseconds).Order().ToArray();
     var setupAllocations = samples.Select(sample => sample.SetupAllocatedBytes).Order().ToArray();
     var allocations = samples.Select(sample => sample.AllocatedBytes).Order().ToArray();
+    var verificationAllocations = samples.Select(sample => sample.VerificationAllocatedBytes).Order().ToArray();
 
     Console.WriteLine($"workload={workload}");
     Console.WriteLine($"warmup_iterations={warmupIterations}");
@@ -499,11 +508,16 @@ static void PrintSampledResult(
     Console.WriteLine($"p95_ms={Percentile(elapsedTimes, 0.95):F3}");
     Console.WriteLine($"max_ms={elapsedTimes[^1]:F3}");
     Console.WriteLine($"stddev_ms={StandardDeviation(elapsedTimes):F3}");
+    Console.WriteLine($"verification_elapsed_samples_ms={JoinDoubles(samples.Select(sample => sample.VerificationElapsedMilliseconds))}");
+    Console.WriteLine($"verification_median_ms={Percentile(verificationTimes, 0.50):F3}");
+    Console.WriteLine($"verification_p95_ms={Percentile(verificationTimes, 0.95):F3}");
     Console.WriteLine($"setup_allocated_samples_bytes={string.Join(',', samples.Select(sample => sample.SetupAllocatedBytes))}");
     Console.WriteLine($"setup_allocated_median_bytes={PercentileLong(setupAllocations, 0.50)}");
     Console.WriteLine($"allocated_samples_bytes={string.Join(',', samples.Select(sample => sample.AllocatedBytes))}");
     Console.WriteLine($"allocated_median_bytes={PercentileLong(allocations, 0.50)}");
     Console.WriteLine($"allocated_max_bytes={allocations[^1]}");
+    Console.WriteLine($"verification_allocated_samples_bytes={string.Join(',', samples.Select(sample => sample.VerificationAllocatedBytes))}");
+    Console.WriteLine($"verification_allocated_median_bytes={PercentileLong(verificationAllocations, 0.50)}");
     Console.WriteLine($"working_set_samples_bytes={string.Join(',', samples.Select(sample => sample.WorkingSetBytes))}");
     Console.WriteLine($"working_set_max_bytes={samples.Max(sample => sample.WorkingSetBytes)}");
     Console.WriteLine($"gc_gen0_samples={string.Join(',', samples.Select(sample => sample.Gen0Collections))}");
@@ -590,11 +604,15 @@ static string FindScenarioDirectory()
 
 internal sealed record ScaleOutcome(string Fingerprint, string Correctness);
 
+internal sealed record ScaleWorkloadResult(string Correctness);
+
 internal sealed record ScaleSample(
     double SetupElapsedMilliseconds,
     double ElapsedMilliseconds,
+    double VerificationElapsedMilliseconds,
     long SetupAllocatedBytes,
     long AllocatedBytes,
+    long VerificationAllocatedBytes,
     long WorkingSetBytes,
     int Gen0Collections,
     int Gen1Collections,

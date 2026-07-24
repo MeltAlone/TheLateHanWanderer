@@ -562,8 +562,13 @@ public sealed partial class WorldEngine
                 break;
             }
 
-            foreach (var edge in GetEdges(current.PlaceId, mode))
+            foreach (var edge in State.GetRouteTraversals(current.PlaceId))
             {
+                if (!edge.Route.MinutesByMode.ContainsKey(mode))
+                {
+                    continue;
+                }
+
                 var nextCost = checked(current.Cost + edge.Route.GetMinutes(mode));
                 if (distances.TryGetValue(edge.NextPlaceId, out var knownCost) && knownCost <= nextCost)
                 {
@@ -621,10 +626,8 @@ public sealed partial class WorldEngine
 
     private ActionInstanceState? FindActiveAction(string actorId)
     {
-        return State.Actions.Values
-            .Where(item => string.Equals(item.ActorId, actorId, StringComparison.Ordinal))
+        return State.GetActionsByActor(actorId)
             .Where(item => item.Status is ActionStatus.Running or ActionStatus.Interrupted)
-            .OrderBy(item => item.Sequence)
             .FirstOrDefault();
     }
 

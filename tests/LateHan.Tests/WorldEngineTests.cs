@@ -86,6 +86,9 @@ public sealed class WorldEngineTests
 
         Assert.Equal(first.State.CurrentMinute, second.State.CurrentMinute);
         Assert.Equal(first.State.ComputeEventFingerprint(), second.State.ComputeEventFingerprint());
+        Assert.Equal(
+            "sha256:fa7d370e9ed12058238a3287dceaf8adcfd247a34aa326f521d8e103e5ee5b8f",
+            first.State.ComputeEventFingerprint());
     }
 
     [Fact]

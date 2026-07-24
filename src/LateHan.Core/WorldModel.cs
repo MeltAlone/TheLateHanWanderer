@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -233,6 +234,8 @@ public sealed record WorldEvent(
 
 public sealed class WorldState
 {
+    private const int StackFingerprintBufferSize = 256;
+    private static readonly byte[] FingerprintSeparator = [0];
     private readonly SortedDictionary<string, ActorState> _actors;
     private readonly SortedDictionary<string, PlaceDefinition> _places;
     private readonly SortedDictionary<string, RouteDefinition> _routes;
@@ -250,6 +253,8 @@ public sealed class WorldState
     private readonly SortedSet<string> _detailDirtyActorIds;
     private readonly Dictionary<string, SortedSet<string>> _actorIdsByAttentionSpace;
     private readonly Dictionary<string, SortedSet<string>> _adjacentPlaceIds;
+    private readonly Dictionary<string, RouteTraversal[]> _routeTraversalsByPlace;
+    private readonly Dictionary<string, List<ActionInstanceState>> _actionsByActor;
 
     public WorldState(
         string scenarioId,
@@ -328,6 +333,8 @@ public sealed class WorldState
 
         _actorIdsByAttentionSpace = BuildAttentionSpaceIndex(_actors.Values);
         _adjacentPlaceIds = BuildAdjacencyIndex(_places.Keys, _routes.Values);
+        _routeTraversalsByPlace = BuildRouteTraversalIndex(_places.Keys, _routes.Values);
+        _actionsByActor = BuildActorActionIndex(_actions.Values);
         if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
         {
             throw new ArgumentException("Scheduled events cannot be earlier than the current world minute.", nameof(scheduledEvents));
@@ -458,7 +465,15 @@ public sealed class WorldState
         {
             throw new InvalidOperationException($"Duplicate action '{action.Id}'.");
         }
+
+        AddActionToIndex(_actionsByActor, action);
     }
+
+    internal IReadOnlyList<ActionInstanceState> GetActionsByActor(string actorId) =>
+        _actionsByActor.TryGetValue(actorId, out var actions) ? actions : [];
+
+    internal IReadOnlyList<RouteTraversal> GetRouteTraversals(string placeId) =>
+        _routeTraversalsByPlace.TryGetValue(placeId, out var traversals) ? traversals : [];
 
     internal void AddActor(ActorState actor)
     {
@@ -554,7 +569,7 @@ public sealed class WorldState
     public string ComputeEventFingerprint()
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        foreach (var worldEvent in _events.OrderBy(item => item.Sequence))
+        foreach (var worldEvent in _events)
         {
             Append(hash, worldEvent.Sequence.ToString(CultureInfo.InvariantCulture));
             Append(hash, worldEvent.Id);
@@ -644,8 +659,28 @@ public sealed class WorldState
 
     private static void Append(IncrementalHash hash, string value)
     {
-        hash.AppendData(Encoding.UTF8.GetBytes(value));
-        hash.AppendData([0]);
+        var byteCount = Encoding.UTF8.GetByteCount(value);
+        if (byteCount <= StackFingerprintBufferSize)
+        {
+            Span<byte> buffer = stackalloc byte[StackFingerprintBufferSize];
+            var written = Encoding.UTF8.GetBytes(value, buffer);
+            hash.AppendData(buffer[..written]);
+        }
+        else
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(byteCount);
+            try
+            {
+                var written = Encoding.UTF8.GetBytes(value, buffer);
+                hash.AppendData(buffer.AsSpan(0, written));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        hash.AppendData(FingerprintSeparator);
     }
 
     private static Dictionary<string, SortedSet<string>> BuildAttentionSpaceIndex(IEnumerable<ActorState> actors)
@@ -674,6 +709,54 @@ public sealed class WorldState
         }
 
         return index;
+    }
+
+    private static Dictionary<string, RouteTraversal[]> BuildRouteTraversalIndex(
+        IEnumerable<string> placeIds,
+        IEnumerable<RouteDefinition> routes)
+    {
+        var builders = placeIds.ToDictionary(
+            placeId => placeId,
+            _ => new List<RouteTraversal>(),
+            StringComparer.Ordinal);
+        foreach (var route in routes.OrderBy(route => route.Id, StringComparer.Ordinal))
+        {
+            builders[route.FromPlaceId].Add(new RouteTraversal(route.ToPlaceId, route));
+            if (route.Bidirectional)
+            {
+                builders[route.ToPlaceId].Add(new RouteTraversal(route.FromPlaceId, route));
+            }
+        }
+
+        return builders.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.ToArray(),
+            StringComparer.Ordinal);
+    }
+
+    private static Dictionary<string, List<ActionInstanceState>> BuildActorActionIndex(
+        IEnumerable<ActionInstanceState> actions)
+    {
+        var index = new Dictionary<string, List<ActionInstanceState>>(StringComparer.Ordinal);
+        foreach (var action in actions.OrderBy(action => action.Sequence))
+        {
+            AddActionToIndex(index, action);
+        }
+
+        return index;
+    }
+
+    private static void AddActionToIndex(
+        Dictionary<string, List<ActionInstanceState>> index,
+        ActionInstanceState action)
+    {
+        if (!index.TryGetValue(action.ActorId, out var actorActions))
+        {
+            actorActions = [];
+            index.Add(action.ActorId, actorActions);
+        }
+
+        actorActions.Add(action);
     }
 
     private void AddActorToAttentionIndex(ActorState actor) =>
@@ -715,6 +798,8 @@ public sealed class WorldState
 
     private static string RouteAttentionKey(string routeId) => $"route:{routeId}";
 }
+
+internal sealed record RouteTraversal(string NextPlaceId, RouteDefinition Route);
 
 public sealed class DomainCommandException : Exception
 {

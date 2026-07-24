@@ -61,6 +61,15 @@ public sealed record ScheduledWorldEvent(
             throw new ArgumentException("Scheduled event kind cannot be empty.", nameof(kind));
         }
 
+        var detailSnapshot = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        if (details is not null)
+        {
+            foreach (var detail in details)
+            {
+                detailSnapshot.Add(detail.Key, detail.Value);
+            }
+        }
+
         return new ScheduledWorldEvent(
             sequence,
             $"scheduled.{sequence:D8}",
@@ -71,11 +80,7 @@ public sealed record ScheduledWorldEvent(
             locationId,
             interruptsPlayer,
             (causeIds ?? []).ToArray(),
-            new ReadOnlyDictionary<string, string>(
-                new SortedDictionary<string, string>(
-                    (details ?? new Dictionary<string, string>())
-                        .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
-                    StringComparer.Ordinal)));
+            new ReadOnlyDictionary<string, string>(detailSnapshot));
     }
 }
 
