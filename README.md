@@ -40,7 +40,7 @@ tools/             史料导入、校验、模拟和调试工具
 - [场景数据契约](docs/architecture/scenario-contract.md)
 - [MVP 行为验收](tests/specs/189-luoyang-crisis.md)
 - [世界规模与性能预算](tests/performance/world-scale-budgets.md)
-- [P6 初始精度与规模报告](docs/architecture/p6-scale-report.md)
+- [P6 精度与规模报告](docs/architecture/p6-scale-report.md)
 - [架构决策记录](docs/decisions/README.md)
 
 ## 运行当前技术尖峰
@@ -124,6 +124,16 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 ```powershell
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
 ```
+
+B2 目标人口核心与 B3 目标消息拓扑使用独立入口；每项执行 1 次热身和 5 次全新世界样本，`scale` 顺序运行两项：
+
+```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b3-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
+```
+
+这两个入口达到 B2 的目标人口数量和 B3 的目标消息拓扑，但 B2 当前仍超出推进预算且缺少混合访问/计划负载，B3 尚无传言失真与冲突信念，因此不代表完整 B2/B3 达标。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 

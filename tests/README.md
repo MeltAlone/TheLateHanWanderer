@@ -17,4 +17,20 @@
 当前可执行项目：
 
 - `LateHan.Tests`：54 项场景加载、规范化哈希、持久旅行、门禁、同刻权限变化、消息谱系、认知隔离、随机流、精度策略、增量脏集、群体升降格守恒和快照续跑测试；
-- `LateHan.Benchmarks`：`delivery` 与 B1-B4 缩小负载的无界面性能和正确性入口；这些缩小负载不代表正式 B1-B6 已达标。
+- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小负载，以及 B2 目标人口核心和 B3 目标消息拓扑的无界面性能与正确性入口；目标数量达成不代表完整 B1-B6 语义和性能已经达标。
+
+日常尖峰可运行不含目标规模负载的 `all`：
+
+```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
+```
+
+目标结构负载独立运行 1 次热身和 5 次样本；`scale` 会顺序执行两项：
+
+```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b3-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
+```
+
+输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。正式对比应分别启动 `b2-scale` 和 `b3-scale`，避免前一负载的 JIT 与进程内存影响后一项。
