@@ -23,6 +23,16 @@ switch (workload)
     case "b3-messages":
         RunMessageFanout();
         break;
+    case "b2-scale":
+        RunCityCrisisScale();
+        break;
+    case "b3-scale":
+        RunMessageTopologyScale();
+        break;
+    case "scale":
+        RunCityCrisisScale();
+        RunMessageTopologyScale();
+        break;
     case "all":
         RunDelivery();
         RunIdleWorld();
@@ -31,7 +41,8 @@ switch (workload)
         RunLodRoundTrips();
         break;
     default:
-        throw new ArgumentException("Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|all");
+        throw new ArgumentException(
+            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b3-scale|scale|all");
 }
 
 void RunDelivery()
@@ -219,6 +230,311 @@ void RunMessageFanout()
         $"messages={engine.State.Messages.Count} linked_messages={linkedMessages} lineage_complete=true");
 }
 
+static void RunCityCrisisScale()
+{
+    RunSampledScale(
+        "b2-city-crisis-target-population",
+        SyntheticScaleWorldFactory.CreateCityCrisisWorld,
+        ExecuteCityCrisisScale);
+}
+
+static ScaleOutcome ExecuteCityCrisisScale(WorldEngine engine)
+{
+    const long twelveHours = 12 * 60;
+    var initialActorCount = engine.State.Actors.Count;
+    var initialGroupCount = engine.State.Groups.Count;
+    var initialPopulationEquivalent = PopulationEquivalent(engine.State);
+    var initialL0Count = engine.State.Actors.Values.Count(
+        actor => actor.DetailLevel == SimulationDetailLevel.L0);
+    var initialL1Count = engine.State.Actors.Values.Count(
+        actor => actor.DetailLevel == SimulationDetailLevel.L1);
+    if (initialL0Count != SyntheticScaleWorldFactory.CityCrisisL0Count ||
+        initialL1Count != SyntheticScaleWorldFactory.CityCrisisL1Count ||
+        initialActorCount != initialL0Count + initialL1Count)
+    {
+        throw new InvalidOperationException(
+            $"B2 synthetic population is invalid: actors={initialActorCount} " +
+            $"l0={initialL0Count} l1={initialL1Count}.");
+    }
+
+    var actions = engine.State.Actors.Values
+        .Where(actor => !string.Equals(
+            actor.PlaceId,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            StringComparison.Ordinal))
+        .OrderBy(actor => actor.Id, StringComparer.Ordinal)
+        .Select(actor => engine.BeginTravel(
+            actor.Id,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            TravelMode.Walk))
+        .ToArray();
+    var dirtyAtStart = engine.State.DetailDirtyActorIds.ToArray();
+    var startDetail = engine.RebalanceDirtyActorDetailLevels();
+    AssertDirtyRebalance("B2 start", dirtyAtStart, startDetail);
+
+    var playerAction = actions.Single(action =>
+        string.Equals(action.ActorId, engine.State.PlayerActorId, StringComparison.Ordinal));
+    _ = engine.AdvanceAction(playerAction.Id);
+    if (engine.State.CurrentMinute < twelveHours)
+    {
+        _ = engine.Wait(twelveHours - engine.State.CurrentMinute);
+    }
+
+    var dirtyAtEnd = engine.State.DetailDirtyActorIds.ToArray();
+    var finalDetail = engine.RebalanceDirtyActorDetailLevels();
+    AssertDirtyRebalance("B2 finish", dirtyAtEnd, finalDetail);
+
+    var finalPopulationEquivalent = PopulationEquivalent(engine.State);
+    var allActorsAtDestination = engine.State.Actors.Values.All(actor => string.Equals(
+        actor.PlaceId,
+        SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+        StringComparison.Ordinal));
+    var allActorsAtL0 = engine.State.Actors.Values.All(
+        actor => actor.DetailLevel == SimulationDetailLevel.L0);
+    var group = engine.State.Groups.Values.Single();
+    if (actions.Any(action => action.Status != ActionStatus.Completed) ||
+        !allActorsAtDestination ||
+        !allActorsAtL0 ||
+        engine.State.DetailDirtyActorIds.Count != 0 ||
+        finalPopulationEquivalent != initialPopulationEquivalent ||
+        engine.State.Actors.Count != initialActorCount ||
+        engine.State.Groups.Count != initialGroupCount ||
+        group.Count != SyntheticScaleWorldFactory.CityCrisisGroupPopulation)
+    {
+        throw new InvalidOperationException(
+            "B2 target-population invariants failed: " +
+            $"completed={actions.Count(action => action.Status == ActionStatus.Completed)}/{actions.Length} " +
+            $"at_destination={allActorsAtDestination} all_l0={allActorsAtL0} " +
+            $"population={finalPopulationEquivalent}/{initialPopulationEquivalent} " +
+            $"group_population={group.Count} dirty={engine.State.DetailDirtyActorIds.Count}.");
+    }
+
+    return new ScaleOutcome(
+        engine.State.ComputeEventFingerprint(),
+        $"places={engine.State.Places.Count} named_actors={initialActorCount} " +
+        $"initial_l0={initialL0Count} initial_l1={initialL1Count} " +
+        $"concurrent_travelers={actions.Length} population_equivalent={finalPopulationEquivalent} " +
+        $"l3_group_population={group.Count} processed_events={engine.State.Events.Count} " +
+        $"detail_assessments={startDetail.Assessments.Count + finalDetail.Assessments.Count} " +
+        "incremental_dirty_exact=true population_conserved=true l3_not_expanded=true");
+}
+
+static void RunMessageTopologyScale()
+{
+    RunSampledScale(
+        "b3-message-target-topology",
+        SyntheticScaleWorldFactory.CreateMessageTopologyWorld,
+        ExecuteMessageTopologyScale);
+}
+
+static ScaleOutcome ExecuteMessageTopologyScale(WorldEngine engine)
+{
+    var expectedCarrierCount = SyntheticScaleWorldFactory.PlaceCount *
+                               SyntheticScaleWorldFactory.MessageCarriersPerPlace;
+    if (engine.State.Actors.Count != expectedCarrierCount + 1)
+    {
+        throw new InvalidOperationException(
+            $"B3 synthetic carrier count is invalid: {engine.State.Actors.Count - 1}/{expectedCarrierCount}.");
+    }
+
+    for (var placeIndex = 0; placeIndex < SyntheticScaleWorldFactory.PlaceCount; placeIndex++)
+    {
+        var placeId = SyntheticScaleWorldFactory.PlaceId(placeIndex);
+        if (!string.Equals(engine.State.Actors[engine.State.PlayerActorId].PlaceId, placeId, StringComparison.Ordinal))
+        {
+            engine.Move(engine.State.PlayerActorId, placeId, TravelMode.Walk);
+        }
+
+        var senderId = engine.State.PlayerActorId;
+        for (var carrierIndex = 0;
+             carrierIndex < SyntheticScaleWorldFactory.MessageCarriersPerPlace;
+             carrierIndex++)
+        {
+            var recipientId = SyntheticScaleWorldFactory.CarrierId(placeIndex, carrierIndex);
+            _ = engine.Tell(senderId, recipientId, SyntheticScaleWorldFactory.OfficialPropositionId);
+            senderId = recipientId;
+        }
+    }
+
+    var expectedMessageCount = expectedCarrierCount;
+    var expectedLinkedMessageCount = SyntheticScaleWorldFactory.PlaceCount *
+                                     (SyntheticScaleWorldFactory.MessageCarriersPerPlace - 1);
+    var messages = engine.State.Messages.Values.ToArray();
+    var linkedMessageCount = messages.Count(message => message.ParentMessageId is not null);
+    var messagesById = messages.ToDictionary(message => message.Id, StringComparer.Ordinal);
+    var lineageIsValid = messages
+        .Where(message => message.ParentMessageId is not null)
+        .All(message =>
+        {
+            var parent = messagesById[message.ParentMessageId!];
+            return string.Equals(parent.RecipientId, message.SenderId, StringComparison.Ordinal) &&
+                   string.Equals(parent.PropositionId, message.PropositionId, StringComparison.Ordinal);
+        });
+    var everyCarrierHasMessageBackedBelief = engine.State.Actors.Keys
+        .Where(actorId => !string.Equals(actorId, engine.State.PlayerActorId, StringComparison.Ordinal))
+        .All(actorId => engine.State.Beliefs.Values.Any(belief =>
+            string.Equals(belief.HolderId, actorId, StringComparison.Ordinal) &&
+            string.Equals(belief.PropositionId, SyntheticScaleWorldFactory.OfficialPropositionId, StringComparison.Ordinal) &&
+            belief.SourceEventId is { } sourceEventId &&
+            messages.Any(message =>
+                string.Equals(message.RecipientId, actorId, StringComparison.Ordinal) &&
+                string.Equals(message.DeliveredEventId, sourceEventId, StringComparison.Ordinal))));
+    if (messages.Length != expectedMessageCount ||
+        linkedMessageCount != expectedLinkedMessageCount ||
+        !lineageIsValid ||
+        !everyCarrierHasMessageBackedBelief)
+    {
+        throw new InvalidOperationException(
+            "B3 target-topology invariants failed: " +
+            $"messages={messages.Length}/{expectedMessageCount} " +
+            $"linked={linkedMessageCount}/{expectedLinkedMessageCount} " +
+            $"lineage={lineageIsValid} message_backed_beliefs={everyCarrierHasMessageBackedBelief}.");
+    }
+
+    return new ScaleOutcome(
+        engine.State.ComputeEventFingerprint(),
+        $"places={engine.State.Places.Count} carriers={expectedCarrierCount} " +
+        $"messages={messages.Length} linked_messages={linkedMessageCount} " +
+        $"processed_events={engine.State.Events.Count} lineage_complete=true " +
+        "message_backed_beliefs=true no_bulk_belief_write=true");
+}
+
+static void AssertDirtyRebalance(
+    string phase,
+    IReadOnlyList<string> dirtyActorIds,
+    DetailRebalanceResult result)
+{
+    var assessedActorIds = result.Assessments.Select(assessment => assessment.ActorId).ToArray();
+    if (!dirtyActorIds.SequenceEqual(assessedActorIds, StringComparer.Ordinal))
+    {
+        throw new InvalidOperationException(
+            $"{phase} detail rebalance did not assess exactly the dirty actor set.");
+    }
+}
+
+static long PopulationEquivalent(WorldState state) =>
+    state.Actors.Count + state.Groups.Values.Sum(group => (long)group.Count);
+
+static void RunSampledScale(
+    string workload,
+    Func<WorldState> worldFactory,
+    Func<WorldEngine, ScaleOutcome> execute)
+{
+    const int warmupIterations = 1;
+    const int sampleCount = 5;
+    for (var index = 0; index < warmupIterations; index++)
+    {
+        _ = MeasureScaleSample(worldFactory, execute);
+    }
+
+    var samples = new ScaleSample[sampleCount];
+    for (var index = 0; index < samples.Length; index++)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        samples[index] = MeasureScaleSample(worldFactory, execute);
+    }
+
+    var fingerprints = samples.Select(sample => sample.Outcome.Fingerprint).Distinct(StringComparer.Ordinal).ToArray();
+    var correctnessResults = samples.Select(sample => sample.Outcome.Correctness).Distinct(StringComparer.Ordinal).ToArray();
+    if (fingerprints.Length != 1 || correctnessResults.Length != 1)
+    {
+        throw new InvalidOperationException(
+            $"Scale samples diverged: fingerprints={fingerprints.Length} correctness={correctnessResults.Length}.");
+    }
+
+    PrintSampledResult(workload, warmupIterations, samples);
+}
+
+static ScaleSample MeasureScaleSample(
+    Func<WorldState> worldFactory,
+    Func<WorldEngine, ScaleOutcome> execute)
+{
+    var setupAllocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+    var setupStopwatch = Stopwatch.StartNew();
+    var engine = new WorldEngine(worldFactory());
+    setupStopwatch.Stop();
+    var setupAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - setupAllocatedBefore;
+
+    var gc0Before = GC.CollectionCount(0);
+    var gc1Before = GC.CollectionCount(1);
+    var gc2Before = GC.CollectionCount(2);
+    var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+    var stopwatch = Stopwatch.StartNew();
+    var outcome = execute(engine);
+    stopwatch.Stop();
+    var allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
+
+    return new ScaleSample(
+        setupStopwatch.Elapsed.TotalMilliseconds,
+        stopwatch.Elapsed.TotalMilliseconds,
+        setupAllocatedBytes,
+        allocatedBytes,
+        Process.GetCurrentProcess().WorkingSet64,
+        GC.CollectionCount(0) - gc0Before,
+        GC.CollectionCount(1) - gc1Before,
+        GC.CollectionCount(2) - gc2Before,
+        outcome);
+}
+
+static void PrintSampledResult(
+    string workload,
+    int warmupIterations,
+    IReadOnlyList<ScaleSample> samples)
+{
+    var setupTimes = samples.Select(sample => sample.SetupElapsedMilliseconds).Order().ToArray();
+    var elapsedTimes = samples.Select(sample => sample.ElapsedMilliseconds).Order().ToArray();
+    var setupAllocations = samples.Select(sample => sample.SetupAllocatedBytes).Order().ToArray();
+    var allocations = samples.Select(sample => sample.AllocatedBytes).Order().ToArray();
+
+    Console.WriteLine($"workload={workload}");
+    Console.WriteLine($"warmup_iterations={warmupIterations}");
+    Console.WriteLine($"samples={samples.Count}");
+    Console.WriteLine($"setup_elapsed_samples_ms={JoinDoubles(samples.Select(sample => sample.SetupElapsedMilliseconds))}");
+    Console.WriteLine($"setup_median_ms={Percentile(setupTimes, 0.50):F3}");
+    Console.WriteLine($"setup_p95_ms={Percentile(setupTimes, 0.95):F3}");
+    Console.WriteLine($"elapsed_samples_ms={JoinDoubles(samples.Select(sample => sample.ElapsedMilliseconds))}");
+    Console.WriteLine($"median_ms={Percentile(elapsedTimes, 0.50):F3}");
+    Console.WriteLine($"p95_ms={Percentile(elapsedTimes, 0.95):F3}");
+    Console.WriteLine($"max_ms={elapsedTimes[^1]:F3}");
+    Console.WriteLine($"stddev_ms={StandardDeviation(elapsedTimes):F3}");
+    Console.WriteLine($"setup_allocated_samples_bytes={string.Join(',', samples.Select(sample => sample.SetupAllocatedBytes))}");
+    Console.WriteLine($"setup_allocated_median_bytes={PercentileLong(setupAllocations, 0.50)}");
+    Console.WriteLine($"allocated_samples_bytes={string.Join(',', samples.Select(sample => sample.AllocatedBytes))}");
+    Console.WriteLine($"allocated_median_bytes={PercentileLong(allocations, 0.50)}");
+    Console.WriteLine($"allocated_max_bytes={allocations[^1]}");
+    Console.WriteLine($"working_set_samples_bytes={string.Join(',', samples.Select(sample => sample.WorkingSetBytes))}");
+    Console.WriteLine($"working_set_max_bytes={samples.Max(sample => sample.WorkingSetBytes)}");
+    Console.WriteLine($"gc_gen0_samples={string.Join(',', samples.Select(sample => sample.Gen0Collections))}");
+    Console.WriteLine($"gc_gen1_samples={string.Join(',', samples.Select(sample => sample.Gen1Collections))}");
+    Console.WriteLine($"gc_gen2_samples={string.Join(',', samples.Select(sample => sample.Gen2Collections))}");
+    Console.WriteLine($"fingerprint={samples[0].Outcome.Fingerprint}");
+    Console.WriteLine($"fingerprint_consistent=true");
+    Console.WriteLine($"correctness={samples[0].Outcome.Correctness}");
+}
+
+static double Percentile(IReadOnlyList<double> sortedValues, double percentile)
+{
+    var index = Math.Max(0, (int)Math.Ceiling(percentile * sortedValues.Count) - 1);
+    return sortedValues[index];
+}
+
+static long PercentileLong(IReadOnlyList<long> sortedValues, double percentile)
+{
+    var index = Math.Max(0, (int)Math.Ceiling(percentile * sortedValues.Count) - 1);
+    return sortedValues[index];
+}
+
+static double StandardDeviation(IReadOnlyList<double> values)
+{
+    var mean = values.Average();
+    return Math.Sqrt(values.Sum(value => Math.Pow(value - mean, 2)) / values.Count);
+}
+
+static string JoinDoubles(IEnumerable<double> values) =>
+    string.Join(',', values.Select(value => value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)));
+
 static void GatherActors(WorldEngine engine, string destinationPlaceId)
 {
     var actions = engine.State.Actors.Values
@@ -271,3 +587,16 @@ static string FindScenarioDirectory()
 
     throw new DirectoryNotFoundException("Cannot locate the scenario directory.");
 }
+
+internal sealed record ScaleOutcome(string Fingerprint, string Correctness);
+
+internal sealed record ScaleSample(
+    double SetupElapsedMilliseconds,
+    double ElapsedMilliseconds,
+    long SetupAllocatedBytes,
+    long AllocatedBytes,
+    long WorkingSetBytes,
+    int Gen0Collections,
+    int Gen1Collections,
+    int Gen2Collections,
+    ScaleOutcome Outcome);
