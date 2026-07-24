@@ -317,17 +317,23 @@ public sealed class WorldEngineTests
             "person.player_clerk",
             "place.luoyang.sili_office",
             TravelMode.Walk);
-        var exception = Assert.Throws<DomainCommandException>(() => engine.Deliver(
+        var delivery = engine.Deliver(
             "person.player_clerk",
             "item.sealed_note_to_yuan_shao",
-            "person.yuan_shao"));
+            "person.yuan_shao");
 
         Assert.Equal(ActionStatus.Completed, travel.Status);
-        Assert.Equal(22, engine.State.CurrentMinute);
+        Assert.Equal(ActionStatus.Blocked, delivery.Status);
+        Assert.Equal(27, engine.State.CurrentMinute);
         Assert.Equal("place.luoyang.henan_office", engine.State.Actors["person.yuan_shao"].LocationId);
-        Assert.Equal("recipient_not_present", exception.Code);
         Assert.Equal("person.player_clerk", engine.State.Items["item.sealed_note_to_yuan_shao"].HolderId);
         Assert.Equal("open", engine.State.Commitments["commitment.player.deliver_note"].Status);
+        Assert.Equal(
+            new[] { "delivery_started", "delivery_failed" },
+            delivery.Events.Select(worldEvent => worldEvent.Type));
+        Assert.Equal(
+            "recipient_absent_proxy_refused",
+            delivery.Events[^1].Details["reason"]);
     }
 
     [Fact]

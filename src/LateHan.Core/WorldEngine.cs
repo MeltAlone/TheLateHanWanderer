@@ -164,11 +164,6 @@ public sealed partial class WorldEngine
             throw new DomainCommandException("actor_in_transit", $"Actor '{actorId}' cannot deliver while in transit.");
         }
 
-        if (recipient.PlaceId is null || actor.PlaceId != recipient.PlaceId)
-        {
-            throw new DomainCommandException("recipient_not_present", $"Recipient '{recipientId}' is not at '{actor.PlaceId}'.");
-        }
-
         if (!State.Items.TryGetValue(itemId, out var item))
         {
             throw new DomainCommandException("unknown_item", $"Unknown item '{itemId}'.");
@@ -180,6 +175,7 @@ public sealed partial class WorldEngine
         }
 
         var startMinute = State.CurrentMinute;
+        var recipientPresentAtStart = recipient.PlaceId is not null && actor.PlaceId == recipient.PlaceId;
         var started = AppendEvent(
             "delivery_started",
             startMinute,
@@ -217,7 +213,9 @@ public sealed partial class WorldEngine
                 [started.Id],
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["reason"] = "recipient_left",
+                    ["reason"] = recipientPresentAtStart
+                        ? "recipient_left"
+                        : "recipient_absent_proxy_refused",
                 });
             return new ActionResult(
                 startMinute,

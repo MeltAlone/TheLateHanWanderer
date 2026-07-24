@@ -224,6 +224,7 @@ internal sealed class CliSession
         Console.WriteLine("  dev queue");
         Console.WriteLine("  dev rng <domain> <entity-id> [count]");
         Console.WriteLine("  dev schedule <minute> <phase> <subject-id> <kind> [interrupt]");
+        Console.WriteLine("  dev relocate <minute> <person-id> <place-id>");
         Console.WriteLine("  dev interrupt-travel <action-id> <minute> <reason>");
         Console.WriteLine("  dev promote <group-id> [l0|l1|l2]");
         Console.WriteLine("  dev demote <person-id>");
@@ -497,7 +498,21 @@ internal sealed class CliSession
         }
 
         var result = _engine.Deliver(_engine.State.PlayerActorId, tokens[1], tokens[3]);
-        Console.WriteLine($"已经实际交付；耗时 {result.EndMinute - result.StartMinute} 分钟。");
+        var minutes = result.EndMinute - result.StartMinute;
+        if (result.Status == ActionStatus.Completed)
+        {
+            Console.WriteLine($"已经实际交付；耗时 {minutes} 分钟。");
+            return;
+        }
+
+        var failure = result.Events.LastOrDefault(worldEvent => worldEvent.Type == "delivery_failed");
+        var reason = failure?.Details.GetValueOrDefault("reason") switch
+        {
+            "recipient_absent_proxy_refused" => "接收人已经离开，门吏拒绝代收",
+            "recipient_left" => "接收人在交付过程中离开",
+            _ => "交付未完成",
+        };
+        Console.WriteLine($"{reason}；耗时 {minutes} 分钟，物品仍由你持有。");
     }
 
     private void ExecuteRead(string[] tokens)
@@ -702,7 +717,7 @@ internal sealed class CliSession
     {
         if (tokens.Length < 2)
         {
-            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|detail-dirty|rebalance-detail> ...");
+            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|relocate|interrupt-travel|promote|demote|detail-dirty|rebalance-detail> ...");
             return;
         }
 
@@ -716,6 +731,9 @@ internal sealed class CliSession
                 break;
             case "schedule":
                 ScheduleDeveloperEvent(tokens);
+                break;
+            case "relocate":
+                ScheduleActorRelocation(tokens);
                 break;
             case "interrupt-travel":
                 ScheduleTravelInterruption(tokens);
@@ -733,7 +751,7 @@ internal sealed class CliSession
                 PrintDirtyDetailActors(tokens);
                 break;
             default:
-                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|detail-dirty|rebalance-detail> ...");
+                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|relocate|interrupt-travel|promote|demote|detail-dirty|rebalance-detail> ...");
                 break;
         }
     }
@@ -875,6 +893,27 @@ internal sealed class CliSession
 
         var scheduled = _engine.ScheduleExternalTravelInterruption(tokens[2], minute, tokens[4]);
         Console.WriteLine($"已排定旅行中断 {scheduled.Id}；回放已标记为 modified。");
+    }
+
+    private void ScheduleActorRelocation(string[] tokens)
+    {
+        if (tokens.Length != 5 ||
+            !long.TryParse(tokens[2], NumberStyles.None, CultureInfo.InvariantCulture, out var minute))
+        {
+            Console.WriteLine("invalid:syntax 用法：dev relocate <minute> <person-id> <place-id>");
+            return;
+        }
+
+        var scheduled = _engine.ScheduleExternalIntervention(
+            minute,
+            ScheduledEventPhase.ArrivalAndDeparture,
+            tokens[3],
+            "actor_relocated",
+            details: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["destination_place_id"] = tokens[4],
+            });
+        Console.WriteLine($"已排定人物迁移 {scheduled.Id}；回放已标记为 modified。");
     }
 
     private void ExecuteSave(string[] tokens)
