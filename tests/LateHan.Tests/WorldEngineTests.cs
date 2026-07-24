@@ -319,6 +319,43 @@ public sealed class WorldEngineTests
     }
 
     [Fact]
+    public void TravelerCanResumeAcrossMultiplePlayerInterruptions()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var action = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.eastern_road",
+            TravelMode.Walk);
+        engine.Schedule(
+            10,
+            ScheduledEventPhase.SummaryAndNotification,
+            "crisis.alert.1",
+            "city_crisis_alert",
+            interruptsPlayer: true);
+        engine.Schedule(
+            20,
+            ScheduledEventPhase.SummaryAndNotification,
+            "crisis.alert.2",
+            "city_crisis_alert",
+            interruptsPlayer: true);
+
+        var first = engine.AdvanceAction(action.Id);
+        var second = engine.ResumeTravel(action.Id, TravelMode.Walk);
+        var completed = engine.ResumeTravel(action.Id, TravelMode.Walk);
+
+        Assert.Equal(ActionStatus.Interrupted, first.Status);
+        Assert.Equal(10, first.EndMinute);
+        Assert.Equal(ActionStatus.Interrupted, second.Status);
+        Assert.Equal(20, second.EndMinute);
+        Assert.Equal(ActionStatus.Completed, completed.Status);
+        Assert.Equal("place.luoyang.eastern_road", engine.State.Actors[action.ActorId].PlaceId);
+        Assert.Equal(2, engine.State.Events.Count(item =>
+            item.Type == "travel_interrupted" && item.SubjectIds.Contains(action.ActorId)));
+        Assert.Equal(2, engine.State.Events.Count(item =>
+            item.Type == "travel_resumed" && item.SubjectIds.Contains(action.ActorId)));
+    }
+
+    [Fact]
     public void InterruptedTravelerCanWaitInPlaceAndRemoteTransitDoesNotBreakLook()
     {
         var engine = RepositoryFixture.CreateEngine();

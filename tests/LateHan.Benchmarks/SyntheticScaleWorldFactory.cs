@@ -6,57 +6,73 @@ internal static class SyntheticScaleWorldFactory
     public const int CityCrisisL0Count = 50;
     public const int CityCrisisL1Count = 500;
     public const int CityCrisisGroupPopulation = 2_000_000;
+    public const int MixedCityCrisisPlanCount = 10;
+    public const int MixedCityCrisisVisitorCount = 20;
+    public const int MixedCityCrisisMessageCount = 40;
     public const int MessageCarriersPerPlace = 4;
     public const string PlayerActorId = "person.synthetic.player";
     public const string PublicAccessRuleId = "access.synthetic.public";
     public const string OfficialPropositionId = "proposition.synthetic.official_notice";
     public const string CityCrisisDestinationPlaceId = "place.synthetic.city.25";
+    public const string MixedCityCrisisPlanDestinationPlaceId = "place.synthetic.city.24";
+    public const string MixedCityCrisisVisitPlaceId = "place.synthetic.city.26";
+    public const string RegionalPopulationGroupId = "group.synthetic.regional_population";
 
     public static WorldState CreateCityCrisisWorld()
     {
-        var actors = new List<ActorState>
-        {
-            new(
-                PlayerActorId,
-                "Synthetic Player",
-                PlaceId(0),
-                transit: null,
-                detailLevel: SimulationDetailLevel.L0),
-        };
+        return CreateWorld(
+            "synthetic-b2-city-crisis",
+            CreateCityCrisisActors(),
+            groups: CreateCityCrisisGroups());
+    }
 
-        for (var index = 1; index < CityCrisisL0Count; index++)
-        {
-            actors.Add(new ActorState(
-                $"person.synthetic.l0.{index:D3}",
-                $"Synthetic L0 {index:D3}",
-                PlaceId(0),
-                transit: null,
-                detailLevel: SimulationDetailLevel.L0));
-        }
-
-        for (var index = 0; index < CityCrisisL1Count; index++)
-        {
-            actors.Add(new ActorState(
-                $"person.synthetic.l1.{index:D3}",
-                $"Synthetic L1 {index:D3}",
-                PlaceId(index % PlaceCount),
-                transit: null,
-                detailLevel: SimulationDetailLevel.L1));
-        }
-
-        GroupState[] groups =
+    public static WorldState CreateMixedCityCrisisWorld()
+    {
+        var planOwnerIds = Enumerable.Range(0, MixedCityCrisisPlanCount)
+            .Select(MixedCityCrisisPlanOwnerId)
+            .ToArray();
+        var items = planOwnerIds.Select((ownerId, index) => new ItemState(
+            MixedCityCrisisPlanItemId(index),
+            $"Synthetic Crisis Report {index:D2}",
+            "written_report",
+            ownerId,
+            authorId: PlayerActorId,
+            intendedRecipientId: ownerId,
+            propositionIds: [OfficialPropositionId]))
+            .ToArray();
+        var plans = planOwnerIds.Select((ownerId, index) => new PlanState(
+            MixedCityCrisisPlanId(index),
+            ownerId,
+            "inspect_crisis_destination",
+            "awaiting_written_report",
+            beliefRequirementIds: [],
+            nextEvaluationMinute: 180,
+            PlanEvaluationRule.WrittenReportInspection,
+            triggerItemId: MixedCityCrisisPlanItemId(index),
+            triggerPropositionId: OfficialPropositionId,
+            destinationPlaceId: MixedCityCrisisPlanDestinationPlaceId,
+            confidenceThresholdBp: 0,
+            reevaluationIntervalMinutes: 60))
+            .ToArray();
+        BeliefState[] beliefs =
         [
             new(
-                "group.synthetic.regional_population",
-                "Synthetic Regional Population",
-                "regional_population",
-                CityCrisisGroupPopulation,
-                PlaceId(49),
-                organizationId: null,
-                "synthetic-resident"),
+                "belief.synthetic.mixed.official_notice",
+                PlayerActorId,
+                OfficialPropositionId,
+                confidenceBp: 10000,
+                "official_source",
+                acquiredAtMinute: 0,
+                sourceEventId: "evidence.synthetic.mixed.official_notice"),
         ];
 
-        return CreateWorld("synthetic-b2-city-crisis", actors, groups: groups);
+        return CreateWorld(
+            "synthetic-b2-city-crisis-mixed",
+            CreateCityCrisisActors(),
+            items: items,
+            beliefs: beliefs,
+            plans: plans,
+            groups: CreateCityCrisisGroups());
     }
 
     public static WorldState CreateMessageTopologyWorld()
@@ -104,10 +120,65 @@ internal static class SyntheticScaleWorldFactory
     public static string CarrierId(int placeIndex, int carrierIndex) =>
         $"person.synthetic.carrier.{placeIndex:D2}.{carrierIndex}";
 
+    public static string MixedCityCrisisPlanOwnerId(int index) => $"person.synthetic.l1.{index:D3}";
+
+    public static string MixedCityCrisisPlanId(int index) => $"plan.synthetic.crisis.{index:D2}";
+
+    private static string MixedCityCrisisPlanItemId(int index) => $"item.synthetic.crisis_report.{index:D2}";
+
+    private static List<ActorState> CreateCityCrisisActors()
+    {
+        var actors = new List<ActorState>
+        {
+            new(
+                PlayerActorId,
+                "Synthetic Player",
+                PlaceId(0),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L0),
+        };
+
+        for (var index = 1; index < CityCrisisL0Count; index++)
+        {
+            actors.Add(new ActorState(
+                $"person.synthetic.l0.{index:D3}",
+                $"Synthetic L0 {index:D3}",
+                PlaceId(0),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L0));
+        }
+
+        for (var index = 0; index < CityCrisisL1Count; index++)
+        {
+            actors.Add(new ActorState(
+                $"person.synthetic.l1.{index:D3}",
+                $"Synthetic L1 {index:D3}",
+                PlaceId(index % PlaceCount),
+                transit: null,
+                detailLevel: SimulationDetailLevel.L1));
+        }
+
+        return actors;
+    }
+
+    private static GroupState[] CreateCityCrisisGroups() =>
+    [
+        new(
+            RegionalPopulationGroupId,
+            "Synthetic Regional Population",
+            "regional_population",
+            CityCrisisGroupPopulation,
+            PlaceId(49),
+            organizationId: null,
+            "synthetic-resident"),
+    ];
+
     private static WorldState CreateWorld(
         string scenarioId,
         IEnumerable<ActorState> actors,
+        IEnumerable<ItemState>? items = null,
         IEnumerable<BeliefState>? beliefs = null,
+        IEnumerable<PlanState>? plans = null,
         IEnumerable<GroupState>? groups = null)
     {
         var places = Enumerable.Range(0, PlaceCount)
@@ -148,9 +219,10 @@ internal static class SyntheticScaleWorldFactory
             actors,
             places,
             routes,
-            items: [],
+            items: items ?? [],
             commitments: [],
             beliefs: beliefs,
+            plans: plans,
             accessRules: accessRules,
             groups: groups);
     }

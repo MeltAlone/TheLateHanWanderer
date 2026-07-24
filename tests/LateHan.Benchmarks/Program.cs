@@ -26,11 +26,15 @@ switch (workload)
     case "b2-scale":
         RunCityCrisisScale();
         break;
+    case "b2-mixed":
+        RunMixedCityCrisisScale();
+        break;
     case "b3-scale":
         RunMessageTopologyScale();
         break;
     case "scale":
         RunCityCrisisScale();
+        RunMixedCityCrisisScale();
         RunMessageTopologyScale();
         break;
     case "all":
@@ -42,7 +46,7 @@ switch (workload)
         break;
     default:
         throw new ArgumentException(
-            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b3-scale|scale|all");
+            "Usage: delivery|b1-idle|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|scale|all");
 }
 
 void RunDelivery()
@@ -318,6 +322,233 @@ static ScaleWorkloadResult ExecuteCityCrisisScale(WorldEngine engine)
         "incremental_dirty_exact=true population_conserved=true l3_not_expanded=true");
 }
 
+static void RunMixedCityCrisisScale()
+{
+    RunSampledScale(
+        "b2-city-crisis-mixed",
+        SyntheticScaleWorldFactory.CreateMixedCityCrisisWorld,
+        ExecuteMixedCityCrisisScale);
+}
+
+static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
+{
+    const long twelveHours = 12 * 60;
+    int[] playerInterruptMinutes = [20, 40];
+    int[] remoteTickMinutes = [240, 480, 720];
+    var initialActorCount = engine.State.Actors.Count;
+    var initialGroupCount = engine.State.Groups.Count;
+    var initialPopulationEquivalent = PopulationEquivalent(engine.State);
+    var initialL0Count = engine.State.Actors.Values.Count(
+        actor => actor.DetailLevel == SimulationDetailLevel.L0);
+    var initialL1Count = engine.State.Actors.Values.Count(
+        actor => actor.DetailLevel == SimulationDetailLevel.L1);
+    var planOwnerIds = Enumerable.Range(0, SyntheticScaleWorldFactory.MixedCityCrisisPlanCount)
+        .Select(SyntheticScaleWorldFactory.MixedCityCrisisPlanOwnerId)
+        .ToHashSet(StringComparer.Ordinal);
+    if (initialL0Count != SyntheticScaleWorldFactory.CityCrisisL0Count ||
+        initialL1Count != SyntheticScaleWorldFactory.CityCrisisL1Count ||
+        initialActorCount != initialL0Count + initialL1Count ||
+        engine.State.Plans.Count != SyntheticScaleWorldFactory.MixedCityCrisisPlanCount)
+    {
+        throw new InvalidOperationException(
+            $"Mixed B2 synthetic world is invalid: actors={initialActorCount} " +
+            $"l0={initialL0Count} l1={initialL1Count} plans={engine.State.Plans.Count}.");
+    }
+
+    engine.InitializePlans();
+    foreach (var minute in playerInterruptMinutes)
+    {
+        engine.Schedule(
+            minute,
+            ScheduledEventPhase.SummaryAndNotification,
+            SyntheticScaleWorldFactory.RegionalPopulationGroupId,
+            "city_crisis_alert",
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            interruptsPlayer: true,
+            details: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["alert_minute"] = minute.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            });
+    }
+
+    foreach (var minute in remoteTickMinutes)
+    {
+        engine.Schedule(
+            minute,
+            ScheduledEventPhase.SummaryAndNotification,
+            SyntheticScaleWorldFactory.RegionalPopulationGroupId,
+            "remote_world_tick",
+            SyntheticScaleWorldFactory.PlaceId(49),
+            details: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["cadence_minutes"] = "240",
+            });
+    }
+
+    var actions = engine.State.Actors.Values
+        .Where(actor => !string.Equals(
+            actor.PlaceId,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            StringComparison.Ordinal))
+        .OrderBy(actor => actor.Id, StringComparer.Ordinal)
+        .Select(actor => engine.BeginTravel(
+            actor.Id,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            TravelMode.Walk))
+        .ToArray();
+    var dirtyAtStart = engine.State.DetailDirtyActorIds.ToArray();
+    var startDetail = engine.RebalanceDirtyActorDetailLevels();
+    AssertDirtyRebalance("Mixed B2 start", dirtyAtStart, startDetail);
+
+    var playerAction = actions.Single(action =>
+        string.Equals(action.ActorId, engine.State.PlayerActorId, StringComparison.Ordinal));
+    var firstAdvanceStopwatch = Stopwatch.StartNew();
+    var firstAdvance = engine.AdvanceAction(playerAction.Id);
+    firstAdvanceStopwatch.Stop();
+    var firstResumeStopwatch = Stopwatch.StartNew();
+    var firstResume = engine.ResumeTravel(playerAction.Id, TravelMode.Walk);
+    firstResumeStopwatch.Stop();
+    var secondResume = engine.ResumeTravel(playerAction.Id, TravelMode.Walk);
+    if (firstAdvance.Status != ActionStatus.Interrupted || firstAdvance.EndMinute != playerInterruptMinutes[0] ||
+        firstResume.Status != ActionStatus.Interrupted || firstResume.EndMinute != playerInterruptMinutes[1] ||
+        secondResume.Status != ActionStatus.Completed)
+    {
+        throw new InvalidOperationException(
+            "Mixed B2 player interruption protocol failed: " +
+            $"first={firstAdvance.Status}@{firstAdvance.EndMinute} " +
+            $"second={firstResume.Status}@{firstResume.EndMinute} final={secondResume.Status}.");
+    }
+
+    var visitorIds = engine.State.Actors.Values
+        .Where(actor => string.Equals(
+            actor.PlaceId,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            StringComparison.Ordinal))
+        .Where(actor => !string.Equals(actor.Id, engine.State.PlayerActorId, StringComparison.Ordinal))
+        .Where(actor => !planOwnerIds.Contains(actor.Id))
+        .OrderBy(actor => actor.Id, StringComparer.Ordinal)
+        .Take(SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount)
+        .Select(actor => actor.Id)
+        .ToArray();
+    foreach (var visitorId in visitorIds)
+    {
+        var entered = engine.Enter(visitorId, SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId);
+        var returned = engine.Enter(visitorId, SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId);
+        if (entered.Status != ActionStatus.Completed || returned.Status != ActionStatus.Completed)
+        {
+            throw new InvalidOperationException($"Mixed B2 visit failed for '{visitorId}'.");
+        }
+    }
+
+    var messageRecipientIds = engine.State.Actors.Values
+        .Where(actor => string.Equals(
+            actor.PlaceId,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            StringComparison.Ordinal))
+        .Where(actor => !string.Equals(actor.Id, engine.State.PlayerActorId, StringComparison.Ordinal))
+        .Where(actor => !planOwnerIds.Contains(actor.Id))
+        .OrderBy(actor => actor.Id, StringComparer.Ordinal)
+        .Take(SyntheticScaleWorldFactory.MixedCityCrisisMessageCount)
+        .Select(actor => actor.Id)
+        .ToArray();
+    var senderId = engine.State.PlayerActorId;
+    foreach (var recipientId in messageRecipientIds)
+    {
+        _ = engine.Tell(senderId, recipientId, SyntheticScaleWorldFactory.OfficialPropositionId);
+        senderId = recipientId;
+    }
+
+    if (engine.State.CurrentMinute < twelveHours)
+    {
+        _ = engine.Wait(twelveHours - engine.State.CurrentMinute);
+    }
+
+    var dirtyAtEnd = engine.State.DetailDirtyActorIds.ToArray();
+    var finalDetail = engine.RebalanceDirtyActorDetailLevels();
+    AssertDirtyRebalance("Mixed B2 finish", dirtyAtEnd, finalDetail);
+
+    var events = engine.State.Events;
+    var messages = engine.State.Messages.Values.ToArray();
+    var finalPopulationEquivalent = PopulationEquivalent(engine.State);
+    var group = engine.State.Groups[SyntheticScaleWorldFactory.RegionalPopulationGroupId];
+    var linkedMessageCount = messages.Count(message => message.ParentMessageId is not null);
+    var completedPlanCount = engine.State.Plans.Values.Count(plan => plan.Status == PlanStatus.Completed);
+    var cityAlertCount = events.Count(worldEvent => worldEvent.Type == "city_crisis_alert");
+    var playerInterruptedCount = events.Count(worldEvent =>
+        worldEvent.Type == "travel_interrupted" &&
+        worldEvent.SubjectIds.Contains(engine.State.PlayerActorId, StringComparer.Ordinal));
+    var playerResumedCount = events.Count(worldEvent =>
+        worldEvent.Type == "travel_resumed" &&
+        worldEvent.SubjectIds.Contains(engine.State.PlayerActorId, StringComparer.Ordinal));
+    var remoteTickCount = events.Count(worldEvent => worldEvent.Type == "remote_world_tick");
+    var accessRequestCount = events.Count(worldEvent => worldEvent.Type == "access_requested");
+    var placeEnteredCount = events.Count(worldEvent => worldEvent.Type == "place_entered");
+    var planOwnersAtDestination = planOwnerIds.All(ownerId => string.Equals(
+        engine.State.Actors[ownerId].PlaceId,
+        SyntheticScaleWorldFactory.MixedCityCrisisPlanDestinationPlaceId,
+        StringComparison.Ordinal));
+    var otherActorsAtCrisis = engine.State.Actors.Values
+        .Where(actor => !planOwnerIds.Contains(actor.Id))
+        .All(actor => string.Equals(
+            actor.PlaceId,
+            SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId,
+            StringComparison.Ordinal));
+    var allActionsCompleted = engine.State.Actions.Values.All(action => action.Status == ActionStatus.Completed);
+    var allMessageBeliefsTraceable = messageRecipientIds.All(recipientId =>
+        engine.State.Beliefs.Values.Any(belief =>
+            string.Equals(belief.HolderId, recipientId, StringComparison.Ordinal) &&
+            messages.Any(message => string.Equals(
+                message.DeliveredEventId,
+                belief.SourceEventId,
+                StringComparison.Ordinal))));
+    if (engine.State.CurrentMinute != twelveHours ||
+        actions.Length != 540 ||
+        visitorIds.Length != SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount ||
+        messageRecipientIds.Length != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount ||
+        actions.Any(action => action.Status != ActionStatus.Completed) ||
+        !allActionsCompleted ||
+        !planOwnersAtDestination ||
+        !otherActorsAtCrisis ||
+        cityAlertCount != playerInterruptMinutes.Length ||
+        playerInterruptedCount != playerInterruptMinutes.Length ||
+        playerResumedCount != playerInterruptMinutes.Length ||
+        remoteTickCount != remoteTickMinutes.Length ||
+        accessRequestCount != SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount * 2 ||
+        placeEnteredCount != accessRequestCount ||
+        completedPlanCount != SyntheticScaleWorldFactory.MixedCityCrisisPlanCount ||
+        messages.Length != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount ||
+        linkedMessageCount != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount - 1 ||
+        !allMessageBeliefsTraceable ||
+        engine.State.DetailDirtyActorIds.Count != 0 ||
+        finalPopulationEquivalent != initialPopulationEquivalent ||
+        engine.State.Actors.Count != initialActorCount ||
+        engine.State.Groups.Count != initialGroupCount ||
+        group.Count != SyntheticScaleWorldFactory.CityCrisisGroupPopulation)
+    {
+        throw new InvalidOperationException(
+            "Mixed B2 invariants failed: " +
+            $"minute={engine.State.CurrentMinute}/{twelveHours} travelers={actions.Length} " +
+            $"alerts={cityAlertCount} interrupted={playerInterruptedCount} resumed={playerResumedCount} " +
+            $"visits={placeEnteredCount}/{accessRequestCount} messages={messages.Length}/{linkedMessageCount} " +
+            $"plans={completedPlanCount} remote_ticks={remoteTickCount} " +
+            $"positions={planOwnersAtDestination}/{otherActorsAtCrisis} actions={allActionsCompleted} " +
+            $"beliefs={allMessageBeliefsTraceable} population={finalPopulationEquivalent}/{initialPopulationEquivalent}.");
+    }
+
+    return new ScaleWorkloadResult(
+        $"places={engine.State.Places.Count} named_actors={initialActorCount} " +
+        $"initial_l0={initialL0Count} initial_l1={initialL1Count} " +
+        $"concurrent_travelers={actions.Length} player_interruptions={playerInterruptedCount} " +
+        $"access_round_trips={visitorIds.Length} messages={messages.Length} linked_messages={linkedMessageCount} " +
+        $"completed_plans={completedPlanCount} remote_ticks={remoteTickCount} " +
+        $"population_equivalent={finalPopulationEquivalent} l3_group_population={group.Count} " +
+        $"processed_events={events.Count} " +
+        $"detail_assessments={startDetail.Assessments.Count + finalDetail.Assessments.Count} " +
+        "incremental_dirty_exact=true lineage_complete=true player_interruptions_exact=true " +
+        "population_conserved=true l3_not_expanded=true",
+        [firstAdvanceStopwatch.Elapsed.TotalMilliseconds, firstResumeStopwatch.Elapsed.TotalMilliseconds]);
+}
+
 static void RunMessageTopologyScale()
 {
     RunSampledScale(
@@ -482,7 +713,8 @@ static ScaleSample MeasureScaleSample(
         GC.CollectionCount(0) - gc0Before,
         GC.CollectionCount(1) - gc1Before,
         GC.CollectionCount(2) - gc2Before,
-        new ScaleOutcome(fingerprint, workloadResult.Correctness));
+        new ScaleOutcome(fingerprint, workloadResult.Correctness),
+        workloadResult.PlayerAdvanceElapsedMilliseconds ?? []);
 }
 
 static void PrintSampledResult(
@@ -526,6 +758,18 @@ static void PrintSampledResult(
     Console.WriteLine($"fingerprint={samples[0].Outcome.Fingerprint}");
     Console.WriteLine($"fingerprint_consistent=true");
     Console.WriteLine($"correctness={samples[0].Outcome.Correctness}");
+    var playerAdvanceTimes = samples
+        .SelectMany(sample => sample.PlayerAdvanceElapsedMilliseconds)
+        .Order()
+        .ToArray();
+    if (playerAdvanceTimes.Length > 0)
+    {
+        Console.WriteLine($"player_advance_samples={playerAdvanceTimes.Length}");
+        Console.WriteLine($"player_advance_elapsed_samples_ms={JoinDoubles(playerAdvanceTimes)}");
+        Console.WriteLine($"player_advance_median_ms={Percentile(playerAdvanceTimes, 0.50):F3}");
+        Console.WriteLine($"player_advance_p95_ms={Percentile(playerAdvanceTimes, 0.95):F3}");
+        Console.WriteLine($"player_advance_max_ms={playerAdvanceTimes[^1]:F3}");
+    }
 }
 
 static double Percentile(IReadOnlyList<double> sortedValues, double percentile)
@@ -604,7 +848,9 @@ static string FindScenarioDirectory()
 
 internal sealed record ScaleOutcome(string Fingerprint, string Correctness);
 
-internal sealed record ScaleWorkloadResult(string Correctness);
+internal sealed record ScaleWorkloadResult(
+    string Correctness,
+    IReadOnlyList<double>? PlayerAdvanceElapsedMilliseconds = null);
 
 internal sealed record ScaleSample(
     double SetupElapsedMilliseconds,
@@ -617,4 +863,5 @@ internal sealed record ScaleSample(
     int Gen0Collections,
     int Gen1Collections,
     int Gen2Collections,
-    ScaleOutcome Outcome);
+    ScaleOutcome Outcome,
+    IReadOnlyList<double> PlayerAdvanceElapsedMilliseconds);
