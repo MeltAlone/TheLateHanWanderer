@@ -11,7 +11,7 @@
 - 定义首个 189 年洛阳危机时空切片。
 - 定义时间、空间、人物、组织、信息、行动与事件的数据边界。
 - 已定义“雒阳四日”命令行 MVP、场景夹具、行为验收和规模预算。
-- 已实现无界面 C#/.NET 内核的持久行动、门禁、凭证、消息谱系、认知隔离、稳定调度和首个自主 NPC 闭环。
+- 已实现无界面 C#/.NET 内核的持久行动、门禁、凭证、消息谱系、认知隔离、稳定调度、首个自主 NPC 闭环和确定性群体升降格。
 
 ## 仓库导航
 
@@ -40,6 +40,7 @@ tools/             史料导入、校验、模拟和调试工具
 - [场景数据契约](docs/architecture/scenario-contract.md)
 - [MVP 行为验收](tests/specs/189-luoyang-crisis.md)
 - [世界规模与性能预算](tests/performance/world-scale-budgets.md)
+- [P6 初始精度与规模报告](docs/architecture/p6-scale-report.md)
 - [架构决策记录](docs/decisions/README.md)
 
 ## 运行当前技术尖峰
@@ -107,6 +108,22 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 ```
 
 `travel start` 只创建行动和第一项路段事件，因此可以在 `advance` 前或中断后保存。`resume` 保留已行进时间和路段进度，并按新的交通方式计算剩余路程。
+
+可以直接观察 L3 群体，升格一个临时人物并检查其稳定身份：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "groups" `
+  --command "dev promote group.market_population l0" `
+  --command "detail person.promoted.00000001" `
+  --command "dev demote person.promoted.00000001"
+```
+
+缩小版 B1、B4 和确定性交付基准可用 `all` 一次运行：
+
+```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
+```
 
 ## 基本工作流
 
