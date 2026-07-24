@@ -134,6 +134,12 @@ internal sealed class CliSession
                 case "messages":
                     PrintMessages(tokens);
                     break;
+                case "groups":
+                    PrintGroups();
+                    break;
+                case "detail":
+                    PrintActorDetail(tokens);
+                    break;
                 case "dev":
                     ExecuteDeveloperCommand(tokens);
                     break;
@@ -186,10 +192,14 @@ internal sealed class CliSession
         Console.WriteLine("  wait <minutes|Nh|Nm>");
         Console.WriteLine("  history");
         Console.WriteLine("  messages [person-id]");
+        Console.WriteLine("  groups");
+        Console.WriteLine("  detail [person-id]");
         Console.WriteLine("  dev queue");
         Console.WriteLine("  dev rng <domain> <entity-id> [count]");
         Console.WriteLine("  dev schedule <minute> <phase> <subject-id> <kind> [interrupt]");
         Console.WriteLine("  dev interrupt-travel <action-id> <minute> <reason>");
+        Console.WriteLine("  dev promote <group-id> [l0|l1|l2]");
+        Console.WriteLine("  dev demote <person-id>");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
         Console.WriteLine("  quit");
@@ -496,11 +506,41 @@ internal sealed class CliSession
         }
     }
 
+    private void PrintGroups()
+    {
+        foreach (var group in _engine.State.Groups.Values)
+        {
+            Console.WriteLine(
+                $"{group.Id} count={group.Count} location={group.LocationId} " +
+                $"detail=l3 profile={group.PromotionProfileId}");
+        }
+    }
+
+    private void PrintActorDetail(string[] tokens)
+    {
+        if (tokens.Length > 2)
+        {
+            Console.WriteLine("invalid:syntax usage: detail [person-id]");
+            return;
+        }
+
+        var actorId = tokens.Length == 2 ? tokens[1] : _engine.State.PlayerActorId;
+        if (!_engine.State.Actors.TryGetValue(actorId, out var actor))
+        {
+            throw new DomainCommandException("unknown_actor", $"Unknown actor '{actorId}'.");
+        }
+
+        Console.WriteLine(
+            $"{actor.Id} detail={actor.DetailLevel.ToString().ToLowerInvariant()} " +
+            $"temporary={actor.IsTemporaryPromotion.ToString().ToLowerInvariant()} " +
+            $"from={actor.PromotedFromGroupId ?? "-"} seed={actor.IdentitySeedHex ?? "-"}");
+    }
+
     private void ExecuteDeveloperCommand(string[] tokens)
     {
         if (tokens.Length < 2)
         {
-            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel> ...");
+            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote> ...");
             return;
         }
 
@@ -518,10 +558,43 @@ internal sealed class CliSession
             case "interrupt-travel":
                 ScheduleTravelInterruption(tokens);
                 break;
+            case "promote":
+                PromoteGroupMember(tokens);
+                break;
+            case "demote":
+                DemoteActor(tokens);
+                break;
             default:
-                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel> ...");
+                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote> ...");
                 break;
         }
+    }
+
+    private void PromoteGroupMember(string[] tokens)
+    {
+        if (tokens.Length is < 3 or > 4)
+        {
+            Console.WriteLine("invalid:syntax usage: dev promote <group-id> [l0|l1|l2]");
+            return;
+        }
+
+        var detail = tokens.Length == 4 ? ParseDetailLevel(tokens[3]) : SimulationDetailLevel.L0;
+        var result = _engine.PromoteGroupMember(tokens[2], detailLevel: detail);
+        Console.WriteLine(
+            $"promoted {result.Actor.Id} from={tokens[2]} detail={result.Actor.DetailLevel.ToString().ToLowerInvariant()} " +
+            $"seed={result.Actor.IdentitySeedHex}");
+    }
+
+    private void DemoteActor(string[] tokens)
+    {
+        if (tokens.Length != 3)
+        {
+            Console.WriteLine("invalid:syntax usage: dev demote <person-id>");
+            return;
+        }
+
+        var result = _engine.DemotePromotedActor(tokens[2]);
+        Console.WriteLine($"demoted {tokens[2]} event={result.Id}");
     }
 
     private void PrintScheduledQueue(string[] tokens)
@@ -633,6 +706,14 @@ internal sealed class CliSession
         "horse" => TravelMode.Horse,
         "with-group" => TravelMode.WithGroup,
         _ => throw new DomainCommandException("unknown_travel_mode", $"Unknown travel mode '{value}'."),
+    };
+
+    private static SimulationDetailLevel ParseDetailLevel(string value) => value.ToLowerInvariant() switch
+    {
+        "l0" => SimulationDetailLevel.L0,
+        "l1" => SimulationDetailLevel.L1,
+        "l2" => SimulationDetailLevel.L2,
+        _ => throw new DomainCommandException("unknown_detail_level", $"Unknown detail level '{value}'."),
     };
 
     private static bool TryParsePhase(string value, out ScheduledEventPhase phase)

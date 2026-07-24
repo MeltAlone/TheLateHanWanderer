@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.5.0-spike";
+    public const string Version = "0.6.0-spike";
 }
 
 public enum TravelMode
@@ -31,7 +31,11 @@ public sealed class ActorState
         string name,
         string? placeId,
         TransitPositionState? transit,
-        IEnumerable<ActorMembership>? memberships = null)
+        IEnumerable<ActorMembership>? memberships = null,
+        SimulationDetailLevel detailLevel = SimulationDetailLevel.L1,
+        string? promotedFromGroupId = null,
+        string? identitySeedHex = null,
+        bool isTemporaryPromotion = false)
     {
         if ((placeId is null) == (transit is null))
         {
@@ -43,6 +47,10 @@ public sealed class ActorState
         PlaceId = placeId;
         Transit = transit;
         _memberships = new ReadOnlyCollection<ActorMembership>((memberships ?? []).ToArray());
+        DetailLevel = detailLevel;
+        PromotedFromGroupId = promotedFromGroupId;
+        IdentitySeedHex = identitySeedHex;
+        IsTemporaryPromotion = isTemporaryPromotion;
     }
 
     public string Id { get; }
@@ -54,6 +62,14 @@ public sealed class ActorState
     public TransitPositionState? Transit { get; internal set; }
 
     public IReadOnlyList<ActorMembership> Memberships => _memberships;
+
+    public SimulationDetailLevel DetailLevel { get; internal set; }
+
+    public string? PromotedFromGroupId { get; }
+
+    public string? IdentitySeedHex { get; }
+
+    public bool IsTemporaryPromotion { get; }
 
     public string LocationId
     {
@@ -230,6 +246,7 @@ public sealed class WorldState
     private readonly SortedDictionary<string, AccessRuleDefinition> _accessRules;
     private readonly SortedDictionary<string, PlaceAccessState> _placeAccessStates;
     private readonly SortedDictionary<string, MessageState> _messages;
+    private readonly SortedDictionary<string, GroupState> _groups;
 
     public WorldState(
         string scenarioId,
@@ -259,7 +276,9 @@ public sealed class WorldState
         IEnumerable<PlanState>? plans = null,
         IEnumerable<AccessRuleDefinition>? accessRules = null,
         IEnumerable<PlaceAccessState>? placeAccessStates = null,
-        IEnumerable<MessageState>? messages = null)
+        IEnumerable<MessageState>? messages = null,
+        IEnumerable<GroupState>? groups = null,
+        long nextPromotionSequence = 1)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -294,6 +313,9 @@ public sealed class WorldState
         _messages = new SortedDictionary<string, MessageState>(
             (messages ?? []).ToDictionary(message => message.Id),
             StringComparer.Ordinal);
+        _groups = new SortedDictionary<string, GroupState>(
+            (groups ?? []).ToDictionary(group => group.Id),
+            StringComparer.Ordinal);
         if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
         {
             throw new ArgumentException("Scheduled events cannot be earlier than the current world minute.", nameof(scheduledEvents));
@@ -321,6 +343,12 @@ public sealed class WorldState
         NextEventSequence = nextEventSequence;
         NextScheduledEventSequence = nextScheduledEventSequence;
         NextActionSequence = nextActionSequence;
+        if (nextPromotionSequence <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(nextPromotionSequence));
+        }
+
+        NextPromotionSequence = nextPromotionSequence;
         RandomStreams = new RandomStreamRegistry(rngVersion, rngRootSeedHex, rngDerivation, randomStreams);
         ReplayModified = replayModified;
     }
@@ -367,6 +395,8 @@ public sealed class WorldState
 
     public IReadOnlyDictionary<string, MessageState> Messages => _messages;
 
+    public IReadOnlyDictionary<string, GroupState> Groups => _groups;
+
     public RandomStreamRegistry RandomStreams { get; }
 
     public bool ReplayModified { get; internal set; }
@@ -377,11 +407,15 @@ public sealed class WorldState
 
     public long ActionSequenceCursor => NextActionSequence;
 
+    public long PromotionSequenceCursor => NextPromotionSequence;
+
     internal long NextEventSequence { get; set; }
 
     internal long NextScheduledEventSequence { get; set; }
 
     internal long NextActionSequence { get; set; }
+
+    internal long NextPromotionSequence { get; set; }
 
     internal void AddEvent(WorldEvent worldEvent) => _events.Add(worldEvent);
 
@@ -412,11 +446,35 @@ public sealed class WorldState
         }
     }
 
+    internal void AddActor(ActorState actor)
+    {
+        if (!_actors.TryAdd(actor.Id, actor))
+        {
+            throw new InvalidOperationException($"Duplicate actor '{actor.Id}'.");
+        }
+    }
+
+    internal void RemoveActor(string actorId)
+    {
+        if (!_actors.Remove(actorId))
+        {
+            throw new InvalidOperationException($"Actor '{actorId}' is missing.");
+        }
+    }
+
     internal void AddBelief(BeliefState belief)
     {
         if (!_beliefs.TryAdd(belief.Id, belief))
         {
             throw new InvalidOperationException($"Duplicate belief '{belief.Id}'.");
+        }
+    }
+
+    internal void RemoveBelief(string beliefId)
+    {
+        if (!_beliefs.Remove(beliefId))
+        {
+            throw new InvalidOperationException($"Belief '{beliefId}' is missing.");
         }
     }
 
@@ -461,6 +519,67 @@ public sealed class WorldState
                 Append(hash, detail.Key);
                 Append(hash, detail.Value);
             }
+        }
+
+        return $"sha256:{Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant()}";
+    }
+
+    public string ComputeMaterialStateFingerprint()
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Append(hash, CurrentMinute.ToString(CultureInfo.InvariantCulture));
+        foreach (var actor in _actors.Values)
+        {
+            Append(hash, actor.Id);
+            Append(hash, actor.PlaceId ?? string.Empty);
+            Append(hash, actor.Transit?.RouteId ?? string.Empty);
+            Append(hash, actor.DetailLevel.ToString());
+            Append(hash, actor.PromotedFromGroupId ?? string.Empty);
+            Append(hash, actor.IdentitySeedHex ?? string.Empty);
+        }
+
+        foreach (var group in _groups.Values)
+        {
+            Append(hash, group.Id);
+            Append(hash, group.Count.ToString(CultureInfo.InvariantCulture));
+            Append(hash, group.LocationId);
+        }
+
+        foreach (var item in _items.Values)
+        {
+            Append(hash, item.Id);
+            Append(hash, item.HolderId);
+        }
+
+        foreach (var belief in _beliefs.Values)
+        {
+            Append(hash, belief.Id);
+            Append(hash, belief.HolderId);
+            Append(hash, belief.PropositionId);
+            Append(hash, belief.ConfidenceBp.ToString(CultureInfo.InvariantCulture));
+            Append(hash, belief.Source);
+        }
+
+        foreach (var commitment in _commitments.Values)
+        {
+            Append(hash, commitment.Id);
+            Append(hash, commitment.Status);
+        }
+
+        foreach (var plan in _plans.Values)
+        {
+            Append(hash, plan.Id);
+            Append(hash, plan.Status.ToString());
+            Append(hash, plan.Stage);
+            Append(hash, plan.ActiveActionId ?? string.Empty);
+        }
+
+        foreach (var placeAccess in _placeAccessStates.Values)
+        {
+            Append(hash, placeAccess.PlaceId);
+            Append(hash, placeAccess.Open.ToString(CultureInfo.InvariantCulture));
+            Append(hash, placeAccess.QueueCount.ToString(CultureInfo.InvariantCulture));
+            Append(hash, placeAccess.SecurityPosture);
         }
 
         return $"sha256:{Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant()}";

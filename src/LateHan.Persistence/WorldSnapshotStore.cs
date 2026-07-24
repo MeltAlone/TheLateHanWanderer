@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.5";
+    public string SnapshotSchemaVersion { get; init; } = "0.6";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -68,6 +68,8 @@ internal sealed class WorldSnapshot
 
     public long NextActionSequence { get; init; }
 
+    public long NextPromotionSequence { get; init; }
+
     public List<ActorSnapshot> Actors { get; init; } = [];
 
     public List<PlaceSnapshot> Places { get; init; } = [];
@@ -85,6 +87,8 @@ internal sealed class WorldSnapshot
     public List<PlaceAccessSnapshot> PlaceAccessStates { get; init; } = [];
 
     public List<MessageSnapshot> Messages { get; init; } = [];
+
+    public List<GroupSnapshot> Groups { get; init; } = [];
 
     public List<CommitmentSnapshot> Commitments { get; init; } = [];
 
@@ -114,6 +118,7 @@ internal sealed class WorldSnapshot
             NextScheduledEventSequence = world.ScheduledEventSequenceCursor,
             ReplayModified = world.ReplayModified,
             NextActionSequence = world.ActionSequenceCursor,
+            NextPromotionSequence = world.PromotionSequenceCursor,
             Actors = world.Actors.Values.Select(item => new ActorSnapshot(
                 item.Id,
                 item.Name,
@@ -128,7 +133,11 @@ internal sealed class WorldSnapshot
                         item.Transit.ProgressQ1000),
                 item.Memberships.Select(membership => new MembershipSnapshot(
                     membership.OrganizationId,
-                    membership.RoleId)).ToList())).ToList(),
+                    membership.RoleId)).ToList(),
+                item.DetailLevel,
+                item.PromotedFromGroupId,
+                item.IdentitySeedHex,
+                item.IsTemporaryPromotion)).ToList(),
             Places = world.Places.Values.Select(item => new PlaceSnapshot(item.Id, item.Name, item.AccessRuleId, item.ControllerId)).ToList(),
             Routes = world.Routes.Values.Select(item => new RouteSnapshot(
                 item.Id,
@@ -192,6 +201,14 @@ internal sealed class WorldSnapshot
                 item.CreatedEventId,
                 item.DeliveredEventId,
                 item.ParentMessageId)).ToList(),
+            Groups = world.Groups.Values.Select(item => new GroupSnapshot(
+                item.Id,
+                item.Name,
+                item.Kind,
+                item.Count,
+                item.LocationId,
+                item.OrganizationId,
+                item.PromotionProfileId)).ToList(),
             Commitments = world.Commitments.Values.Select(item => new CommitmentSnapshot(
                 item.Id,
                 item.DebtorId,
@@ -261,7 +278,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.5", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.6", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -295,7 +312,11 @@ internal sealed class WorldSnapshot
                         item.Transit.ProgressQ1000),
                 item.Memberships.Select(membership => new ActorMembership(
                     membership.OrganizationId,
-                    membership.RoleId)))),
+                    membership.RoleId)),
+                item.DetailLevel,
+                item.PromotedFromGroupId,
+                item.IdentitySeedHex,
+                item.IsTemporaryPromotion)),
             Places.Select(item => new PlaceDefinition(item.Id, item.Name, item.AccessRuleId, item.ControllerId)),
             Routes.Select(item => new RouteDefinition(
                 item.Id,
@@ -428,7 +449,16 @@ internal sealed class WorldSnapshot
                 item.CreatedAtMinute,
                 item.CreatedEventId,
                 item.DeliveredEventId,
-                item.ParentMessageId)));
+                item.ParentMessageId)),
+            Groups.Select(item => new GroupState(
+                item.Id,
+                item.Name,
+                item.Kind,
+                item.Count,
+                item.LocationId,
+                item.OrganizationId,
+                item.PromotionProfileId)),
+            NextPromotionSequence);
     }
 }
 
@@ -437,7 +467,11 @@ internal sealed record ActorSnapshot(
     string Name,
     string? PlaceId,
     TransitPositionSnapshot? Transit,
-    List<MembershipSnapshot> Memberships);
+    List<MembershipSnapshot> Memberships,
+    SimulationDetailLevel DetailLevel,
+    string? PromotedFromGroupId,
+    string? IdentitySeedHex,
+    bool IsTemporaryPromotion);
 
 internal sealed record MembershipSnapshot(string OrganizationId, string RoleId);
 
@@ -491,6 +525,15 @@ internal sealed record MessageSnapshot(
     string CreatedEventId,
     string DeliveredEventId,
     string? ParentMessageId);
+
+internal sealed record GroupSnapshot(
+    string Id,
+    string Name,
+    string Kind,
+    int Count,
+    string LocationId,
+    string? OrganizationId,
+    string PromotionProfileId);
 
 internal sealed record BeliefSnapshot(
     string Id,

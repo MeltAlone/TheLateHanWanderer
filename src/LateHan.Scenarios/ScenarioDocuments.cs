@@ -139,6 +139,14 @@ internal sealed class MembershipDocument
 internal sealed class GroupDocument : NamedDocument
 {
     public string Location { get; init; } = string.Empty;
+
+    public string Kind { get; init; } = string.Empty;
+
+    public int Count { get; init; }
+
+    public string? Organization { get; init; }
+
+    public string PromotionProfile { get; init; } = string.Empty;
 }
 
 internal sealed class ItemDocument : NamedDocument

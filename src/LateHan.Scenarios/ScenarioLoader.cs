@@ -115,7 +115,15 @@ public sealed class ScenarioLoader
                 item.Place,
                 item.Open,
                 item.QueueCount,
-                item.SecurityPosture)));
+                item.SecurityPosture)),
+            groups: actors.Groups.Select(group => new GroupState(
+                group.Id,
+                group.Name,
+                group.Kind,
+                group.Count,
+                group.Location,
+                group.Organization,
+                group.PromotionProfile)));
 
         new WorldEngine(domainWorld).InitializePlans();
 
@@ -276,6 +284,15 @@ public sealed class ScenarioLoader
         foreach (var group in actors.Groups)
         {
             Require(placeIds, group.Location, $"group '{group.Id}'.location", errors);
+            if (!string.IsNullOrWhiteSpace(group.Organization))
+            {
+                Require(organizationIds, group.Organization, $"group '{group.Id}'.organization", errors);
+            }
+
+            if (group.Count < 0)
+            {
+                errors.Add($"SCN-NUM-005 Group '{group.Id}' count cannot be negative.");
+            }
         }
 
         foreach (var item in state.Items)
