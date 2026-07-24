@@ -54,6 +54,19 @@ dotnet test tests/LateHan.Tests/LateHan.Tests.csproj --configuration Release
 dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release
 ```
 
+除传统单文件 `save/load` 外，CLI 已可直接使用长期归档、分支和因果查询：
+
+```text
+archive save saves/luoyang.db
+archive load saves/luoyang.db
+branch create saves/luoyang.db saves/branches/deliver deliver
+branch save saves/branches/deliver
+branch load saves/branches/deliver
+why event.00000004 8
+```
+
+归档追加前会审计已有历史前缀；不同历史不能接到同一文件。分支基础库以只读模式共享，分支目录只保存自己的事件尾与世界检查点。
+
 也可以无交互执行完整送信路径：
 
 ```powershell
