@@ -35,6 +35,7 @@ public sealed class WorldEventArchiveTests
 
             var restored = Assert.IsType<EventArchiveRestore>(reopened.RestoreLatest());
             Assert.Equal(4, restored.Checkpoint.EventSequence);
+            Assert.StartsWith("sha256:", restored.Checkpoint.SnapshotSha256, StringComparison.Ordinal);
             Assert.Equal(new byte[] { 1, 2, 3, 4 }, restored.Checkpoint.SnapshotPayload);
             Assert.Equal(
                 WorldEventFingerprint.Compute(events[4..]),

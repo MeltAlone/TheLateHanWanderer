@@ -905,17 +905,14 @@ internal sealed class CliSession
         if (tokens[1] == "load")
         {
             using var archive = WorldEventArchive.OpenReadOnly(tokens[2]);
-            var restored = archive.RestoreLatest()
-                ?? throw new InvalidDataException("事件归档没有可加载的检查点。");
-            if (restored.EventsAfterCheckpoint.Count != 0)
-            {
-                throw new InvalidDataException(
-                    $"最新检查点后仍有 {restored.EventsAfterCheckpoint.Count} 个事件；当前 CLI 不会静默跳过回放。");
-            }
-
-            _engine = new WorldEngine(_snapshotStore.Load(restored.Checkpoint.SnapshotPayload));
+            var restored = WorldArchiveRestorer.Restore(archive, _snapshotStore);
+            _engine = new WorldEngine(restored.World);
+            var fallback = restored.RejectedCheckpointEventIds.Count == 0
+                ? string.Empty
+                : $"；已跳过损坏检查点 {string.Join(',', restored.RejectedCheckpointEventIds)}";
             Console.WriteLine(
-                $"已从归档加载 {restored.Checkpoint.EventId}；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+                $"已从归档加载 {restored.Checkpoint.EventId} 并回放 {restored.ReplayedEventCount} 个尾事件{fallback}；" +
+                $"当前为开局后 {_engine.State.CurrentMinute} 分钟。");
             return;
         }
 

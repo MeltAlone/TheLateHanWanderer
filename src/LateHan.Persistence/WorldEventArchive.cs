@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text.Json;
 using LateHan.Core;
 using Microsoft.Data.Sqlite;
@@ -10,6 +11,7 @@ public sealed record EventArchiveCheckpoint(
     long EventSequence,
     string EventId,
     string EventFingerprint,
+    string SnapshotSha256,
     byte[] SnapshotPayload);
 
 public sealed record EventArchiveRestore(
@@ -22,7 +24,7 @@ public sealed record EventArchiveAudit(long EventCount, long LastSequence, strin
 
 public sealed class WorldEventArchive : IDisposable
 {
-    public const string SchemaVersion = "1.1";
+    public const string SchemaVersion = "1.2";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.General);
     private readonly SqliteConnection _connection;
@@ -76,6 +78,33 @@ public sealed class WorldEventArchive : IDisposable
     public long CheckpointCount => ExecuteInt64("SELECT COUNT(*) FROM checkpoints;");
 
     public EventArchiveCheckpoint? LatestCheckpoint => LoadLatestCheckpoint();
+
+    public IReadOnlyList<EventArchiveCheckpoint> ReadCheckpointsNewestFirst(int maximumCount = 64)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maximumCount, 1);
+        using var command = _connection.CreateCommand();
+        command.CommandText = """
+            SELECT event_sequence, event_id, event_fingerprint, snapshot_sha256, snapshot_payload
+            FROM checkpoints
+            ORDER BY event_sequence DESC
+            LIMIT $maximum_count;
+            """;
+        command.Parameters.AddWithValue("$maximum_count", maximumCount);
+        var checkpoints = new List<EventArchiveCheckpoint>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            checkpoints.Add(new EventArchiveCheckpoint(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                (byte[])reader[4]));
+        }
+
+        return checkpoints;
+    }
 
     public void Append(IReadOnlyList<WorldEvent> events)
     {
@@ -212,14 +241,21 @@ public sealed class WorldEventArchive : IDisposable
 
         using var command = _connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO checkpoints(event_sequence, event_id, event_fingerprint, snapshot_payload)
-            SELECT sequence, id, $event_fingerprint, $snapshot_payload
+            INSERT INTO checkpoints(
+                event_sequence,
+                event_id,
+                event_fingerprint,
+                snapshot_sha256,
+                snapshot_payload)
+            SELECT sequence, id, $event_fingerprint, $snapshot_sha256, $snapshot_payload
             FROM events
             WHERE sequence = $event_sequence;
             """;
         command.Parameters.AddWithValue("$event_sequence", eventSequence);
         command.Parameters.AddWithValue("$event_fingerprint", eventFingerprint);
-        command.Parameters.Add("$snapshot_payload", SqliteType.Blob).Value = snapshotPayload.ToArray();
+        var snapshotBytes = snapshotPayload.ToArray();
+        command.Parameters.AddWithValue("$snapshot_sha256", ComputeSha256(snapshotBytes));
+        command.Parameters.Add("$snapshot_payload", SqliteType.Blob).Value = snapshotBytes;
         try
         {
             if (command.ExecuteNonQuery() != 1)
@@ -409,6 +445,7 @@ public sealed class WorldEventArchive : IDisposable
                 event_sequence INTEGER PRIMARY KEY,
                 event_id TEXT NOT NULL,
                 event_fingerprint TEXT NOT NULL,
+                snapshot_sha256 TEXT NOT NULL,
                 snapshot_payload BLOB NOT NULL,
                 FOREIGN KEY(event_sequence) REFERENCES events(sequence)
             ) WITHOUT ROWID;
@@ -451,7 +488,7 @@ public sealed class WorldEventArchive : IDisposable
     {
         using var command = _connection.CreateCommand();
         command.CommandText = """
-            SELECT event_sequence, event_id, event_fingerprint, snapshot_payload
+            SELECT event_sequence, event_id, event_fingerprint, snapshot_sha256, snapshot_payload
             FROM checkpoints
             ORDER BY event_sequence DESC
             LIMIT 1;
@@ -462,9 +499,13 @@ public sealed class WorldEventArchive : IDisposable
                 reader.GetInt64(0),
                 reader.GetString(1),
                 reader.GetString(2),
-                (byte[])reader.GetValue(3))
+                reader.GetString(3),
+                (byte[])reader.GetValue(4))
             : null;
     }
+
+    private static string ComputeSha256(ReadOnlySpan<byte> payload) =>
+        $"sha256:{Convert.ToHexStringLower(SHA256.HashData(payload))}";
 
     private IReadOnlyList<WorldEvent> ReadEventList(SqliteCommand command)
     {
