@@ -42,6 +42,28 @@ public sealed class WorldSnapshotStoreTests
     }
 
     [Fact]
+    public void SnapshotPreservesBrokenSealAndBreachContinuation()
+    {
+        var store = new WorldSnapshotStore();
+        var original = RepositoryFixture.CreateEngine();
+        _ = original.Read("person.player_clerk", "item.sealed_note_to_yuan_shao");
+        _ = original.Move("person.player_clerk", "place.luoyang.sili_office", TravelMode.Walk);
+        var restored = new WorldEngine(store.Load(store.Serialize(original.State)));
+
+        _ = original.Deliver("person.player_clerk", "item.sealed_note_to_yuan_shao", "person.yuan_shao");
+        _ = restored.Deliver("person.player_clerk", "item.sealed_note_to_yuan_shao", "person.yuan_shao");
+
+        Assert.Equal(
+            original.State.Items["item.sealed_note_to_yuan_shao"].SealBrokenEventId,
+            restored.State.Items["item.sealed_note_to_yuan_shao"].SealBrokenEventId);
+        Assert.Equal(
+            "completed_with_breach",
+            restored.State.Commitments["commitment.player.deliver_note"].Status);
+        Assert.Equal(original.State.ComputeEventFingerprint(), restored.State.ComputeEventFingerprint());
+        Assert.Equal(original.State.ComputeMaterialStateFingerprint(), restored.State.ComputeMaterialStateFingerprint());
+    }
+
+    [Fact]
     public void SnapshotPreservesScheduledQueueRandomCursorAndInterruption()
     {
         var store = new WorldSnapshotStore();

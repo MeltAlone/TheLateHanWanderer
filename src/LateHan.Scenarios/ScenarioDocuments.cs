@@ -187,6 +187,8 @@ internal sealed class ItemDocument : NamedDocument
     public List<string> ValidFor { get; init; } = [];
 
     public long? ExpiresAtMinute { get; init; }
+
+    public string ReadPolicy { get; init; } = "unreadable";
 }
 
 internal sealed class BeliefDocument : NamedDocument

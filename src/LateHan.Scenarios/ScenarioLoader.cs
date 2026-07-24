@@ -86,7 +86,8 @@ public sealed class ScenarioLoader
                 item.IntendedRecipient,
                 item.PropositionIds,
                 item.ValidFor,
-                item.ExpiresAtMinute)),
+                item.ExpiresAtMinute,
+                item.ReadPolicy)),
             state.Commitments.Select(commitment => new CommitmentState(
                 commitment.Id,
                 commitment.Debtor,

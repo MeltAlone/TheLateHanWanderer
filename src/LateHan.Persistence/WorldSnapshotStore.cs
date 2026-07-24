@@ -42,7 +42,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "1.1";
+    public string SnapshotSchemaVersion { get; init; } = "1.2";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -169,7 +169,9 @@ internal sealed class WorldSnapshot
                 item.IntendedRecipientId,
                 item.PropositionIds.ToList(),
                 item.ValidForAccessRuleIds.ToList(),
-                item.ExpiresAtMinute)).ToList(),
+                item.ExpiresAtMinute,
+                item.ReadPolicy,
+                item.SealBrokenEventId)).ToList(),
             Beliefs = world.Beliefs.Values.Select(item => new BeliefSnapshot(
                 item.Id,
                 item.HolderId,
@@ -324,7 +326,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "1.1", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "1.2", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -383,7 +385,9 @@ internal sealed class WorldSnapshot
                 item.IntendedRecipientId,
                 item.PropositionIds,
                 item.ValidForAccessRuleIds,
-                item.ExpiresAtMinute)),
+                item.ExpiresAtMinute,
+                item.ReadPolicy,
+                item.SealBrokenEventId)),
             Commitments.Select(item => new CommitmentState(
                 item.Id,
                 item.DebtorId,
@@ -586,7 +590,9 @@ internal sealed record ItemSnapshot(
     string? IntendedRecipientId,
     List<string> PropositionIds,
     List<string> ValidForAccessRuleIds,
-    long? ExpiresAtMinute);
+    long? ExpiresAtMinute,
+    string ReadPolicy,
+    string? SealBrokenEventId);
 
 internal sealed record AccessRuleSnapshot(
     string Id,

@@ -125,6 +125,9 @@ internal sealed class CliSession
                 case "give":
                     ExecuteGive(tokens);
                     break;
+                case "read":
+                    ExecuteRead(tokens);
+                    break;
                 case "tell":
                     ExecuteTell(tokens);
                     break;
@@ -204,6 +207,7 @@ internal sealed class CliSession
         Console.WriteLine("  resume <action-id> [walk|horse|with-group]");
         Console.WriteLine("  cancel <action-id>");
         Console.WriteLine("  give <item-id> to <person-id>");
+        Console.WriteLine("  read <item-id>");
         Console.WriteLine("  tell <person-id> <proposition-id>");
         Console.WriteLine("  wait <minutes|Nh|Nm>");
         Console.WriteLine("  history");
@@ -483,6 +487,20 @@ internal sealed class CliSession
 
         var result = _engine.Deliver(_engine.State.PlayerActorId, tokens[1], tokens[3]);
         Console.WriteLine($"已经实际交付；耗时 {result.EndMinute - result.StartMinute} 分钟。");
+    }
+
+    private void ExecuteRead(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：read <item-id>");
+            return;
+        }
+
+        var result = _engine.Read(_engine.State.PlayerActorId, tokens[1]);
+        Console.WriteLine(
+            $"已经阅读；耗时 {result.EndMinute - result.StartMinute} 分钟，" +
+            $"状态 {result.Status.ToString().ToLowerInvariant()}。");
     }
 
     private void ExecuteTell(string[] tokens)

@@ -168,7 +168,9 @@ public sealed class ItemState
         string? intendedRecipientId = null,
         IEnumerable<string>? propositionIds = null,
         IEnumerable<string>? validForAccessRuleIds = null,
-        long? expiresAtMinute = null)
+        long? expiresAtMinute = null,
+        string readPolicy = "unreadable",
+        string? sealBrokenEventId = null)
     {
         Id = id;
         Name = name;
@@ -179,6 +181,8 @@ public sealed class ItemState
         _propositionIds = new ReadOnlyCollection<string>((propositionIds ?? []).ToArray());
         _validForAccessRuleIds = new ReadOnlyCollection<string>((validForAccessRuleIds ?? []).ToArray());
         ExpiresAtMinute = expiresAtMinute;
+        ReadPolicy = readPolicy;
+        SealBrokenEventId = sealBrokenEventId;
     }
 
     public string Id { get; }
@@ -198,6 +202,10 @@ public sealed class ItemState
     public IReadOnlyList<string> ValidForAccessRuleIds => _validForAccessRuleIds;
 
     public long? ExpiresAtMinute { get; }
+
+    public string ReadPolicy { get; }
+
+    public string? SealBrokenEventId { get; internal set; }
 }
 
 public sealed class CommitmentState
@@ -672,6 +680,7 @@ public sealed class WorldState
         {
             Append(hash, item.Id);
             Append(hash, item.HolderId);
+            Append(hash, item.SealBrokenEventId ?? string.Empty);
         }
 
         foreach (var belief in _beliefs.Values)

@@ -62,6 +62,48 @@ public sealed class WorldEngineTests
     }
 
     [Fact]
+    public void PlayerCanBreakSealReadDeliverAndReportWithBreach()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+
+        var reading = engine.Read("person.player_clerk", "item.sealed_note_to_yuan_shao");
+        var sealEvent = Assert.Single(reading.Events, worldEvent => worldEvent.Type == "document_seal_broken");
+        Assert.Equal(5, reading.EndMinute - reading.StartMinute);
+        Assert.Equal(sealEvent.Id, engine.State.Items["item.sealed_note_to_yuan_shao"].SealBrokenEventId);
+        Assert.Contains(engine.State.Beliefs.Values, belief =>
+            belief.HolderId == "person.player_clerk" &&
+            belief.PropositionId == "proposition.general_office_requests_status" &&
+            belief.Source == "document_read");
+
+        _ = engine.Move("person.player_clerk", "place.luoyang.sili_office", TravelMode.Walk);
+        var delivery = engine.Deliver(
+            "person.player_clerk",
+            "item.sealed_note_to_yuan_shao",
+            "person.yuan_shao");
+        var deliveryBreach = Assert.Single(
+            delivery.Events,
+            worldEvent => worldEvent.Type == "commitment_completed_with_breach");
+        Assert.Contains(sealEvent.Id, deliveryBreach.CauseIds);
+        Assert.Equal(
+            "completed_with_breach",
+            engine.State.Commitments["commitment.player.deliver_note"].Status);
+        Assert.Equal("person.yuan_shao", engine.State.Items["item.sealed_note_to_yuan_shao"].HolderId);
+
+        _ = engine.Move("person.player_clerk", "place.luoyang.general_in_chief_office", TravelMode.Walk);
+        var report = engine.Tell(
+            "person.player_clerk",
+            "person.li_wen",
+            "proposition.general_office_requests_status");
+        var reportBreach = Assert.Single(
+            report.Events,
+            worldEvent => worldEvent.Type == "commitment_completed_with_breach");
+        Assert.Contains(deliveryBreach.Id, reportBreach.CauseIds);
+        Assert.Equal(
+            "completed_with_breach",
+            engine.State.Commitments["commitment.player.report_back"].Status);
+    }
+
+    [Fact]
     public void InvalidMoveDoesNotAdvanceTimeOrCreateEvents()
     {
         var engine = RepositoryFixture.CreateEngine();

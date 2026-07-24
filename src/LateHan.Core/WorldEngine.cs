@@ -225,17 +225,24 @@ public sealed partial class WorldEngine
 
         foreach (var commitment in matchingCommitments)
         {
-            commitment.Status = "completed";
+            var sealWasBroken = item.SealBrokenEventId is not null;
+            commitment.Status = sealWasBroken ? "completed_with_breach" : "completed";
             InvalidateActorDetailLevels([commitment.DebtorId, commitment.CreditorId, commitment.RecipientId]);
+            var causes = new List<string> { transferred.Id };
+            if (item.SealBrokenEventId is { } sealBrokenEventId)
+            {
+                causes.Add(sealBrokenEventId);
+            }
+
             events.Add(AppendEvent(
-                "commitment_completed",
+                sealWasBroken ? "commitment_completed_with_breach" : "commitment_completed",
                 State.CurrentMinute,
                 actor.LocationId,
                 [commitment.Id, actorId, recipientId],
-                [transferred.Id],
+                causes,
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["completion_kind"] = "delivered",
+                    ["completion_kind"] = sealWasBroken ? "delivered_seal_broken" : "delivered",
                 }));
         }
 
@@ -289,6 +296,136 @@ public sealed partial class WorldEngine
             startMinute,
             State.CurrentMinute,
             State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray());
+    }
+
+    public ActionResult Read(string actorId, string itemId)
+    {
+        var firstEventSequence = State.EventSequenceCursor;
+        var actor = GetActor(actorId);
+        if (actor.PlaceId is null)
+        {
+            throw new DomainCommandException("actor_in_transit", $"Actor '{actorId}' cannot read while in transit.");
+        }
+
+        if (!State.Items.TryGetValue(itemId, out var item))
+        {
+            throw new DomainCommandException("unknown_item", $"Unknown item '{itemId}'.");
+        }
+
+        if (!string.Equals(item.HolderId, actorId, StringComparison.Ordinal) &&
+            !(string.Equals(item.ReadPolicy, "holder_or_recipient", StringComparison.Ordinal) &&
+              string.Equals(item.IntendedRecipientId, actorId, StringComparison.Ordinal)))
+        {
+            throw new DomainCommandException("item_not_readable", $"Actor '{actorId}' cannot read '{itemId}'.");
+        }
+
+        if (string.Equals(item.ReadPolicy, "unreadable", StringComparison.Ordinal))
+        {
+            throw new DomainCommandException("item_not_readable", $"Item '{itemId}' cannot be read.");
+        }
+
+        var startMinute = State.CurrentMinute;
+        var started = AppendEvent(
+            "document_reading_started",
+            startMinute,
+            actor.PlaceId,
+            [actorId, itemId],
+            [],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["read_policy"] = item.ReadPolicy,
+            });
+        var advancement = AdvanceTimeTo(checked(startMinute + 5));
+        if (advancement.InterruptEventIds.Count > 0)
+        {
+            var causes = new List<string> { started.Id };
+            causes.AddRange(advancement.InterruptEventIds);
+            _ = AppendEvent(
+                "document_reading_interrupted",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [actorId, itemId],
+                causes,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            return new ActionResult(
+                startMinute,
+                State.CurrentMinute,
+                State.Events.Where(worldEvent => worldEvent.Sequence >= firstEventSequence).ToArray(),
+                ActionStatus.Interrupted);
+        }
+
+        var causesForReading = new List<string> { started.Id };
+        if (string.Equals(item.ReadPolicy, "seal_break_required", StringComparison.Ordinal) &&
+            item.SealBrokenEventId is null)
+        {
+            var sealBroken = AppendEvent(
+                "document_seal_broken",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [actorId, itemId],
+                [started.Id],
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            item.SealBrokenEventId = sealBroken.Id;
+            causesForReading.Add(sealBroken.Id);
+        }
+
+        var read = AppendEvent(
+            "document_read",
+            State.CurrentMinute,
+            actor.PlaceId,
+            [actorId, itemId],
+            causesForReading,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["proposition_ids"] = string.Join(',', item.PropositionIds),
+                ["seal_broken"] = (item.SealBrokenEventId is not null).ToString(CultureInfo.InvariantCulture),
+            });
+
+        foreach (var propositionId in item.PropositionIds.Order(StringComparer.Ordinal))
+        {
+            var belief = State.Beliefs.Values.FirstOrDefault(candidate =>
+                string.Equals(candidate.HolderId, actorId, StringComparison.Ordinal) &&
+                string.Equals(candidate.PropositionId, propositionId, StringComparison.Ordinal));
+            if (belief is null)
+            {
+                belief = new BeliefState(
+                    $"belief.document.{read.Sequence:D8}.{propositionId}",
+                    actorId,
+                    propositionId,
+                    9000,
+                    "document_read",
+                    State.CurrentMinute,
+                    read.Id);
+                State.AddBelief(belief);
+            }
+            else
+            {
+                belief.ConfidenceBp = 9000;
+                belief.Source = "document_read";
+                belief.AcquiredAtMinute = State.CurrentMinute;
+                belief.SourceEventId = read.Id;
+            }
+
+            _ = AppendEvent(
+                "belief_updated",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [belief.Id, actorId],
+                [read.Id],
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["confidence_bp"] = belief.ConfidenceBp.ToString(CultureInfo.InvariantCulture),
+                    ["proposition_id"] = propositionId,
+                    ["source"] = belief.Source,
+                });
+        }
+
+        InvalidateActorDetailLevels(new[] { actorId, item.AuthorId, item.IntendedRecipientId }
+            .OfType<string>());
+        return new ActionResult(
+            startMinute,
+            State.CurrentMinute,
+            State.Events.Where(worldEvent => worldEvent.Sequence >= firstEventSequence).ToArray());
     }
 
     public ActionResult Tell(string actorId, string recipientId, string propositionId)
@@ -506,31 +643,41 @@ public sealed partial class WorldEngine
                 });
         }
 
-        var completedTargets = State.Commitments.Values
-            .Where(commitment => commitment.Status == "completed")
-            .Select(commitment => commitment.Id)
-            .ToHashSet(StringComparer.Ordinal);
         var reportCommitments = State.Commitments.Values
             .Where(commitment => commitment.Status == "open")
             .Where(commitment => commitment.DebtorId == actorId && commitment.RecipientId == recipientId)
             .Where(commitment => commitment.Action == "report_delivery_result")
-            .Where(commitment => completedTargets.Contains(commitment.TargetId))
+            .Where(commitment => State.Commitments.TryGetValue(commitment.TargetId, out var target) &&
+                                 target.Status is "completed" or "completed_with_breach")
             .OrderBy(commitment => commitment.Id, StringComparer.Ordinal)
             .ToArray();
 
         foreach (var commitment in reportCommitments)
         {
-            commitment.Status = "completed";
+            var target = State.Commitments[commitment.TargetId];
+            var reportsBreach = target.Status == "completed_with_breach";
+            commitment.Status = reportsBreach ? "completed_with_breach" : "completed";
             InvalidateActorDetailLevels([commitment.DebtorId, commitment.CreditorId, commitment.RecipientId]);
+            var causes = new List<string> { delivered.Id };
+            var targetCompletion = reportsBreach
+                ? State.Events.LastOrDefault(worldEvent =>
+                    worldEvent.SubjectIds.Contains(target.Id, StringComparer.Ordinal) &&
+                    worldEvent.Type == "commitment_completed_with_breach")
+                : null;
+            if (targetCompletion is not null)
+            {
+                causes.Add(targetCompletion.Id);
+            }
+
             _ = AppendEvent(
-                "commitment_completed",
+                reportsBreach ? "commitment_completed_with_breach" : "commitment_completed",
                 State.CurrentMinute,
                 actor.LocationId,
                 [commitment.Id, actorId, recipientId],
-                [delivered.Id],
+                causes,
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["completion_kind"] = "reported",
+                    ["completion_kind"] = reportsBreach ? "reported_with_breach" : "reported",
                 });
         }
 
