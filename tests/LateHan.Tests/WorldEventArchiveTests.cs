@@ -49,6 +49,9 @@ public sealed class WorldEventArchiveTests
             var backupPath = $"{path}.gz";
             Assert.True(reopened.CreateCompressedBackup(backupPath) > 0);
             Assert.True(File.Exists(backupPath));
+
+            using var readOnly = WorldEventArchive.OpenReadOnly(path);
+            Assert.Throws<InvalidOperationException>(() => readOnly.Append(CreateEvents(9, 1)));
         }
         finally
         {

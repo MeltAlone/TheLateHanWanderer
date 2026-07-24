@@ -22,15 +22,30 @@ public sealed record EventArchiveAudit(long EventCount, long LastSequence, strin
 
 public sealed class WorldEventArchive : IDisposable
 {
-    public const string SchemaVersion = "1.0";
+    public const string SchemaVersion = "1.1";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.General);
     private readonly SqliteConnection _connection;
     private readonly string _path;
+    private readonly bool _readOnly;
+    private readonly long _startingSequence;
     private bool _disposed;
 
     public WorldEventArchive(string path)
+        : this(path, 0, readOnly: false)
     {
+    }
+
+    public WorldEventArchive(string path, long startingSequence)
+        : this(path, startingSequence, readOnly: false)
+    {
+    }
+
+    private WorldEventArchive(string path, long startingSequence, bool readOnly)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(startingSequence);
+        _startingSequence = startingSequence;
+        _readOnly = readOnly;
         _path = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(_path);
         if (!string.IsNullOrEmpty(directory))
@@ -41,7 +56,7 @@ public sealed class WorldEventArchive : IDisposable
         _connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = _path,
-            Mode = SqliteOpenMode.ReadWriteCreate,
+            Mode = readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate,
             Pooling = false,
         }.ToString());
         _connection.Open();
@@ -49,15 +64,23 @@ public sealed class WorldEventArchive : IDisposable
         EnsureSchema();
     }
 
+    public static WorldEventArchive OpenReadOnly(string path) => new(path, 0, readOnly: true);
+
     public long EventCount => ExecuteInt64("SELECT COUNT(*) FROM events;");
 
-    public long LastSequence => ExecuteInt64("SELECT COALESCE(MAX(sequence), 0) FROM events;");
+    public long LastSequence => ExecuteInt64(
+        $"SELECT COALESCE(MAX(sequence), {_startingSequence.ToString(System.Globalization.CultureInfo.InvariantCulture)}) FROM events;");
+
+    public long StartingSequence => _startingSequence;
 
     public long CheckpointCount => ExecuteInt64("SELECT COUNT(*) FROM checkpoints;");
+
+    public EventArchiveCheckpoint? LatestCheckpoint => LoadLatestCheckpoint();
 
     public void Append(IReadOnlyList<WorldEvent> events)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfReadOnly();
         if (events.Count == 0)
         {
             return;
@@ -181,6 +204,7 @@ public sealed class WorldEventArchive : IDisposable
         ReadOnlySpan<byte> snapshotPayload)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfReadOnly();
         if (eventSequence <= 0 || eventSequence > LastSequence)
         {
             throw new ArgumentOutOfRangeException(nameof(eventSequence));
@@ -215,6 +239,7 @@ public sealed class WorldEventArchive : IDisposable
 
     public EventArchiveRestore? RestoreLatest(int maximumTailEvents = 25_000)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         var checkpoint = LoadLatestCheckpoint();
         if (checkpoint is null)
         {
@@ -245,7 +270,7 @@ public sealed class WorldEventArchive : IDisposable
             ORDER BY sequence;
             """;
         long count = 0;
-        long lastSequence = 0;
+        var lastSequence = _startingSequence;
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -267,6 +292,7 @@ public sealed class WorldEventArchive : IDisposable
     public void Flush()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfReadOnly();
         using var command = _connection.CreateCommand();
         command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE); PRAGMA optimize;";
         command.ExecuteNonQuery();
@@ -275,6 +301,7 @@ public sealed class WorldEventArchive : IDisposable
     public long CreateCompressedBackup(string path)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfReadOnly();
         Flush();
         var fullPath = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(fullPath);
@@ -338,20 +365,24 @@ public sealed class WorldEventArchive : IDisposable
     private void ConfigureConnection()
     {
         using var command = _connection.CreateCommand();
-        command.CommandText = """
-            PRAGMA journal_mode = WAL;
-            PRAGMA synchronous = NORMAL;
-            PRAGMA temp_store = MEMORY;
-            PRAGMA foreign_keys = ON;
-            PRAGMA cache_size = -65536;
-            """;
+        command.CommandText = _readOnly
+            ? "PRAGMA query_only = ON; PRAGMA foreign_keys = ON; PRAGMA cache_size = -65536;"
+            : """
+                PRAGMA journal_mode = WAL;
+                PRAGMA synchronous = NORMAL;
+                PRAGMA temp_store = MEMORY;
+                PRAGMA foreign_keys = ON;
+                PRAGMA cache_size = -65536;
+                """;
         command.ExecuteNonQuery();
     }
 
     private void EnsureSchema()
     {
-        using var command = _connection.CreateCommand();
-        command.CommandText = """
+        if (!_readOnly)
+        {
+            using var command = _connection.CreateCommand();
+            command.CommandText = """
             CREATE TABLE IF NOT EXISTS archive_metadata(
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
@@ -383,10 +414,15 @@ public sealed class WorldEventArchive : IDisposable
             ) WITHOUT ROWID;
             INSERT OR IGNORE INTO archive_metadata(key, value) VALUES('schema_version', $schema_version);
             INSERT OR IGNORE INTO archive_metadata(key, value) VALUES('engine_version', $engine_version);
+            INSERT OR IGNORE INTO archive_metadata(key, value) VALUES('starting_sequence', $starting_sequence);
             """;
-        command.Parameters.AddWithValue("$schema_version", SchemaVersion);
-        command.Parameters.AddWithValue("$engine_version", EngineMetadata.Version);
-        command.ExecuteNonQuery();
+            command.Parameters.AddWithValue("$schema_version", SchemaVersion);
+            command.Parameters.AddWithValue("$engine_version", EngineMetadata.Version);
+            command.Parameters.AddWithValue(
+                "$starting_sequence",
+                _startingSequence.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            command.ExecuteNonQuery();
+        }
 
         var schemaVersion = ReadMetadata("schema_version");
         if (!string.Equals(schemaVersion, SchemaVersion, StringComparison.Ordinal))
@@ -399,6 +435,15 @@ public sealed class WorldEventArchive : IDisposable
         {
             throw new InvalidDataException(
                 $"Event archive engine version '{engineVersion}' is incompatible with '{EngineMetadata.Version}'.");
+        }
+
+        var startingSequence = long.Parse(
+            ReadMetadata("starting_sequence"),
+            System.Globalization.CultureInfo.InvariantCulture);
+        if (startingSequence != _startingSequence)
+        {
+            throw new InvalidDataException(
+                $"Event archive starts at '{startingSequence}', not requested sequence '{_startingSequence}'.");
         }
     }
 
@@ -516,5 +561,13 @@ public sealed class WorldEventArchive : IDisposable
         command.Parameters.AddWithValue("$key", key);
         return (string?)command.ExecuteScalar()
             ?? throw new InvalidDataException($"Event archive metadata '{key}' is missing.");
+    }
+
+    private void ThrowIfReadOnly()
+    {
+        if (_readOnly)
+        {
+            throw new InvalidOperationException("The event archive was opened read-only.");
+        }
     }
 }

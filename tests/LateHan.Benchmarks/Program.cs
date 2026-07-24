@@ -47,6 +47,9 @@ switch (workload)
     case "b5-scale":
         RunLongTermEventArchiveScale();
         break;
+    case "b6-scale":
+        RunBranchIsolationScale();
+        break;
     case "scale":
         RunCityCrisisScale();
         RunMixedCityCrisisScale();
@@ -64,7 +67,188 @@ switch (workload)
         break;
     default:
         throw new ArgumentException(
-            "Usage: delivery|b1-idle|b1-scale|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|b5-scale|scale|all");
+            "Usage: delivery|b1-idle|b1-scale|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|b5-scale|b6-scale|scale|all");
+}
+
+void RunBranchIsolationScale()
+{
+    const int branchCount = 20;
+    const long sevenDays = 7 * 24 * 60;
+    var directory = Path.Combine(Path.GetTempPath(), $"latehan-b6-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        var snapshotStore = new WorldSnapshotStore();
+        var baseEngine = new WorldEngine(loader.Load(scenarioDirectory).World);
+        _ = baseEngine.Wait(1);
+        var baseFingerprint = baseEngine.State.ComputeEventFingerprint();
+        var baseMaterialFingerprint = baseEngine.State.ComputeMaterialStateFingerprint();
+        var baseSequence = baseEngine.State.EventSequenceCursor - 1;
+        var baseArchivePath = Path.Combine(directory, "base.db");
+        using (var baseArchive = new WorldEventArchive(baseArchivePath))
+        {
+            baseArchive.Append(baseEngine.State.Events);
+            baseArchive.CreateCheckpoint(
+                baseSequence,
+                baseFingerprint,
+                snapshotStore.Serialize(baseEngine.State));
+            baseArchive.Flush();
+        }
+
+        var baseStorageBytes = new FileInfo(baseArchivePath).Length;
+        var baseLastWriteTime = File.GetLastWriteTimeUtc(baseArchivePath);
+        var destinations = baseEngine.State.Places.Keys.Order(StringComparer.Ordinal).Take(branchCount).ToArray();
+        if (destinations.Length != branchCount)
+        {
+            throw new InvalidOperationException("B6 requires twenty distinct branch destinations.");
+        }
+
+        var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+        var stopwatch = Stopwatch.StartNew();
+        var eventFingerprints = new HashSet<string>(StringComparer.Ordinal);
+        var materialFingerprints = new HashSet<string>(StringComparer.Ordinal);
+        var randomDrawCounts = new HashSet<ulong>();
+        var tailEventCounts = new List<long>(branchCount);
+        var branchStorageBytes = 0L;
+        var expectedFirstDraw = baseEngine.State.RandomStreams.PreviewUInt64("b6-branch", "shared", 1)[0];
+        for (var branchIndex = 0; branchIndex < branchCount; branchIndex++)
+        {
+            var branchId = $"branch.{branchIndex:D2}";
+            var branchPath = Path.Combine(directory, branchId);
+            using (var branch = WorldBranchStore.Create(baseArchivePath, branchPath, branchId))
+            {
+                var engine = new WorldEngine(branch.Load());
+                ulong firstDraw = 0;
+                for (var drawIndex = 0; drawIndex <= branchIndex; drawIndex++)
+                {
+                    var draw = engine.State.RandomStreams.NextUInt64("b6-branch", "shared");
+                    if (drawIndex == 0)
+                    {
+                        firstDraw = draw;
+                    }
+                }
+
+                if (firstDraw != expectedFirstDraw)
+                {
+                    throw new InvalidOperationException($"B6 branch '{branchId}' did not start from the base random stream.");
+                }
+
+                for (var day = 1; day <= 7; day++)
+                {
+                    var dueMinute = engine.State.CurrentMinute + day * 24 * 60;
+                    engine.Schedule(
+                        dueMinute,
+                        ScheduledEventPhase.ArrivalAndDeparture,
+                        engine.State.PlayerActorId,
+                        "actor_relocated",
+                        destinations[branchIndex],
+                        details: new Dictionary<string, string>(StringComparer.Ordinal)
+                        {
+                            ["destination_place_id"] = destinations[branchIndex],
+                            ["branch_id"] = branchId,
+                            ["day"] = day.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        });
+                    engine.Schedule(
+                        dueMinute,
+                        ScheduledEventPhase.SummaryAndNotification,
+                        branchId,
+                        $"branch_command_{branchIndex:D2}",
+                        destinations[branchIndex],
+                        causeIds: [baseEngine.State.Events[^1].Id]);
+                }
+
+                _ = engine.Wait(sevenDays);
+                branch.Save(engine.State);
+            }
+
+            using var reopened = WorldBranchStore.Open(branchPath);
+            var restored = reopened.Load();
+            var tailEventCount = reopened.TailArchive.EventCount;
+            if (tailEventCount > 25_000)
+            {
+                throw new InvalidOperationException($"B6 branch '{branchId}' exceeded the bounded tail budget.");
+            }
+
+            var tailEvents = reopened.TailArchive.ReadAfter(baseSequence, maximumCount: (int)tailEventCount);
+            var stream = restored.RandomStreams.Streams["b6-branch:shared"];
+            var commandEvents = tailEvents
+                .Where(worldEvent => worldEvent.Type == $"branch_command_{branchIndex:D2}")
+                .ToArray();
+            if (restored.CurrentMinute != baseEngine.State.CurrentMinute + sevenDays ||
+                !string.Equals(restored.Actors[restored.PlayerActorId].PlaceId, destinations[branchIndex], StringComparison.Ordinal) ||
+                tailEvents.Count != tailEventCount ||
+                tailEventCount < 16 ||
+                reopened.TailArchive.StartingSequence != baseSequence ||
+                reopened.TailArchive.CheckpointCount != 1 ||
+                stream.DrawCount != (ulong)(branchIndex + 1) ||
+                commandEvents.Length != 7 ||
+                reopened.Why(commandEvents[0].Id, maximumDepth: 1).Count != 2)
+            {
+                throw new InvalidOperationException(
+                    $"B6 branch invariants failed for '{branchId}': minute={restored.CurrentMinute} " +
+                    $"place={restored.Actors[restored.PlayerActorId].PlaceId} tail={tailEvents.Count} " +
+                    $"checkpoints={reopened.TailArchive.CheckpointCount} draws={stream.DrawCount}.");
+            }
+
+            eventFingerprints.Add(restored.ComputeEventFingerprint());
+            materialFingerprints.Add(restored.ComputeMaterialStateFingerprint());
+            randomDrawCounts.Add(stream.DrawCount);
+            tailEventCounts.Add(tailEventCount);
+            branchStorageBytes += Directory.EnumerateFiles(branchPath).Sum(path => new FileInfo(path).Length);
+        }
+
+        stopwatch.Stop();
+        var allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
+        var branchFingerprintMaterial = string.Join(
+            '\n',
+            eventFingerprints.Order(StringComparer.Ordinal)
+                .Concat(materialFingerprints.Order(StringComparer.Ordinal))
+                .Concat(randomDrawCounts.Order().Select(value => value.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))));
+        var branchFingerprint = $"sha256:{Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(branchFingerprintMaterial)))
+            .ToLowerInvariant()}";
+        using var verifiedBaseArchive = WorldEventArchive.OpenReadOnly(baseArchivePath);
+        var verifiedBase = snapshotStore.Load(verifiedBaseArchive.LatestCheckpoint!.SnapshotPayload);
+        if (verifiedBaseArchive.EventCount != baseEngine.State.Events.Count ||
+            verifiedBaseArchive.LastSequence != baseSequence ||
+            !string.Equals(verifiedBaseArchive.LatestCheckpoint.EventFingerprint, baseFingerprint, StringComparison.Ordinal) ||
+            !string.Equals(verifiedBase.ComputeMaterialStateFingerprint(), baseMaterialFingerprint, StringComparison.Ordinal) ||
+            new FileInfo(baseArchivePath).Length != baseStorageBytes ||
+            File.GetLastWriteTimeUtc(baseArchivePath) != baseLastWriteTime ||
+            eventFingerprints.Count != branchCount ||
+            materialFingerprints.Count != branchCount ||
+            randomDrawCounts.Count != branchCount)
+        {
+            throw new InvalidOperationException(
+                "B6 global isolation invariants failed: " +
+                $"base_events={verifiedBaseArchive.EventCount} base_sequence={verifiedBaseArchive.LastSequence} " +
+                $"event_fingerprints={eventFingerprints.Count} material_fingerprints={materialFingerprints.Count} " +
+                $"random_cursors={randomDrawCounts.Count}.");
+        }
+
+        Console.WriteLine("workload=b6-branch-isolation");
+        Console.WriteLine($"branches={branchCount}");
+        Console.WriteLine($"branch_days={sevenDays / (24 * 60)}");
+        Console.WriteLine($"base_events={verifiedBaseArchive.EventCount}");
+        Console.WriteLine($"tail_events_min={tailEventCounts.Min()}");
+        Console.WriteLine($"tail_events_max={tailEventCounts.Max()}");
+        Console.WriteLine($"elapsed_ms={stopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"allocated_bytes={allocatedBytes}");
+        Console.WriteLine($"base_storage_bytes={baseStorageBytes}");
+        Console.WriteLine($"branch_storage_bytes={branchStorageBytes}");
+        Console.WriteLine($"working_set_bytes={Environment.WorkingSet}");
+        Console.WriteLine($"event_fingerprints={eventFingerprints.Count}");
+        Console.WriteLine($"material_fingerprints={materialFingerprints.Count}");
+        Console.WriteLine($"random_cursors={randomDrawCounts.Count}");
+        Console.WriteLine($"base_fingerprint={baseFingerprint}");
+        Console.WriteLine($"branch_fingerprint={branchFingerprint}");
+        Console.WriteLine("correctness=shared_base_immutable=true branch_state_isolated=true tail_logs_isolated=true random_streams_isolated=true cross_archive_why=true deterministic_restore=true");
+    }
+    finally
+    {
+        Directory.Delete(directory, recursive: true);
+    }
 }
 
 void RunLongTermEventArchiveScale()

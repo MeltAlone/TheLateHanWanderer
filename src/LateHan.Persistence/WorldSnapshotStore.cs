@@ -15,7 +15,6 @@ public sealed class WorldSnapshotStore
 
     public void Save(WorldState world, string path)
     {
-        var snapshot = WorldSnapshot.FromWorld(world);
         var fullPath = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(fullPath);
         if (!string.IsNullOrEmpty(directory))
@@ -24,14 +23,19 @@ public sealed class WorldSnapshotStore
         }
 
         var temporaryPath = $"{fullPath}.tmp";
-        File.WriteAllBytes(temporaryPath, JsonSerializer.SerializeToUtf8Bytes(snapshot, JsonOptions));
+        File.WriteAllBytes(temporaryPath, Serialize(world));
         File.Move(temporaryPath, fullPath, overwrite: true);
     }
 
-    public WorldState Load(string path)
+    public byte[] Serialize(WorldState world) =>
+        JsonSerializer.SerializeToUtf8Bytes(WorldSnapshot.FromWorld(world), JsonOptions);
+
+    public WorldState Load(string path) => Load(File.ReadAllBytes(path));
+
+    public WorldState Load(ReadOnlySpan<byte> snapshotBytes)
     {
-        var snapshot = JsonSerializer.Deserialize<WorldSnapshot>(File.ReadAllBytes(path), JsonOptions)
-            ?? throw new InvalidDataException($"Snapshot '{path}' is empty.");
+        var snapshot = JsonSerializer.Deserialize<WorldSnapshot>(snapshotBytes, JsonOptions)
+            ?? throw new InvalidDataException("Snapshot payload is empty.");
         return snapshot.ToWorld();
     }
 }
