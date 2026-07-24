@@ -107,6 +107,9 @@ internal sealed class CliSession
                 case "history":
                     PrintHistory();
                     break;
+                case "dev":
+                    ExecuteDeveloperCommand(tokens);
+                    break;
                 case "save":
                     ExecuteSave(tokens);
                     break;
@@ -147,6 +150,9 @@ internal sealed class CliSession
         Console.WriteLine("  tell <person-id> <proposition-id>");
         Console.WriteLine("  wait <minutes|Nh|Nm>");
         Console.WriteLine("  history");
+        Console.WriteLine("  dev queue");
+        Console.WriteLine("  dev rng <domain> <entity-id> [count]");
+        Console.WriteLine("  dev schedule <minute> <phase> <subject-id> <kind> [interrupt]");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
         Console.WriteLine("  quit");
@@ -246,7 +252,13 @@ internal sealed class CliSession
             return;
         }
 
-        _engine.Wait(minutes);
+        var result = _engine.Wait(minutes);
+        if (result.Status == ActionStatus.Interrupted)
+        {
+            Console.WriteLine($"等待被中断；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+            return;
+        }
+
         Console.WriteLine($"等待结束；当前为开局后 {_engine.State.CurrentMinute} 分钟。");
     }
 
@@ -266,6 +278,98 @@ internal sealed class CliSession
         }
 
         Console.WriteLine($"事件指纹 {_engine.State.ComputeEventFingerprint()}");
+        Console.WriteLine($"回放状态 {(_engine.State.ReplayModified ? "modified" : "canonical")}");
+    }
+
+    private void ExecuteDeveloperCommand(string[] tokens)
+    {
+        if (tokens.Length < 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule> ...");
+            return;
+        }
+
+        switch (tokens[1].ToLowerInvariant())
+        {
+            case "queue":
+                PrintScheduledQueue(tokens);
+                break;
+            case "rng":
+                PreviewRandomStream(tokens);
+                break;
+            case "schedule":
+                ScheduleDeveloperEvent(tokens);
+                break;
+            default:
+                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule> ...");
+                break;
+        }
+    }
+
+    private void PrintScheduledQueue(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：dev queue");
+            return;
+        }
+
+        if (_engine.State.ScheduledEvents.Count == 0)
+        {
+            Console.WriteLine("事件队列为空。");
+            return;
+        }
+
+        foreach (var item in _engine.State.ScheduledEvents)
+        {
+            Console.WriteLine(
+                $"{item.Id} t={item.DueMinute} {ToPhaseId(item.Phase)} {item.Kind} " +
+                $"subject={item.StableSubjectId} interrupt={item.InterruptsPlayer.ToString().ToLowerInvariant()}");
+        }
+    }
+
+    private void PreviewRandomStream(string[] tokens)
+    {
+        if (tokens.Length is < 4 or > 5 ||
+            (tokens.Length == 5 && !int.TryParse(tokens[4], NumberStyles.None, CultureInfo.InvariantCulture, out _)))
+        {
+            Console.WriteLine("invalid:syntax 用法：dev rng <domain> <entity-id> [count]");
+            return;
+        }
+
+        var count = tokens.Length == 5
+            ? int.Parse(tokens[4], NumberStyles.None, CultureInfo.InvariantCulture)
+            : 1;
+        try
+        {
+            var values = _engine.State.RandomStreams.PreviewUInt64(tokens[2], tokens[3], count);
+            Console.WriteLine($"{tokens[2]}:{tokens[3]} preview=[{string.Join(',', values)}]");
+        }
+        catch (ArgumentException exception)
+        {
+            Console.WriteLine($"invalid:rng {exception.Message}");
+        }
+    }
+
+    private void ScheduleDeveloperEvent(string[] tokens)
+    {
+        if (tokens.Length is < 6 or > 7 ||
+            !long.TryParse(tokens[2], NumberStyles.None, CultureInfo.InvariantCulture, out var minute) ||
+            !TryParsePhase(tokens[3], out var phase) ||
+            (tokens.Length == 7 && !string.Equals(tokens[6], "interrupt", StringComparison.OrdinalIgnoreCase)))
+        {
+            Console.WriteLine("invalid:syntax 用法：dev schedule <minute> <phase> <subject-id> <kind> [interrupt]");
+            return;
+        }
+
+        var interrupts = tokens.Length == 7;
+        var scheduled = _engine.ScheduleExternalIntervention(
+            minute,
+            phase,
+            tokens[4],
+            tokens[5],
+            interruptsPlayer: interrupts);
+        Console.WriteLine($"已排定 {scheduled.Id}；回放已标记为 modified。");
     }
 
     private void ExecuteSave(string[] tokens)
@@ -298,6 +402,34 @@ internal sealed class CliSession
         "horse" => TravelMode.Horse,
         "with-group" => TravelMode.WithGroup,
         _ => throw new DomainCommandException("unknown_travel_mode", $"Unknown travel mode '{value}'."),
+    };
+
+    private static bool TryParsePhase(string value, out ScheduledEventPhase phase)
+    {
+        phase = value switch
+        {
+            "death_or_removal" => ScheduledEventPhase.DeathOrRemoval,
+            "access_and_control_change" => ScheduledEventPhase.AccessAndControlChange,
+            "arrival_and_departure" => ScheduledEventPhase.ArrivalAndDeparture,
+            "delivery_and_transfer" => ScheduledEventPhase.DeliveryAndTransfer,
+            "perception_and_belief" => ScheduledEventPhase.PerceptionAndBelief,
+            "plan_evaluation" => ScheduledEventPhase.PlanEvaluation,
+            "summary_and_notification" => ScheduledEventPhase.SummaryAndNotification,
+            _ => (ScheduledEventPhase)(-1),
+        };
+        return Enum.IsDefined(phase);
+    }
+
+    private static string ToPhaseId(ScheduledEventPhase phase) => phase switch
+    {
+        ScheduledEventPhase.DeathOrRemoval => "death_or_removal",
+        ScheduledEventPhase.AccessAndControlChange => "access_and_control_change",
+        ScheduledEventPhase.ArrivalAndDeparture => "arrival_and_departure",
+        ScheduledEventPhase.DeliveryAndTransfer => "delivery_and_transfer",
+        ScheduledEventPhase.PerceptionAndBelief => "perception_and_belief",
+        ScheduledEventPhase.PlanEvaluation => "plan_evaluation",
+        ScheduledEventPhase.SummaryAndNotification => "summary_and_notification",
+        _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null),
     };
 
     private static bool TryParseDuration(string value, out long minutes)

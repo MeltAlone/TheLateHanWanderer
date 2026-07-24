@@ -4,11 +4,11 @@
   "scenario_version": "0.1.0",
   "ruleset_version": "latehan.rules.0.1-draft",
   "rng": {
-    "version": "xoshiro256ss.v1-candidate",
+    "version": "xoshiro256ss.v1",
     "root_seed_hex": "18908D2400000001",
-    "derivation": "domain-and-stable-entity-id"
+    "derivation": "sha256-le.v1"
   },
-  "content_hash": "sha256:96ca6edff106df0f8fb04262ee2e6ee9a9025f0218513a46eda958fa83ba6a12",
+  "content_hash": "sha256:9bd0cfc1797a7baf937c5c03444e4b8af30b746195299253cf865b87d3561669",
   "canonical_calendar": "later_han_regnal",
   "calendar_mapping_id": "calendar_mapping.189.luoyang_crisis",
   "start": {

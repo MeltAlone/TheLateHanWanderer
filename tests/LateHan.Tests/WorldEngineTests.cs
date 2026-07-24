@@ -82,6 +82,105 @@ public sealed class WorldEngineTests
         Assert.Equal(first.State.ComputeEventFingerprint(), second.State.ComputeEventFingerprint());
     }
 
+    [Fact]
+    public void WaitStopsExactlyAtInterruptAfterSettlingSameMinuteInStableOrder()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        engine.Schedule(
+            95,
+            ScheduledEventPhase.SummaryAndNotification,
+            "person.zhang_rang",
+            "remote_summary");
+        engine.Schedule(
+            95,
+            ScheduledEventPhase.SummaryAndNotification,
+            "person.player_clerk",
+            "urgent_recall",
+            "place.luoyang.general_in_chief_office",
+            interruptsPlayer: true);
+        engine.Schedule(
+            95,
+            ScheduledEventPhase.DeathOrRemoval,
+            "person.he_jin",
+            "actor_removed");
+        engine.Schedule(
+            120,
+            ScheduledEventPhase.PlanEvaluation,
+            "person.dong_zhuo",
+            "plan_evaluated");
+
+        var result = engine.Wait(240);
+
+        Assert.Equal(ActionStatus.Interrupted, result.Status);
+        Assert.Equal(95, result.EndMinute);
+        Assert.Equal(95, engine.State.CurrentMinute);
+        Assert.Equal(
+            ["wait_started", "actor_removed", "urgent_recall", "remote_summary", "wait_interrupted"],
+            result.Events.Select(item => item.Type));
+        Assert.Equal("145", result.Events[^1].Details["remaining_minutes"]);
+        Assert.Single(engine.State.ScheduledEvents);
+        Assert.Equal(120, engine.State.ScheduledEvents[0].DueMinute);
+    }
+
+    [Fact]
+    public void SamePhaseUsesOrdinalSubjectThenInsertionSequence()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        engine.Schedule(10, ScheduledEventPhase.PlanEvaluation, "subject.z", "z_first");
+        engine.Schedule(10, ScheduledEventPhase.PlanEvaluation, "subject.a", "a_first");
+        engine.Schedule(10, ScheduledEventPhase.PlanEvaluation, "subject.a", "a_second");
+
+        var result = engine.Wait(10);
+
+        Assert.Equal(
+            ["wait_started", "a_first", "a_second", "z_first", "wait_completed"],
+            result.Events.Select(item => item.Type));
+    }
+
+    [Fact]
+    public void InvalidSchedulingDoesNotChangeEventsOrSequenceCursors()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.Wait(10);
+        var eventCursor = engine.State.EventSequenceCursor;
+        var scheduledCursor = engine.State.ScheduledEventSequenceCursor;
+
+        var exception = Assert.Throws<DomainCommandException>(() => engine.ScheduleExternalIntervention(
+            9,
+            ScheduledEventPhase.PlanEvaluation,
+            "person.dong_zhuo",
+            "plan_evaluated"));
+
+        Assert.Equal("scheduled_event_in_past", exception.Code);
+        Assert.Equal(eventCursor, engine.State.EventSequenceCursor);
+        Assert.Equal(scheduledCursor, engine.State.ScheduledEventSequenceCursor);
+        Assert.False(engine.State.ReplayModified);
+
+        var invalidPhase = Assert.Throws<DomainCommandException>(() => engine.ScheduleExternalIntervention(
+            10,
+            (ScheduledEventPhase)99,
+            "person.dong_zhuo",
+            "plan_evaluated"));
+
+        Assert.Equal("invalid_scheduled_event", invalidPhase.Code);
+        Assert.Equal(eventCursor, engine.State.EventSequenceCursor);
+        Assert.Equal(scheduledCursor, engine.State.ScheduledEventSequenceCursor);
+        Assert.False(engine.State.ReplayModified);
+    }
+
+    [Fact]
+    public void OverflowingWaitDoesNotStartAnAction()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.Wait(10);
+        var eventCursor = engine.State.EventSequenceCursor;
+
+        _ = Assert.Throws<OverflowException>(() => engine.Wait(long.MaxValue));
+
+        Assert.Equal(10, engine.State.CurrentMinute);
+        Assert.Equal(eventCursor, engine.State.EventSequenceCursor);
+    }
+
     private static WorldEngine RunDeliveryPath()
     {
         var engine = RepositoryFixture.CreateEngine();

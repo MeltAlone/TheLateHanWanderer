@@ -48,6 +48,7 @@ public sealed class ScenarioLoader
         ValidateComponentVersion(manifest, world, "world.json", errors);
         ValidateComponentVersion(manifest, actors, "actors.json", errors);
         ValidateComponentVersion(manifest, state, "state.json", errors);
+        ValidateRandomConfiguration(manifest, errors);
         ValidateIdsAndReferences(manifest, world, actors, state, errors);
         ThrowIfErrors(errors);
 
@@ -80,7 +81,9 @@ public sealed class ScenarioLoader
                 commitment.Target,
                 commitment.Recipient,
                 commitment.DueMinute,
-                commitment.Status)));
+                commitment.Status)),
+            rngRootSeedHex: manifest.Rng.RootSeedHex,
+            rngDerivation: manifest.Rng.Derivation);
 
         return new LoadedScenario(domainWorld, computedHash, manifest.ContentHash);
     }
@@ -102,6 +105,28 @@ public sealed class ScenarioLoader
         }
 
         return new RouteDefinition(route.Id, route.From, route.To, route.DistanceLiQ10, route.Bidirectional, modes);
+    }
+
+    private static void ValidateRandomConfiguration(ManifestDocument manifest, ICollection<string> errors)
+    {
+        if (!string.Equals(manifest.Rng.Version, RandomMetadata.Xoshiro256StarStarV1, StringComparison.Ordinal))
+        {
+            errors.Add($"SCN-RNG-001 Unsupported rng.version '{manifest.Rng.Version}'.");
+        }
+
+        if (!string.Equals(manifest.Rng.Derivation, RandomMetadata.Sha256LittleEndianV1, StringComparison.Ordinal))
+        {
+            errors.Add($"SCN-RNG-002 Unsupported rng.derivation '{manifest.Rng.Derivation}'.");
+        }
+
+        if (!ulong.TryParse(
+                manifest.Rng.RootSeedHex,
+                System.Globalization.NumberStyles.AllowHexSpecifier,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out _))
+        {
+            errors.Add("SCN-RNG-003 rng.root_seed_hex must contain at most 16 hexadecimal digits.");
+        }
     }
 
     private static void ValidateComponentVersion(

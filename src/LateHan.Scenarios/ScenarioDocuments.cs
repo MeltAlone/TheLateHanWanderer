@@ -26,6 +26,10 @@ internal sealed class ManifestDocument
 internal sealed class RngDocument
 {
     public string Version { get; init; } = string.Empty;
+
+    public string RootSeedHex { get; init; } = string.Empty;
+
+    public string Derivation { get; init; } = string.Empty;
 }
 
 internal sealed class ScenarioStartDocument

@@ -18,8 +18,10 @@ public sealed class ScenarioLoaderTests
         Assert.Equal(18, loaded.World.Routes.Count);
         Assert.Equal(8, loaded.World.Items.Count);
         Assert.Equal(2, loaded.World.Commitments.Count);
-        Assert.Equal("xoshiro256ss.v1-candidate", loaded.World.RngVersion);
-        Assert.Equal("0.1.0-spike", loaded.World.EngineVersion);
+        Assert.Equal("xoshiro256ss.v1", loaded.World.RngVersion);
+        Assert.Equal("18908D2400000001", loaded.World.RandomStreams.RootSeedHex);
+        Assert.Equal("sha256-le.v1", loaded.World.RandomStreams.Derivation);
+        Assert.Equal("0.2.0-spike", loaded.World.EngineVersion);
         Assert.StartsWith("sha256:", loaded.ComputedContentHash, StringComparison.Ordinal);
         Assert.Equal(loaded.DeclaredContentHash, loaded.ComputedContentHash);
         Assert.NotEqual("pending-tooling", loaded.World.ContentHash);
@@ -76,6 +78,27 @@ public sealed class ScenarioLoaderTests
             var exception = Assert.Throws<ScenarioValidationException>(() => new ScenarioLoader().Load(copy));
 
             Assert.Contains(exception.Errors, error => error.Contains("SCN-HASH-001", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(copy, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void UnsupportedRandomAlgorithmIsRejectedBeforeWorldConstruction()
+    {
+        var copy = CreateScenarioCopy();
+        try
+        {
+            var manifestPath = Path.Combine(copy, "manifest.json");
+            var manifest = File.ReadAllText(manifestPath)
+                .Replace("\"xoshiro256ss.v1\"", "\"system-random\"", StringComparison.Ordinal);
+            File.WriteAllText(manifestPath, manifest);
+
+            var exception = Assert.Throws<ScenarioValidationException>(() => new ScenarioLoader().Load(copy));
+
+            Assert.Contains(exception.Errors, error => error.Contains("SCN-RNG-001", StringComparison.Ordinal));
         }
         finally
         {

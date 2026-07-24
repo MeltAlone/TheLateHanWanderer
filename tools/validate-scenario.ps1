@@ -104,6 +104,16 @@ if ($null -eq $world -or $null -eq $actors -or $null -eq $state) {
     Add-Diagnostic "SCN-FILE-002" $scenarioPath "Required MVP components are missing."
 }
 
+if ($manifest.rng.version -ne "xoshiro256ss.v1") {
+    Add-Diagnostic "SCN-RNG-001" "manifest.rng.version" "Expected xoshiro256ss.v1."
+}
+if ($manifest.rng.derivation -ne "sha256-le.v1") {
+    Add-Diagnostic "SCN-RNG-002" "manifest.rng.derivation" "Expected sha256-le.v1."
+}
+if ([string]$manifest.rng.root_seed_hex -notmatch '^[0-9A-Fa-f]{1,16}$') {
+    Add-Diagnostic "SCN-RNG-003" "manifest.rng.root_seed_hex" "Expected 1-16 hexadecimal digits."
+}
+
 foreach ($componentName in $components.Keys) {
     $component = $components[$componentName]
     if ($component.scenario_id -ne $manifest.scenario_id) {

@@ -18,7 +18,22 @@ public sealed record StatusView(
     IReadOnlyList<(string Id, string Name)> HeldItems,
     IReadOnlyList<CommitmentState> OpenCommitments);
 
-public sealed record ActionResult(long StartMinute, long EndMinute, IReadOnlyList<WorldEvent> Events);
+public enum ActionStatus
+{
+    Completed,
+    PartiallyCompleted,
+    Refused,
+    Blocked,
+    Interrupted,
+    Cancelled,
+    Invalid,
+}
+
+public sealed record ActionResult(
+    long StartMinute,
+    long EndMinute,
+    IReadOnlyList<WorldEvent> Events,
+    ActionStatus Status = ActionStatus.Completed);
 
 public sealed class WorldEngine
 {
@@ -235,6 +250,7 @@ public sealed class WorldEngine
 
         var actor = GetActor(actorId ?? State.PlayerActorId);
         var startMinute = State.CurrentMinute;
+        var targetMinute = checked(startMinute + minutes);
         var started = AppendEvent(
             "wait_started",
             startMinute,
@@ -245,7 +261,27 @@ public sealed class WorldEngine
             {
                 ["duration_minutes"] = minutes.ToString(CultureInfo.InvariantCulture),
             });
-        State.CurrentMinute += minutes;
+        var advancement = AdvanceTimeTo(targetMinute);
+        var events = new List<WorldEvent> { started };
+        events.AddRange(advancement.Events);
+        if (advancement.InterruptEventIds.Count > 0)
+        {
+            var causes = new List<string> { started.Id };
+            causes.AddRange(advancement.InterruptEventIds);
+            events.Add(AppendEvent(
+                "wait_interrupted",
+                State.CurrentMinute,
+                actor.LocationId,
+                [actor.Id],
+                causes,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["remaining_minutes"] = (targetMinute - State.CurrentMinute).ToString(CultureInfo.InvariantCulture),
+                }));
+
+            return new ActionResult(startMinute, State.CurrentMinute, events, ActionStatus.Interrupted);
+        }
+
         var completed = AppendEvent(
             "wait_completed",
             State.CurrentMinute,
@@ -253,8 +289,133 @@ public sealed class WorldEngine
             [actor.Id],
             [started.Id],
             new Dictionary<string, string>(StringComparer.Ordinal));
+        events.Add(completed);
+        return new ActionResult(startMinute, State.CurrentMinute, events);
+    }
 
-        return new ActionResult(startMinute, State.CurrentMinute, [started, completed]);
+    public ScheduledWorldEvent Schedule(
+        long dueMinute,
+        ScheduledEventPhase phase,
+        string stableSubjectId,
+        string kind,
+        string? locationId = null,
+        bool interruptsPlayer = false,
+        IReadOnlyList<string>? causeIds = null,
+        IReadOnlyDictionary<string, string>? details = null)
+    {
+        ValidateScheduleRequest(dueMinute, phase, stableSubjectId, kind);
+
+        var sequence = State.NextScheduledEventSequence;
+        var scheduledEvent = ScheduledWorldEvent.Create(
+            sequence,
+            dueMinute,
+            phase,
+            stableSubjectId,
+            kind,
+            locationId,
+            interruptsPlayer,
+            causeIds,
+            details);
+        State.AddScheduledEvent(scheduledEvent);
+        State.NextScheduledEventSequence++;
+        return scheduledEvent;
+    }
+
+    public ScheduledWorldEvent ScheduleExternalIntervention(
+        long dueMinute,
+        ScheduledEventPhase phase,
+        string stableSubjectId,
+        string kind,
+        string? locationId = null,
+        bool interruptsPlayer = false,
+        IReadOnlyDictionary<string, string>? details = null)
+    {
+        ValidateScheduleRequest(dueMinute, phase, stableSubjectId, kind);
+
+        var intervention = AppendEvent(
+            "debug_intervention",
+            State.CurrentMinute,
+            locationId,
+            [stableSubjectId],
+            [],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["scheduled_due_minute"] = dueMinute.ToString(CultureInfo.InvariantCulture),
+                ["scheduled_kind"] = kind,
+            });
+        State.ReplayModified = true;
+        return Schedule(
+            dueMinute,
+            phase,
+            stableSubjectId,
+            kind,
+            locationId,
+            interruptsPlayer,
+            [intervention.Id],
+            details);
+    }
+
+    private void ValidateScheduleRequest(
+        long dueMinute,
+        ScheduledEventPhase phase,
+        string stableSubjectId,
+        string kind)
+    {
+        if (dueMinute < State.CurrentMinute)
+        {
+            throw new DomainCommandException(
+                "scheduled_event_in_past",
+                $"Cannot schedule an event at minute {dueMinute} when the world is at {State.CurrentMinute}.");
+        }
+
+        if (!Enum.IsDefined(phase) || string.IsNullOrWhiteSpace(stableSubjectId) || string.IsNullOrWhiteSpace(kind))
+        {
+            throw new DomainCommandException(
+                "invalid_scheduled_event",
+                "A scheduled event requires a known phase, stable subject ID, and kind.");
+        }
+    }
+
+    private TimeAdvancementResult AdvanceTimeTo(long targetMinute)
+    {
+        var events = new List<WorldEvent>();
+        while (State.PeekScheduledEvent() is { } next && next.DueMinute <= targetMinute)
+        {
+            var batchMinute = next.DueMinute;
+            State.CurrentMinute = batchMinute;
+            var interruptIds = new List<string>();
+            while (State.PeekScheduledEvent() is { DueMinute: var dueMinute } scheduled && dueMinute == batchMinute)
+            {
+                if (!State.RemoveScheduledEvent(scheduled))
+                {
+                    throw new InvalidOperationException($"Could not remove scheduled event '{scheduled.Id}'.");
+                }
+
+                var details = scheduled.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                details["scheduled_event_id"] = scheduled.Id;
+                details["scheduled_phase"] = ToPhaseId(scheduled.Phase);
+                var occurred = AppendEvent(
+                    scheduled.Kind,
+                    scheduled.DueMinute,
+                    scheduled.LocationId,
+                    [scheduled.StableSubjectId],
+                    scheduled.CauseIds,
+                    details);
+                events.Add(occurred);
+                if (scheduled.InterruptsPlayer)
+                {
+                    interruptIds.Add(occurred.Id);
+                }
+            }
+
+            if (interruptIds.Count > 0)
+            {
+                return new TimeAdvancementResult(events, interruptIds);
+            }
+        }
+
+        State.CurrentMinute = targetMinute;
+        return new TimeAdvancementResult(events, []);
     }
 
     private ActorState GetActor(string actorId)
@@ -378,6 +539,22 @@ public sealed class WorldEngine
         TravelMode.WithGroup => "with-group",
         _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
     };
+
+    private static string ToPhaseId(ScheduledEventPhase phase) => phase switch
+    {
+        ScheduledEventPhase.DeathOrRemoval => "death_or_removal",
+        ScheduledEventPhase.AccessAndControlChange => "access_and_control_change",
+        ScheduledEventPhase.ArrivalAndDeparture => "arrival_and_departure",
+        ScheduledEventPhase.DeliveryAndTransfer => "delivery_and_transfer",
+        ScheduledEventPhase.PerceptionAndBelief => "perception_and_belief",
+        ScheduledEventPhase.PlanEvaluation => "plan_evaluation",
+        ScheduledEventPhase.SummaryAndNotification => "summary_and_notification",
+        _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null),
+    };
+
+    private sealed record TimeAdvancementResult(
+        IReadOnlyList<WorldEvent> Events,
+        IReadOnlyList<string> InterruptEventIds);
 
     private sealed record PathCandidate(string PlaceId, int Cost);
 

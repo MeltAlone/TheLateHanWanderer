@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.1";
+    public string SnapshotSchemaVersion { get; init; } = "0.2";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -58,6 +58,14 @@ internal sealed class WorldSnapshot
 
     public long NextEventSequence { get; init; }
 
+    public string RngRootSeedHex { get; init; } = string.Empty;
+
+    public string RngDerivation { get; init; } = string.Empty;
+
+    public long NextScheduledEventSequence { get; init; }
+
+    public bool ReplayModified { get; init; }
+
     public List<ActorSnapshot> Actors { get; init; } = [];
 
     public List<PlaceSnapshot> Places { get; init; } = [];
@@ -69,6 +77,10 @@ internal sealed class WorldSnapshot
     public List<CommitmentSnapshot> Commitments { get; init; } = [];
 
     public List<EventSnapshot> Events { get; init; } = [];
+
+    public List<RandomStreamSnapshot> RandomStreams { get; init; } = [];
+
+    public List<ScheduledEventSnapshot> ScheduledEvents { get; init; } = [];
 
     public static WorldSnapshot FromWorld(WorldState world)
     {
@@ -82,7 +94,11 @@ internal sealed class WorldSnapshot
             ContentHash = world.ContentHash,
             PlayerActorId = world.PlayerActorId,
             CurrentMinute = world.CurrentMinute,
-            NextEventSequence = world.Events.Count == 0 ? 1 : world.Events.Max(item => item.Sequence) + 1,
+            NextEventSequence = world.EventSequenceCursor,
+            RngRootSeedHex = world.RandomStreams.RootSeedHex,
+            RngDerivation = world.RandomStreams.Derivation,
+            NextScheduledEventSequence = world.ScheduledEventSequenceCursor,
+            ReplayModified = world.ReplayModified,
             Actors = world.Actors.Values.Select(item => new ActorSnapshot(item.Id, item.Name, item.LocationId)).ToList(),
             Places = world.Places.Values.Select(item => new PlaceSnapshot(item.Id, item.Name, item.AccessRuleId, item.ControllerId)).ToList(),
             Routes = world.Routes.Values.Select(item => new RouteSnapshot(
@@ -111,12 +127,30 @@ internal sealed class WorldSnapshot
                 item.SubjectIds.ToList(),
                 item.CauseIds.ToList(),
                 item.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal))).ToList(),
+            RandomStreams = world.RandomStreams.Streams.Values.Select(item => new RandomStreamSnapshot(
+                item.Key,
+                item.State0,
+                item.State1,
+                item.State2,
+                item.State3,
+                item.DrawCount)).ToList(),
+            ScheduledEvents = world.ScheduledEvents.Select(item => new ScheduledEventSnapshot(
+                item.Sequence,
+                item.Id,
+                item.DueMinute,
+                item.Phase,
+                item.StableSubjectId,
+                item.Kind,
+                item.LocationId,
+                item.InterruptsPlayer,
+                item.CauseIds.ToList(),
+                item.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal))).ToList(),
         };
     }
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.1", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.2", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -164,7 +198,29 @@ internal sealed class WorldSnapshot
                 item.SubjectIds,
                 item.CauseIds,
                 item.Details)),
-            NextEventSequence);
+            NextEventSequence,
+            RngRootSeedHex,
+            RngDerivation,
+            RandomStreams.Select(item => new RandomStreamState(
+                item.Key,
+                item.State0,
+                item.State1,
+                item.State2,
+                item.State3,
+                item.DrawCount)),
+            ScheduledEvents.Select(item => new ScheduledWorldEvent(
+                item.Sequence,
+                item.Id,
+                item.DueMinute,
+                item.Phase,
+                item.StableSubjectId,
+                item.Kind,
+                item.LocationId,
+                item.InterruptsPlayer,
+                item.CauseIds,
+                item.Details)),
+            NextScheduledEventSequence,
+            ReplayModified);
     }
 }
 
@@ -199,5 +255,25 @@ internal sealed record EventSnapshot(
     long Minute,
     string? LocationId,
     List<string> SubjectIds,
+    List<string> CauseIds,
+    Dictionary<string, string> Details);
+
+internal sealed record RandomStreamSnapshot(
+    string Key,
+    ulong State0,
+    ulong State1,
+    ulong State2,
+    ulong State3,
+    ulong DrawCount);
+
+internal sealed record ScheduledEventSnapshot(
+    long Sequence,
+    string Id,
+    long DueMinute,
+    ScheduledEventPhase Phase,
+    string StableSubjectId,
+    string Kind,
+    string? LocationId,
+    bool InterruptsPlayer,
     List<string> CauseIds,
     Dictionary<string, string> Details);

@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.1.0-spike";
+    public const string Version = "0.2.0-spike";
 }
 
 public enum TravelMode
@@ -155,6 +155,7 @@ public sealed class WorldState
     private readonly SortedDictionary<string, ItemState> _items;
     private readonly SortedDictionary<string, CommitmentState> _commitments;
     private readonly List<WorldEvent> _events;
+    private readonly SortedSet<ScheduledWorldEvent> _scheduledEvents;
 
     public WorldState(
         string scenarioId,
@@ -171,7 +172,13 @@ public sealed class WorldState
         IEnumerable<ItemState> items,
         IEnumerable<CommitmentState> commitments,
         IEnumerable<WorldEvent>? events = null,
-        long nextEventSequence = 1)
+        long nextEventSequence = 1,
+        string rngRootSeedHex = "0000000000000001",
+        string rngDerivation = RandomMetadata.Sha256LittleEndianV1,
+        IEnumerable<RandomStreamState>? randomStreams = null,
+        IEnumerable<ScheduledWorldEvent>? scheduledEvents = null,
+        long nextScheduledEventSequence = 1,
+        bool replayModified = false)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -187,7 +194,28 @@ public sealed class WorldState
         _items = new SortedDictionary<string, ItemState>(items.ToDictionary(item => item.Id), StringComparer.Ordinal);
         _commitments = new SortedDictionary<string, CommitmentState>(commitments.ToDictionary(item => item.Id), StringComparer.Ordinal);
         _events = events?.OrderBy(worldEvent => worldEvent.Sequence).ToList() ?? [];
+        _scheduledEvents = new SortedSet<ScheduledWorldEvent>(scheduledEvents ?? [], ScheduledWorldEventComparer.Instance);
+        if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
+        {
+            throw new ArgumentException("Scheduled events cannot be earlier than the current world minute.", nameof(scheduledEvents));
+        }
+
+        if (nextEventSequence <= _events.Select(item => item.Sequence).DefaultIfEmpty(0).Max())
+        {
+            throw new ArgumentOutOfRangeException(nameof(nextEventSequence), "Event sequence cursor must exceed every event sequence.");
+        }
+
+        if (nextScheduledEventSequence <= _scheduledEvents.Select(item => item.Sequence).DefaultIfEmpty(0).Max())
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(nextScheduledEventSequence),
+                "Scheduled event sequence cursor must exceed every queued sequence.");
+        }
+
         NextEventSequence = nextEventSequence;
+        NextScheduledEventSequence = nextScheduledEventSequence;
+        RandomStreams = new RandomStreamRegistry(rngVersion, rngRootSeedHex, rngDerivation, randomStreams);
+        ReplayModified = replayModified;
     }
 
     public string ScenarioId { get; }
@@ -218,9 +246,33 @@ public sealed class WorldState
 
     public IReadOnlyList<WorldEvent> Events => _events;
 
+    public IReadOnlyList<ScheduledWorldEvent> ScheduledEvents => _scheduledEvents.ToArray();
+
+    public RandomStreamRegistry RandomStreams { get; }
+
+    public bool ReplayModified { get; internal set; }
+
+    public long EventSequenceCursor => NextEventSequence;
+
+    public long ScheduledEventSequenceCursor => NextScheduledEventSequence;
+
     internal long NextEventSequence { get; set; }
 
+    internal long NextScheduledEventSequence { get; set; }
+
     internal void AddEvent(WorldEvent worldEvent) => _events.Add(worldEvent);
+
+    internal void AddScheduledEvent(ScheduledWorldEvent scheduledEvent)
+    {
+        if (!_scheduledEvents.Add(scheduledEvent))
+        {
+            throw new InvalidOperationException($"Duplicate scheduled event '{scheduledEvent.Id}'.");
+        }
+    }
+
+    internal ScheduledWorldEvent? PeekScheduledEvent() => _scheduledEvents.Count == 0 ? null : _scheduledEvents.Min;
+
+    internal bool RemoveScheduledEvent(ScheduledWorldEvent scheduledEvent) => _scheduledEvents.Remove(scheduledEvent);
 
     public string ComputeEventFingerprint()
     {
