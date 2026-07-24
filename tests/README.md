@@ -16,8 +16,8 @@
 
 当前可执行项目：
 
-- `LateHan.Tests`：76 项场景、行动、访问、计划、消息、远方批处理、精度、快照，以及长期事件归档追加/重开/因果/恢复/审计测试；
-- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小负载、B1-B4 目标结构，以及 B5 百万事件长期归档的无界面性能与正确性入口。
+- `LateHan.Tests`：77 项场景、行动、访问、计划、消息、远方批处理、精度、快照、长期事件归档和分支隔离测试；
+- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小/目标结构、B5 百万事件归档和 B6 二十个七日分支的无界面性能与正确性入口。
 
 日常尖峰可运行不含目标规模负载的 `all`：
 
@@ -41,6 +41,7 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 
 ```powershell
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b5-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b6-scale
 ```
 
-输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。`b1-scale` 验证完整精度层级的事件驱动空闲推进；`b2-mixed` 聚合玩家中断延迟；`b3-scale`/`b3-conflict` 验证拓扑和冲突认知；`b4-scale` 验证升降格交互；`b5-scale` 报告追加、直接查询、有限 `why`、检查点恢复、全量审计和压缩备份。
+输出分别报告时间、分配、工作集、指纹与不变量。`b5-scale` 报告追加、查询、恢复、审计和压缩备份；`b6-scale` 报告基础/分支存储、每支实际尾事件数、20 个独立事件/物质指纹与随机游标，以及跨基础归档的 `why`。

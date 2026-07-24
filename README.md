@@ -156,9 +156,10 @@ B5 是独立的磁盘 I/O 负载，不并入五样本 `scale`：
 
 ```powershell
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b5-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b6-scale
 ```
 
-这些入口已经覆盖 B1-B5 的目标语义：B1 在 20,550 名具名人物和 200 万 L3 人口上按 16,002 个到期事件推进 30 日；B2 验证混合城市危机；B3 验证消息拓扑与冲突认知；B4 验证多群体随机升格、跨地点往返与互动后保留；B5 验证 100 万事件追加、40 个检查点、因果查询、恢复、全量审计和压缩备份。B6 二十分支隔离仍未完成，因此仍不代表完整 B1-B6 达标。
+这些入口已经覆盖 B1-B6 的目标语义：B1 验证完整精度层级的事件驱动推进；B2 验证混合城市危机；B3 验证消息拓扑与冲突认知；B4 验证多群体升降格交互；B5 验证 100 万事件长期归档；B6 验证 20 个七日分支共享只读基础，同时隔离可变状态、事件尾与随机流。P6 规模架构验证已闭合，下一步进入 P7 雒阳四日可玩整合。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 
