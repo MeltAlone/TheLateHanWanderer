@@ -426,9 +426,48 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         .Take(SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount)
         .Select(actor => actor.Id)
         .ToArray();
+    var queueCloseMinute = engine.State.CurrentMinute;
+    engine.Schedule(
+        queueCloseMinute,
+        ScheduledEventPhase.AccessAndControlChange,
+        SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+        "place_access_changed",
+        SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+        details: new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["open"] = "false",
+            ["place_id"] = SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+            ["security_posture"] = "crisis_closed",
+        });
+    engine.Schedule(
+        queueCloseMinute + 10,
+        ScheduledEventPhase.AccessAndControlChange,
+        SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+        "place_access_changed",
+        SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+        details: new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["open"] = "true",
+            ["place_id"] = SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+            ["security_posture"] = "crisis_screening",
+        });
+    _ = engine.Wait(1, visitorIds[0]);
+    var firstQueued = engine.Enter(visitorIds[0], SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId);
+    var secondQueued = engine.Enter(visitorIds[1], SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId);
+    _ = engine.Wait(AccessQueuePolicy.ReviewIntervalMinutes, visitorIds[1]);
+    if (firstQueued.Status != ActionStatus.Scheduled || secondQueued.Status != ActionStatus.Scheduled)
+    {
+        throw new InvalidOperationException("Mixed B2 competitive access requests did not queue.");
+    }
+
     foreach (var visitorId in visitorIds)
     {
-        var entered = engine.Enter(visitorId, SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId);
+        var entered = string.Equals(
+            engine.State.Actors[visitorId].PlaceId,
+            SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId,
+            StringComparison.Ordinal)
+            ? new ActionResult(engine.State.CurrentMinute, engine.State.CurrentMinute, [])
+            : engine.Enter(visitorId, SyntheticScaleWorldFactory.MixedCityCrisisVisitPlaceId);
         var returned = engine.Enter(visitorId, SyntheticScaleWorldFactory.CityCrisisDestinationPlaceId);
         if (entered.Status != ActionStatus.Completed || returned.Status != ActionStatus.Completed)
         {
@@ -484,6 +523,7 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
             worldEvent.Details["material_balance"] == "conserved");
     var accessRequestCount = events.Count(worldEvent => worldEvent.Type == "access_requested");
     var placeEnteredCount = events.Count(worldEvent => worldEvent.Type == "place_entered");
+    var accessQueuedCount = events.Count(worldEvent => worldEvent.Type == "access_queued");
     var planOwnersAtDestination = planOwnerIds.All(ownerId => string.Equals(
         engine.State.Actors[ownerId].PlaceId,
         SyntheticScaleWorldFactory.MixedCityCrisisPlanDestinationPlaceId,
@@ -517,6 +557,7 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         !remoteTicksAuditable ||
         accessRequestCount != SyntheticScaleWorldFactory.MixedCityCrisisVisitorCount * 2 ||
         placeEnteredCount != accessRequestCount ||
+        accessQueuedCount != 2 ||
         completedPlanCount != SyntheticScaleWorldFactory.MixedCityCrisisPlanCount ||
         messages.Length != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount ||
         linkedMessageCount != SyntheticScaleWorldFactory.MixedCityCrisisMessageCount - 1 ||
@@ -538,7 +579,7 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
             "Mixed B2 invariants failed: " +
             $"minute={engine.State.CurrentMinute}/{twelveHours} travelers={actions.Length} " +
             $"alerts={cityAlertCount} interrupted={playerInterruptedCount} resumed={playerResumedCount} " +
-            $"visits={placeEnteredCount}/{accessRequestCount} messages={messages.Length}/{linkedMessageCount} " +
+            $"visits={placeEnteredCount}/{accessRequestCount} queued={accessQueuedCount} messages={messages.Length}/{linkedMessageCount} " +
             $"plans={completedPlanCount} remote_ticks={remoteTickCount} " +
             $"positions={planOwnersAtDestination}/{otherActorsAtCrisis} actions={allActionsCompleted} " +
             $"beliefs={allMessageBeliefsTraceable} population={finalPopulationEquivalent}/{initialPopulationEquivalent} " +
@@ -549,7 +590,8 @@ static ScaleWorkloadResult ExecuteMixedCityCrisisScale(WorldEngine engine)
         $"places={engine.State.Places.Count} named_actors={initialActorCount} " +
         $"initial_l0={initialL0Count} initial_l1={initialL1Count} " +
         $"concurrent_travelers={actions.Length} player_interruptions={playerInterruptedCount} " +
-        $"access_round_trips={visitorIds.Length} messages={messages.Length} linked_messages={linkedMessageCount} " +
+        $"access_round_trips={visitorIds.Length} queued_access_requests={accessQueuedCount} " +
+        $"messages={messages.Length} linked_messages={linkedMessageCount} " +
         $"completed_plans={completedPlanCount} remote_ticks={remoteTickCount} " +
         $"remote_food_stock={group.FoodStockUnits} remote_food_produced={group.CumulativeFoodProduced} " +
         $"remote_food_consumed={group.CumulativeFoodConsumed} remote_food_unmet={group.CumulativeFoodUnmet} " +

@@ -31,7 +31,14 @@ public sealed class AccessRuleDefinition
 
 public sealed class PlaceAccessState
 {
-    public PlaceAccessState(string placeId, bool open, int queueCount, string securityPosture)
+    public PlaceAccessState(
+        string placeId,
+        bool open,
+        int queueCount,
+        string securityPosture,
+        string? controllerId = null,
+        long? lastAdmissionMinute = null,
+        string? lastAdmittedActorId = null)
     {
         if (queueCount < 0)
         {
@@ -42,6 +49,9 @@ public sealed class PlaceAccessState
         Open = open;
         QueueCount = queueCount;
         SecurityPosture = securityPosture;
+        ControllerId = controllerId;
+        LastAdmissionMinute = lastAdmissionMinute;
+        LastAdmittedActorId = lastAdmittedActorId;
     }
 
     public string PlaceId { get; }
@@ -51,4 +61,19 @@ public sealed class PlaceAccessState
     public int QueueCount { get; internal set; }
 
     public string SecurityPosture { get; internal set; }
+
+    public string? ControllerId { get; internal set; }
+
+    public long? LastAdmissionMinute { get; internal set; }
+
+    public string? LastAdmittedActorId { get; internal set; }
+}
+
+public static class AccessQueuePolicy
+{
+    public const string Version = "stable-access-queue.v1";
+
+    public const int ReviewIntervalMinutes = 5;
+
+    public const int MaximumWaitMinutes = 60;
 }

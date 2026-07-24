@@ -22,7 +22,7 @@ public sealed partial class WorldEngine
             throw new DomainCommandException("already_at_destination", $"Actor '{actorId}' is already at '{destinationPlaceId}'.");
         }
 
-        if (FindActiveAction(actorId) is not null)
+        if (FindActiveAction(actorId) is not null || HasPendingAccessRequest(actorId))
         {
             throw new DomainCommandException("actor_busy", $"Actor '{actorId}' already has an active action.");
         }
@@ -282,6 +282,7 @@ public sealed partial class WorldEngine
             "travel_segment_completed" or "travel_completed" => ProcessTravelCompletion(scheduled),
             "plan_evaluation_due" => ProcessPlanEvaluation(scheduled),
             "place_access_changed" => [ProcessPlaceAccessChange(scheduled)],
+            "access_queue_review" => [ProcessAccessQueueReview(scheduled)],
             "actor_relocated" => [ProcessActorRelocation(scheduled)],
             "detail_message_retention_expired" => [ProcessDetailMessageRetentionExpired(scheduled)],
             "remote_world_tick" => ProcessRemoteWorldTick(scheduled),

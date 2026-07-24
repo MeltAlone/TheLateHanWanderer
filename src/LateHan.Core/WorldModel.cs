@@ -8,7 +8,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.8.0-spike";
+    public const string Version = "0.9.0-spike";
 }
 
 public enum TravelMode
@@ -707,6 +707,9 @@ public sealed class WorldState
             Append(hash, placeAccess.Open.ToString(CultureInfo.InvariantCulture));
             Append(hash, placeAccess.QueueCount.ToString(CultureInfo.InvariantCulture));
             Append(hash, placeAccess.SecurityPosture);
+            Append(hash, placeAccess.ControllerId ?? string.Empty);
+            Append(hash, placeAccess.LastAdmissionMinute?.ToString(CultureInfo.InvariantCulture) ?? string.Empty);
+            Append(hash, placeAccess.LastAdmittedActorId ?? string.Empty);
         }
 
         return $"sha256:{Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant()}";

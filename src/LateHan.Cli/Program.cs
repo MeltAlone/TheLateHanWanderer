@@ -137,6 +137,9 @@ internal sealed class CliSession
                 case "groups":
                     PrintGroups();
                     break;
+                case "access":
+                    PrintAccess(tokens);
+                    break;
                 case "detail":
                     PrintActorDetail(tokens);
                     break;
@@ -193,6 +196,7 @@ internal sealed class CliSession
         Console.WriteLine("  history");
         Console.WriteLine("  messages [person-id]");
         Console.WriteLine("  groups");
+        Console.WriteLine("  access <place-id>");
         Console.WriteLine("  detail [person-id]");
         Console.WriteLine("  dev queue");
         Console.WriteLine("  dev rng <domain> <entity-id> [count]");
@@ -550,6 +554,27 @@ internal sealed class CliSession
             $"from={actor.PromotedFromGroupId ?? "-"} seed={actor.IdentitySeedHex ?? "-"} " +
             $"remote_cycles={actor.RemoteCycleCount} remote_minute={actor.LastRemoteUpdateMinute?.ToString() ?? "-"} " +
             $"remote_event={actor.LastRemoteUpdateEventId ?? "-"}");
+    }
+
+    private void PrintAccess(string[] tokens)
+    {
+        if (tokens.Length != 2 || !_engine.State.Places.TryGetValue(tokens[1], out var place))
+        {
+            Console.WriteLine("invalid:syntax usage: access <place-id>");
+            return;
+        }
+
+        _engine.State.PlaceAccessStates.TryGetValue(place.Id, out var state);
+        var pending = _engine.State.ScheduledEvents.Count(item =>
+            item.Kind == "access_queue_review" &&
+            item.Details.TryGetValue("destination_place_id", out var destination) &&
+            string.Equals(destination, place.Id, StringComparison.Ordinal));
+        Console.WriteLine(
+            $"{place.Id} rule={place.AccessRuleId} open={(state?.Open ?? true).ToString().ToLowerInvariant()} " +
+            $"queue={state?.QueueCount ?? 0} pending={pending} security={state?.SecurityPosture ?? "normal"} " +
+            $"controller={state?.ControllerId ?? place.ControllerId ?? "-"} " +
+            $"last_admission_minute={state?.LastAdmissionMinute?.ToString() ?? "-"} " +
+            $"last_actor={state?.LastAdmittedActorId ?? "-"}");
     }
 
     private void ExecuteDeveloperCommand(string[] tokens)

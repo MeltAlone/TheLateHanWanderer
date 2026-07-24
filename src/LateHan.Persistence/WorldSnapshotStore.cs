@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.9";
+    public string SnapshotSchemaVersion { get; init; } = "1.0";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -205,7 +205,10 @@ internal sealed class WorldSnapshot
                 item.PlaceId,
                 item.Open,
                 item.QueueCount,
-                item.SecurityPosture)).ToList(),
+                item.SecurityPosture,
+                item.ControllerId,
+                item.LastAdmissionMinute,
+                item.LastAdmittedActorId)).ToList(),
             Messages = world.Messages.Values.Select(item => new MessageSnapshot(
                 item.Id,
                 item.PropositionId,
@@ -307,7 +310,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.9", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "1.0", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -471,7 +474,10 @@ internal sealed class WorldSnapshot
                 item.PlaceId,
                 item.Open,
                 item.QueueCount,
-                item.SecurityPosture)),
+                item.SecurityPosture,
+                item.ControllerId,
+                item.LastAdmissionMinute,
+                item.LastAdmittedActorId)),
             Messages.Select(item => new MessageState(
                 item.Id,
                 item.PropositionId,
@@ -570,7 +576,10 @@ internal sealed record PlaceAccessSnapshot(
     string PlaceId,
     bool Open,
     int QueueCount,
-    string SecurityPosture);
+    string SecurityPosture,
+    string? ControllerId,
+    long? LastAdmissionMinute,
+    string? LastAdmittedActorId);
 
 internal sealed record MessageSnapshot(
     string Id,

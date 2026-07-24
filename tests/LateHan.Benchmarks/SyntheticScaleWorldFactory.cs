@@ -18,6 +18,7 @@ internal static class SyntheticScaleWorldFactory
     public const int MessageCarriersPerPlace = 4;
     public const string PlayerActorId = "person.synthetic.player";
     public const string PublicAccessRuleId = "access.synthetic.public";
+    public const string QueuedAccessRuleId = "access.synthetic.queued";
     public const string OfficialPropositionId = "proposition.synthetic.official_notice";
     public const string ConflictTopicId = "topic.synthetic.gate_state";
     public const string ConflictReportPropositionId = "proposition.synthetic.gate_open_report";
@@ -257,7 +258,7 @@ internal static class SyntheticScaleWorldFactory
             .Select(index => new PlaceDefinition(
                 PlaceId(index),
                 $"Synthetic City Place {index:D2}",
-                PublicAccessRuleId,
+                index == 26 ? QueuedAccessRuleId : PublicAccessRuleId,
                 ControllerId: null))
             .ToArray();
         var routes = Enumerable.Range(0, PlaceCount)
@@ -277,6 +278,7 @@ internal static class SyntheticScaleWorldFactory
         AccessRuleDefinition[] accessRules =
         [
             new(PublicAccessRuleId, "Synthetic Public Access", [], mayQueue: false),
+            new(QueuedAccessRuleId, "Synthetic Queued Access", [], mayQueue: true),
         ];
 
         return new WorldState(
