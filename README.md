@@ -2,7 +2,7 @@
 
 一款以汉末为背景、以个人为观察与行动尺度的动态历史模拟游戏。
 
-项目当前处于**首个可执行垂直切片的契约与数据阶段**。首要目标不是制作图形界面或堆叠剧情，而是建立一套能够自行运转、允许玩家介入、并能解释自身因果的世界规则。
+项目当前处于**世界机器技术尖峰阶段**。首要目标不是制作图形界面或堆叠剧情，而是建立一套能够自行运转、允许玩家介入、并能解释自身因果的世界规则。
 
 ## 当前里程碑
 
@@ -11,7 +11,7 @@
 - 定义首个 189 年洛阳危机时空切片。
 - 定义时间、空间、人物、组织、信息、行动与事件的数据边界。
 - 已定义“雒阳四日”命令行 MVP、场景夹具、行为验收和规模预算。
-- 下一步以同一契约实现并验证无界面的最小世界内核。
+- 已实现无界面 C#/.NET 内核的首个行动、因果事件、快照、稳定调度和确定性随机流切片。
 
 ## 仓库导航
 
@@ -24,7 +24,7 @@ docs/
 data/
   historical/      经审核的机器可读历史事实与主张
   scenarios/       可运行的世界初始状态
-src/               模拟核心与表现适配器（尚未开工）
+src/               模拟核心、场景/存档适配器与命令行界面
 tests/             确定性、因果、历史约束和压力测试
 tools/             史料导入、校验、模拟和调试工具
 ```
@@ -62,6 +62,18 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "tell person.li_wen proposition.general_office_requests_status" `
   --command "history"
 ```
+
+可用开发者命令复现“等待四小时，在第 95 分钟被紧急召回”：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "dev schedule 95 summary_and_notification person.player_clerk urgent_recall interrupt" `
+  --command "dev queue" `
+  --command "wait 4h" `
+  --command "history"
+```
+
+`dev schedule` 是显式外部干预，会写入事件日志并把回放标记为 `modified`。`dev rng` 只预览流副本，不改变模拟状态。
 
 ## 基本工作流
 

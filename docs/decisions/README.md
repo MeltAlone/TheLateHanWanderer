@@ -14,3 +14,5 @@
 - [ADR-0001：分离史料主张、场景状态与模拟规则](0001-separate-research-scenario-and-simulation.md)
 - [ADR-0002：使用玩家定步的事件驱动世界时间](0002-use-player-paced-event-driven-time.md)
 - [ADR-0003：使用 C# / .NET 10 构建模拟核心](0003-use-dotnet-for-simulation-core.md)
+- [ADR-0004：使用稳定的分阶段事件调度](0004-use-stable-phase-ordered-event-scheduling.md)
+- [ADR-0005：使用版本化、按领域隔离的确定性随机流](0005-use-versioned-domain-separated-random-streams.md)
