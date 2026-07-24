@@ -140,9 +140,10 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
 ```
 
-B2 目标人口核心、B2 混合城市危机、B3 目标消息拓扑、B3 冲突语义与 B4 目标交互使用独立入口；每项执行 1 次热身和 5 次全新世界样本，`scale` 顺序运行五项：
+B1 目标空闲世界、B2 目标人口核心、B2 混合城市危机、B3 目标消息拓扑、B3 冲突语义与 B4 目标交互使用独立入口；每项执行 1 次热身和 5 次全新世界样本，`scale` 顺序运行六项：
 
 ```powershell
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b1-scale
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-scale
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-mixed
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b3-scale
@@ -151,7 +152,7 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-这些入口达到 B2 的目标人口与混合结构、B3 的目标消息拓扑和冲突认知语义，以及 B4 的多群体随机升格、跨地点往返与互动后保留语义。B2 混合负载验证守恒远方批处理、竞争访问与计划资源仲裁；`b4-scale` 在 100 个群体和 100 万 L3 人口上执行 1,000 次升格，保留 100 个产生独立消息因果的人物而不展开其余人口。正式 B1 与 B5/B6 仍未完成，因此仍不代表完整 B1-B6 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
+这些入口已经覆盖 B1-B4 的目标结构语义：B1 在 20,550 名具名人物和 200 万 L3 人口上按 16,002 个到期事件推进 30 日；B2 验证混合城市危机；B3 验证消息拓扑与冲突认知；B4 验证多群体随机升格、跨地点往返与互动后保留。B5 百万事件长期日志与 B6 二十分支隔离仍未完成，因此仍不代表完整 B1-B6 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 
