@@ -115,6 +115,18 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "history"
 ```
 
+也可复现“袁绍在玩家到署前离开，门吏拒绝代收”：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "dev relocate 10 person.yuan_shao place.luoyang.henan_office" `
+  --command "go place.luoyang.sili_office walk" `
+  --command "give item.sealed_note_to_yuan_shao to person.yuan_shao" `
+  --command "commitments"
+```
+
+旅行照常耗时 22 分钟，到署后的交付尝试再耗时 5 分钟；CLI 明确显示门吏拒绝代收，封记仍由玩家持有，两项承诺保持开放。
+
 `dev schedule` 是显式外部干预，会写入事件日志并把回放标记为 `modified`。`dev rng` 只预览流副本，不改变模拟状态。
 
 使用 `beliefs person.wang_yun` 和 `plans person.wang_yun` 可以查看王允等待正式报告时的运行时认知与计划状态：
