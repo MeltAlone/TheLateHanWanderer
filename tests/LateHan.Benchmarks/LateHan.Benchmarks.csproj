@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LateHan.Core\LateHan.Core.csproj" />
+    <ProjectReference Include="..\..\src\LateHan.Persistence\LateHan.Persistence.csproj" />
     <ProjectReference Include="..\..\src\LateHan.Scenarios\LateHan.Scenarios.csproj" />
   </ItemGroup>
 

@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using System.Collections.ObjectModel;
+using System.Text;
 using LateHan.Core;
+using LateHan.Persistence;
 using LateHan.Scenarios;
 
 var scenarioDirectory = FindScenarioDirectory();
@@ -41,6 +44,9 @@ switch (workload)
     case "b1-scale":
         RunIdleTargetScale();
         break;
+    case "b5-scale":
+        RunLongTermEventArchiveScale();
+        break;
     case "scale":
         RunCityCrisisScale();
         RunMixedCityCrisisScale();
@@ -58,7 +64,137 @@ switch (workload)
         break;
     default:
         throw new ArgumentException(
-            "Usage: delivery|b1-idle|b1-scale|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|scale|all");
+            "Usage: delivery|b1-idle|b1-scale|b2-city|b3-messages|b4-lod|b2-scale|b2-mixed|b3-scale|b3-conflict|b4-scale|b5-scale|scale|all");
+}
+
+void RunLongTermEventArchiveScale()
+{
+    const int eventCount = 1_000_000;
+    const int checkpointInterval = 25_000;
+    const int checkpointCount = eventCount / checkpointInterval;
+    var archiveDirectory = Path.Combine(Path.GetTempPath(), $"latehan-b5-{Guid.NewGuid():N}");
+    var archivePath = Path.Combine(archiveDirectory, "events.db");
+    Directory.CreateDirectory(archiveDirectory);
+    try
+    {
+        var totalAllocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+        var appendStopwatch = Stopwatch.StartNew();
+        string expectedFingerprint;
+        using (var archive = new WorldEventArchive(archivePath))
+        using (var fingerprint = new WorldEventFingerprint())
+        {
+            for (var firstSequence = 1; firstSequence <= eventCount; firstSequence += checkpointInterval)
+            {
+                var events = CreateArchiveEventBatch(firstSequence, checkpointInterval);
+                archive.Append(events);
+                foreach (var worldEvent in events)
+                {
+                    fingerprint.Append(worldEvent);
+                }
+
+                var lastEvent = events[^1];
+                archive.CreateCheckpoint(
+                    lastEvent.Sequence,
+                    $"checkpoint:{lastEvent.Id}",
+                    Encoding.UTF8.GetBytes($"projection_cursor={lastEvent.Sequence};minute={lastEvent.Minute}"));
+            }
+
+            expectedFingerprint = fingerprint.Complete();
+            archive.Flush();
+        }
+
+        appendStopwatch.Stop();
+        var appendAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - totalAllocatedBefore;
+        var storageBytes = Directory.EnumerateFiles(archiveDirectory).Sum(path => new FileInfo(path).Length);
+
+        using var reopened = new WorldEventArchive(archivePath);
+        var compressionStopwatch = Stopwatch.StartNew();
+        var compressedStorageBytes = reopened.CreateCompressedBackup(Path.Combine(archiveDirectory, "events.db.gz"));
+        compressionStopwatch.Stop();
+        var directQueryStopwatch = Stopwatch.StartNew();
+        var direct = reopened.Find("event.01000000");
+        directQueryStopwatch.Stop();
+
+        var whyStopwatch = Stopwatch.StartNew();
+        var why = reopened.Why("event.01000000", maximumDepth: 8, maximumEvents: 32);
+        whyStopwatch.Stop();
+
+        var restoreStopwatch = Stopwatch.StartNew();
+        var restored = reopened.RestoreLatest();
+        restoreStopwatch.Stop();
+
+        var auditStopwatch = Stopwatch.StartNew();
+        var audit = reopened.Audit();
+        auditStopwatch.Stop();
+
+        if (reopened.EventCount != eventCount ||
+            reopened.LastSequence != eventCount ||
+            reopened.CheckpointCount != checkpointCount ||
+            direct?.Sequence != eventCount ||
+            why.Count != 9 ||
+            why[0].Event.Sequence != eventCount ||
+            why[^1].Event.Sequence != eventCount - 8 ||
+            restored?.Checkpoint.EventSequence != eventCount ||
+            restored.EventsAfterCheckpoint.Count != 0 ||
+            audit.EventCount != eventCount ||
+            audit.LastSequence != eventCount ||
+            !string.Equals(audit.EventFingerprint, expectedFingerprint, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "B5 archive invariants failed: " +
+                $"events={reopened.EventCount}/{audit.EventCount} last={reopened.LastSequence}/{audit.LastSequence} " +
+                $"checkpoints={reopened.CheckpointCount} direct={direct?.Sequence} why={why.Count} " +
+                $"restore={restored?.Checkpoint.EventSequence}/{restored?.EventsAfterCheckpoint.Count} " +
+                $"fingerprint={audit.EventFingerprint == expectedFingerprint}.");
+        }
+
+        Console.WriteLine("workload=b5-long-term-event-archive");
+        Console.WriteLine($"events={eventCount}");
+        Console.WriteLine($"checkpoint_interval={checkpointInterval}");
+        Console.WriteLine($"checkpoints={checkpointCount}");
+        Console.WriteLine($"append_elapsed_ms={appendStopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"append_allocated_bytes={appendAllocatedBytes}");
+        Console.WriteLine($"direct_query_elapsed_ms={directQueryStopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"why_query_elapsed_ms={whyStopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"why_events={why.Count}");
+        Console.WriteLine($"restore_elapsed_ms={restoreStopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"restore_tail_events={restored.EventsAfterCheckpoint.Count}");
+        Console.WriteLine($"audit_elapsed_ms={auditStopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"storage_bytes={storageBytes}");
+        Console.WriteLine($"compression_elapsed_ms={compressionStopwatch.Elapsed.TotalMilliseconds:F3}");
+        Console.WriteLine($"compressed_storage_bytes={compressedStorageBytes}");
+        Console.WriteLine($"working_set_bytes={Environment.WorkingSet}");
+        Console.WriteLine($"fingerprint={audit.EventFingerprint}");
+        Console.WriteLine("correctness=sequential_append=true checkpoints_exact=true direct_query=true bounded_why=true latest_restore=true full_audit=true");
+    }
+    finally
+    {
+        Directory.Delete(archiveDirectory, recursive: true);
+    }
+}
+
+static WorldEvent[] CreateArchiveEventBatch(int firstSequence, int count)
+{
+    var events = new WorldEvent[count];
+    for (var index = 0; index < count; index++)
+    {
+        var sequence = firstSequence + index;
+        events[index] = new WorldEvent(
+            sequence,
+            $"event.{sequence:D8}",
+            sequence % 10 == 0 ? "remote_named_actor_batch_updated" : "ambient_world_event",
+            sequence * 5L,
+            $"place.synthetic.{sequence % 50:D2}",
+            [$"person.synthetic.{sequence % 20_000:D5}"],
+            sequence == 1 ? [] : [$"event.{sequence - 1:D8}"],
+            new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["cycle"] = (sequence / 20_000).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["organization_id"] = $"organization.synthetic.{sequence % 800:D3}",
+            }));
+    }
+
+    return events;
 }
 
 void RunDelivery()

@@ -631,34 +631,7 @@ public sealed class WorldState
     }
 
     public string ComputeEventFingerprint()
-    {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        foreach (var worldEvent in _events)
-        {
-            Append(hash, worldEvent.Sequence.ToString(CultureInfo.InvariantCulture));
-            Append(hash, worldEvent.Id);
-            Append(hash, worldEvent.Type);
-            Append(hash, worldEvent.Minute.ToString(CultureInfo.InvariantCulture));
-            Append(hash, worldEvent.LocationId ?? string.Empty);
-            foreach (var subject in worldEvent.SubjectIds)
-            {
-                Append(hash, subject);
-            }
-
-            foreach (var cause in worldEvent.CauseIds)
-            {
-                Append(hash, cause);
-            }
-
-            foreach (var detail in worldEvent.Details.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            {
-                Append(hash, detail.Key);
-                Append(hash, detail.Value);
-            }
-        }
-
-        return $"sha256:{Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant()}";
-    }
+        => WorldEventFingerprint.Compute(_events);
 
     public string ComputeMaterialStateFingerprint()
     {
