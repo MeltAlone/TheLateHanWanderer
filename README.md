@@ -76,6 +76,20 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 
 `dev schedule` 是显式外部干预，会写入事件日志并把回放标记为 `modified`。`dev rng` 只预览流副本，不改变模拟状态。
 
+也可以逐步运行一段可中断旅行：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "travel start place.luoyang.eastern_road horse" `
+  --command "dev interrupt-travel action.00000001 40 horse_injured" `
+  --command "advance action.00000001" `
+  --command "actions" `
+  --command "resume action.00000001 walk" `
+  --command "history"
+```
+
+`travel start` 只创建行动和第一项路段事件，因此可以在 `advance` 前或中断后保存。`resume` 保留已行进时间和路段进度，并按新的交通方式计算剩余路程。
+
 ## 基本工作流
 
 1. 在 `docs/research/` 中提出有来源的历史主张，并记录置信度与争议。
