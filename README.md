@@ -102,6 +102,14 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "access place.luoyang.north_gate"
 ```
 
+计划可以声明独占资源、优先级和低优先级替换权；CLI 会显示当前锁，也可以显式取消计划并释放其行动和资源：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "plans person.wang_yun" `
+  --command "plan cancel plan.wang_yun.review_gate_security priority_changed"
+```
+
 也可以逐步运行一段可中断旅行：
 
 ```powershell
@@ -142,7 +150,7 @@ dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --config
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-这些入口达到 B2 的目标人口与混合结构，以及 B3 的目标消息拓扑和冲突认知语义。`b3-scale` 保留为纯消息拓扑基线；`b3-conflict` 验证版本化转述失真、原始/送达命题审计、竞争立场和冲突事件。B2 混合负载已用 `distant-batch.v1` 在不展开 200 万人口的前提下结算远方生产、消费、库存、缺口和 L2 背景周期，并保持人口与物料账本守恒；`stable-access-queue.v1` 另验证关闭地点排队、请求顺序、同分钟唯一受理、控制变化优先和超时拒绝。计划尚无资源冲突、替换与取消，因此仍不代表完整 B2 或 B1-B6 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
+这些入口达到 B2 的目标人口与混合结构，以及 B3 的目标消息拓扑和冲突认知语义。`b3-scale` 保留为纯消息拓扑基线；`b3-conflict` 验证版本化转述失真、原始/送达命题审计、竞争立场和冲突事件。B2 混合负载已用 `distant-batch.v1` 在不展开 200 万人口的前提下结算远方生产、消费、库存、缺口和 L2 背景周期，并保持人口与物料账本守恒；`stable-access-queue.v1` 验证关闭地点排队与确定性受理；`exclusive-plan-resource.v1` 验证计划资源等待、优先级替换、显式取消和无泄漏释放。正式 B1/B4 与 B5/B6 仍未完成，因此仍不代表完整 B1-B6 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 
