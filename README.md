@@ -78,6 +78,15 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "history"
 ```
 
+封记可以拆封阅读；这会让玩家获得文书中的命题，但物理交付不会被阻止。交付和回报会以 `completed_with_breach` 终结，并保留“拆封 -> 交付违约 -> 回报发现”的原因链：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "read item.sealed_note_to_yuan_shao" `
+  --command "go place.luoyang.sili_office walk" `
+  --command "give item.sealed_note_to_yuan_shao to person.yuan_shao"
+```
+
 可用开发者命令复现“等待四小时，在第 95 分钟被紧急召回”：
 
 ```powershell
