@@ -125,15 +125,16 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
 ```
 
-B2 目标人口核心与 B3 目标消息拓扑使用独立入口；每项执行 1 次热身和 5 次全新世界样本，`scale` 顺序运行两项：
+B2 目标人口核心、B2 混合城市危机与 B3 目标消息拓扑使用独立入口；每项执行 1 次热身和 5 次全新世界样本，`scale` 顺序运行三项：
 
 ```powershell
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-mixed
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b3-scale
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-这两个入口达到 B2 的目标人口数量和 B3 的目标消息拓扑；B2 目标人口核心已在当前参考机进入推进预算，但仍缺少混合传信、访问、计划变更、远方低频运行和多个玩家中断，B3 尚无传言失真与冲突信念，因此不代表完整 B2/B3 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
+这些入口达到 B2 的目标人口与混合结构，以及 B3 的目标消息拓扑。B2 混合负载已在当前参考机进入总推进和玩家中断预算，但远方 tick 尚未改变群体状态，访问尚无拒绝/排队竞争，计划尚无资源冲突；B3 尚无传言失真与冲突信念，因此不代表完整 B2/B3 达标。事件指纹审计与模拟本体分开计时，不计入推进预算。
 
 精度策略可以按玩家注意空间与人物因果负债显式重平衡：
 
