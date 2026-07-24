@@ -16,8 +16,8 @@
 
 当前可执行项目：
 
-- `LateHan.Tests`：55 项场景加载、规范化哈希、持久旅行、多次玩家中断、门禁、同刻权限变化、消息谱系、认知隔离、随机流、精度策略、增量脏集、群体升降格守恒和快照续跑测试；
-- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小负载，以及 B2 目标人口核心、B2 混合城市危机和 B3 目标消息拓扑的无界面性能与正确性入口；目标数量达成不代表完整 B1-B6 语义和性能已经达标。
+- `LateHan.Tests`：58 项场景加载、规范化哈希、持久旅行、多次玩家中断、门禁、同刻权限变化、消息谱系、版本化转述失真、冲突认知、随机流、精度策略、增量脏集、群体升降格守恒和快照续跑测试；
+- `LateHan.Benchmarks`：`delivery`、B1-B4 缩小负载，以及 B2 目标人口核心、B2 混合城市危机、B3 目标消息拓扑和 B3 冲突语义的无界面性能与正确性入口；目标数量达成不代表完整 B1-B6 语义和性能已经达标。
 
 日常尖峰可运行不含目标规模负载的 `all`：
 
@@ -25,13 +25,14 @@
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
 ```
 
-目标结构负载独立运行 1 次热身和 5 次样本；`scale` 会顺序执行三项：
+目标结构负载独立运行 1 次热身和 5 次样本；`scale` 会顺序执行四项：
 
 ```powershell
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-scale
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b2-mixed
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b3-scale
+dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- b3-conflict
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- scale
 ```
 
-输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。`b2-mixed` 另行聚合推进至玩家中断的延迟。事件指纹审计的时间与分配单独输出，不计入模拟本体预算。正式对比应分别启动 `b2-scale`、`b2-mixed` 和 `b3-scale`，避免前一负载的 JIT 与进程内存影响后一项。
+输出分别报告合成世界构造和模拟时间、p95、最大值、标准差、分配、样本工作集、GC、事件指纹与不变量。`b2-mixed` 另行聚合推进至玩家中断的延迟；`b3-scale` 是纯拓扑基线，`b3-conflict` 是转述失真和冲突认知语义负载。事件指纹审计的时间与分配单独输出，不计入模拟本体预算。正式对比应分别启动四个目标负载，避免前一负载的 JIT 与进程内存影响后一项。
