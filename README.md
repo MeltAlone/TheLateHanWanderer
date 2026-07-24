@@ -31,6 +31,7 @@ tools/             史料导入、校验、模拟和调试工具
 
 主要文档：
 
+- [世界机器实施计划](docs/implementation-plan.md)
 - [世界模拟总设计](docs/design/overview.md)
 - [命令行 MVP 规格：雒阳四日](docs/design/mvp-spec.md)
 - [历史研究入口](docs/research/README.md)
