@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.6.0-spike";
+    public const string Version = "0.6.1-spike";
 }
 
 public enum TravelMode

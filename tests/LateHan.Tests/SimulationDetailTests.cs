@@ -6,6 +6,74 @@ namespace LateHan.Tests;
 public sealed class SimulationDetailTests
 {
     [Fact]
+    public void RebalanceUsesPlayerAttentionAndCausalDebt()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+
+        var result = engine.RebalanceActorDetailLevels();
+
+        Assert.Equal(SimulationDetailLevel.L0, engine.State.Actors["person.player_clerk"].DetailLevel);
+        Assert.Equal(SimulationDetailLevel.L0, engine.State.Actors["person.he_jin"].DetailLevel);
+        Assert.Equal(SimulationDetailLevel.L1, engine.State.Actors["person.yuan_shao"].DetailLevel);
+        Assert.Equal(SimulationDetailLevel.L2, engine.State.Actors["person.chen_zhi"].DetailLevel);
+        Assert.Equal(SimulationDetailLevel.L2, engine.State.Actors["person.sun_he"].DetailLevel);
+        Assert.Contains(result.Events, item =>
+            item.SubjectIds.Contains("person.chen_zhi", StringComparer.Ordinal) &&
+            item.Details["reasons"] == "background_named_actor" &&
+            item.Details["policy_version"] == SimulationDetailPolicy.Version);
+    }
+
+    [Fact]
+    public void ActiveTravelPromotesBackgroundActorToL1()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        _ = engine.RebalanceActorDetailLevels();
+        Assert.Equal(SimulationDetailLevel.L2, engine.State.Actors["person.sun_he"].DetailLevel);
+        _ = engine.BeginTravel("person.sun_he", "place.luoyang.west_market", TravelMode.Walk);
+
+        var result = engine.RebalanceActorDetailLevels(["person.sun_he"]);
+
+        Assert.Equal(SimulationDetailLevel.L1, engine.State.Actors["person.sun_he"].DetailLevel);
+        Assert.Single(result.Events);
+        Assert.Contains("active_action", result.Events[0].Details["reasons"], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RecentMessageRetainsPromotedActorAtL1AwayFromPlayer()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var promoted = engine.PromoteGroupMember("group.general_office_clerks");
+        _ = engine.Tell(
+            "person.player_clerk",
+            promoted.Actor.Id,
+            "proposition.palace_credential_required");
+        _ = engine.Move("person.player_clerk", "place.luoyang.north_gate", TravelMode.Walk);
+
+        var assessment = engine.AssessActorDetailLevel(promoted.Actor.Id);
+        var result = engine.RebalanceActorDetailLevels([promoted.Actor.Id]);
+
+        Assert.Equal(SimulationDetailLevel.L1, assessment.RecommendedLevel);
+        Assert.Contains("recent_message", assessment.Reasons);
+        Assert.Equal(SimulationDetailLevel.L1, promoted.Actor.DetailLevel);
+        Assert.Single(result.Events);
+    }
+
+    [Fact]
+    public void DetailRebalanceIsDeterministicAcrossIdenticalWorlds()
+    {
+        var first = RepositoryFixture.CreateEngine();
+        var second = RepositoryFixture.CreateEngine();
+
+        var firstResult = first.RebalanceActorDetailLevels();
+        var secondResult = second.RebalanceActorDetailLevels();
+
+        Assert.Equal(
+            firstResult.Assessments.Select(item => (item.ActorId, item.RecommendedLevel, string.Join(',', item.Reasons))),
+            secondResult.Assessments.Select(item => (item.ActorId, item.RecommendedLevel, string.Join(',', item.Reasons))));
+        Assert.Equal(first.State.ComputeEventFingerprint(), second.State.ComputeEventFingerprint());
+    }
+
+    [Fact]
     public void PromotionConservesPopulationAndCopiesGroupBelief()
     {
         var engine = RepositoryFixture.CreateEngine();

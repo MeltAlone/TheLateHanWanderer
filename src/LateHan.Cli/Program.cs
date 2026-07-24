@@ -200,6 +200,7 @@ internal sealed class CliSession
         Console.WriteLine("  dev interrupt-travel <action-id> <minute> <reason>");
         Console.WriteLine("  dev promote <group-id> [l0|l1|l2]");
         Console.WriteLine("  dev demote <person-id>");
+        Console.WriteLine("  dev rebalance-detail [person-id]");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
         Console.WriteLine("  quit");
@@ -540,7 +541,7 @@ internal sealed class CliSession
     {
         if (tokens.Length < 2)
         {
-            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote> ...");
+            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|rebalance-detail> ...");
             return;
         }
 
@@ -564,8 +565,11 @@ internal sealed class CliSession
             case "demote":
                 DemoteActor(tokens);
                 break;
+            case "rebalance-detail":
+                RebalanceDetailLevels(tokens);
+                break;
             default:
-                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote> ...");
+                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel|promote|demote|rebalance-detail> ...");
                 break;
         }
     }
@@ -595,6 +599,23 @@ internal sealed class CliSession
 
         var result = _engine.DemotePromotedActor(tokens[2]);
         Console.WriteLine($"demoted {tokens[2]} event={result.Id}");
+    }
+
+    private void RebalanceDetailLevels(string[] tokens)
+    {
+        if (tokens.Length is < 2 or > 3)
+        {
+            Console.WriteLine("invalid:syntax usage: dev rebalance-detail [person-id]");
+            return;
+        }
+
+        var actorIds = tokens.Length == 3 ? new[] { tokens[2] } : null;
+        var result = _engine.RebalanceActorDetailLevels(actorIds);
+        Console.WriteLine(
+            $"detail_rebalanced policy={SimulationDetailPolicy.Version} changed={result.Events.Count} " +
+            $"l0={result.Assessments.Count(item => item.RecommendedLevel == SimulationDetailLevel.L0)} " +
+            $"l1={result.Assessments.Count(item => item.RecommendedLevel == SimulationDetailLevel.L1)} " +
+            $"l2={result.Assessments.Count(item => item.RecommendedLevel == SimulationDetailLevel.L2)}");
     }
 
     private void PrintScheduledQueue(string[] tokens)
