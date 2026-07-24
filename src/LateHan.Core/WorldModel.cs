@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.4.0-spike";
+    public const string Version = "0.5.0-spike";
 }
 
 public enum TravelMode
@@ -19,12 +19,19 @@ public enum TravelMode
 
 public sealed class ActorState
 {
+    private readonly IReadOnlyList<ActorMembership> _memberships;
+
     public ActorState(string id, string name, string locationId)
-        : this(id, name, locationId, null)
+        : this(id, name, locationId, null, null)
     {
     }
 
-    public ActorState(string id, string name, string? placeId, TransitPositionState? transit)
+    public ActorState(
+        string id,
+        string name,
+        string? placeId,
+        TransitPositionState? transit,
+        IEnumerable<ActorMembership>? memberships = null)
     {
         if ((placeId is null) == (transit is null))
         {
@@ -35,6 +42,7 @@ public sealed class ActorState
         Name = name;
         PlaceId = placeId;
         Transit = transit;
+        _memberships = new ReadOnlyCollection<ActorMembership>((memberships ?? []).ToArray());
     }
 
     public string Id { get; }
@@ -44,6 +52,8 @@ public sealed class ActorState
     public string? PlaceId { get; internal set; }
 
     public TransitPositionState? Transit { get; internal set; }
+
+    public IReadOnlyList<ActorMembership> Memberships => _memberships;
 
     public string LocationId
     {
@@ -113,6 +123,7 @@ public sealed class RouteDefinition
 public sealed class ItemState
 {
     private readonly IReadOnlyList<string> _propositionIds;
+    private readonly IReadOnlyList<string> _validForAccessRuleIds;
 
     public ItemState(
         string id,
@@ -121,7 +132,9 @@ public sealed class ItemState
         string holderId,
         string? authorId = null,
         string? intendedRecipientId = null,
-        IEnumerable<string>? propositionIds = null)
+        IEnumerable<string>? propositionIds = null,
+        IEnumerable<string>? validForAccessRuleIds = null,
+        long? expiresAtMinute = null)
     {
         Id = id;
         Name = name;
@@ -130,6 +143,8 @@ public sealed class ItemState
         AuthorId = authorId;
         IntendedRecipientId = intendedRecipientId;
         _propositionIds = new ReadOnlyCollection<string>((propositionIds ?? []).ToArray());
+        _validForAccessRuleIds = new ReadOnlyCollection<string>((validForAccessRuleIds ?? []).ToArray());
+        ExpiresAtMinute = expiresAtMinute;
     }
 
     public string Id { get; }
@@ -145,6 +160,10 @@ public sealed class ItemState
     public string? IntendedRecipientId { get; }
 
     public IReadOnlyList<string> PropositionIds => _propositionIds;
+
+    public IReadOnlyList<string> ValidForAccessRuleIds => _validForAccessRuleIds;
+
+    public long? ExpiresAtMinute { get; }
 }
 
 public sealed class CommitmentState
@@ -208,6 +227,9 @@ public sealed class WorldState
     private readonly SortedDictionary<string, ActionInstanceState> _actions;
     private readonly SortedDictionary<string, BeliefState> _beliefs;
     private readonly SortedDictionary<string, PlanState> _plans;
+    private readonly SortedDictionary<string, AccessRuleDefinition> _accessRules;
+    private readonly SortedDictionary<string, PlaceAccessState> _placeAccessStates;
+    private readonly SortedDictionary<string, MessageState> _messages;
 
     public WorldState(
         string scenarioId,
@@ -234,7 +256,10 @@ public sealed class WorldState
         IEnumerable<ActionInstanceState>? actions = null,
         long nextActionSequence = 1,
         IEnumerable<BeliefState>? beliefs = null,
-        IEnumerable<PlanState>? plans = null)
+        IEnumerable<PlanState>? plans = null,
+        IEnumerable<AccessRuleDefinition>? accessRules = null,
+        IEnumerable<PlaceAccessState>? placeAccessStates = null,
+        IEnumerable<MessageState>? messages = null)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -259,6 +284,15 @@ public sealed class WorldState
             StringComparer.Ordinal);
         _plans = new SortedDictionary<string, PlanState>(
             (plans ?? []).ToDictionary(plan => plan.Id),
+            StringComparer.Ordinal);
+        _accessRules = new SortedDictionary<string, AccessRuleDefinition>(
+            (accessRules ?? []).ToDictionary(rule => rule.Id),
+            StringComparer.Ordinal);
+        _placeAccessStates = new SortedDictionary<string, PlaceAccessState>(
+            (placeAccessStates ?? []).ToDictionary(item => item.PlaceId),
+            StringComparer.Ordinal);
+        _messages = new SortedDictionary<string, MessageState>(
+            (messages ?? []).ToDictionary(message => message.Id),
             StringComparer.Ordinal);
         if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
         {
@@ -327,6 +361,12 @@ public sealed class WorldState
 
     public IReadOnlyDictionary<string, PlanState> Plans => _plans;
 
+    public IReadOnlyDictionary<string, AccessRuleDefinition> AccessRules => _accessRules;
+
+    public IReadOnlyDictionary<string, PlaceAccessState> PlaceAccessStates => _placeAccessStates;
+
+    public IReadOnlyDictionary<string, MessageState> Messages => _messages;
+
     public RandomStreamRegistry RandomStreams { get; }
 
     public bool ReplayModified { get; internal set; }
@@ -369,6 +409,30 @@ public sealed class WorldState
         if (!_actions.TryAdd(action.Id, action))
         {
             throw new InvalidOperationException($"Duplicate action '{action.Id}'.");
+        }
+    }
+
+    internal void AddBelief(BeliefState belief)
+    {
+        if (!_beliefs.TryAdd(belief.Id, belief))
+        {
+            throw new InvalidOperationException($"Duplicate belief '{belief.Id}'.");
+        }
+    }
+
+    internal void AddMessage(MessageState message)
+    {
+        if (!_messages.TryAdd(message.Id, message))
+        {
+            throw new InvalidOperationException($"Duplicate message '{message.Id}'.");
+        }
+    }
+
+    internal void AddPlaceAccessState(PlaceAccessState placeAccessState)
+    {
+        if (!_placeAccessStates.TryAdd(placeAccessState.PlaceId, placeAccessState))
+        {
+            throw new InvalidOperationException($"Duplicate place access state '{placeAccessState.PlaceId}'.");
         }
     }
 

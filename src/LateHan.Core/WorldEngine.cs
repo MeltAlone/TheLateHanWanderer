@@ -139,7 +139,44 @@ public sealed partial class WorldEngine
             [],
             new Dictionary<string, string>(StringComparer.Ordinal));
 
-        State.CurrentMinute += 5;
+        var advancement = AdvanceTimeTo(checked(startMinute + 5));
+        if (advancement.InterruptEventIds.Count > 0)
+        {
+            var causes = new List<string> { started.Id };
+            causes.AddRange(advancement.InterruptEventIds);
+            _ = AppendEvent(
+                "delivery_interrupted",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [actorId, recipientId, itemId],
+                causes,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            return new ActionResult(
+                startMinute,
+                State.CurrentMinute,
+                State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray(),
+                ActionStatus.Interrupted);
+        }
+
+        if (actor.PlaceId is null || recipient.PlaceId is null || actor.PlaceId != recipient.PlaceId)
+        {
+            _ = AppendEvent(
+                "delivery_failed",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [actorId, recipientId, itemId],
+                [started.Id],
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["reason"] = "recipient_left",
+                });
+            return new ActionResult(
+                startMinute,
+                State.CurrentMinute,
+                State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray(),
+                ActionStatus.Blocked);
+        }
+
         item.HolderId = recipientId;
         var transferred = AppendEvent(
             "item_transferred",
@@ -244,10 +281,10 @@ public sealed partial class WorldEngine
         }
 
         var startMinute = State.CurrentMinute;
-        State.CurrentMinute += 5;
-        var told = AppendEvent(
-            "proposition_told",
-            State.CurrentMinute,
+        var firstEventSequence = State.EventSequenceCursor;
+        var created = AppendEvent(
+            "message_created",
+            startMinute,
             actor.LocationId,
             [actorId, recipientId],
             [],
@@ -256,7 +293,117 @@ public sealed partial class WorldEngine
                 ["proposition_id"] = propositionId,
             });
 
-        var events = new List<WorldEvent> { told };
+        var advancement = AdvanceTimeTo(checked(startMinute + 5));
+        if (advancement.InterruptEventIds.Count > 0)
+        {
+            var causes = new List<string> { created.Id };
+            causes.AddRange(advancement.InterruptEventIds);
+            _ = AppendEvent(
+                "message_interrupted",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [actorId, recipientId],
+                causes,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["proposition_id"] = propositionId,
+                });
+            return new ActionResult(
+                startMinute,
+                State.CurrentMinute,
+                State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray(),
+                ActionStatus.Interrupted);
+        }
+
+        if (actor.PlaceId is null || recipient.PlaceId is null || actor.PlaceId != recipient.PlaceId)
+        {
+            _ = AppendEvent(
+                "message_delivery_failed",
+                State.CurrentMinute,
+                actor.PlaceId,
+                [actorId, recipientId],
+                [created.Id],
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["proposition_id"] = propositionId,
+                    ["reason"] = "recipient_left",
+                });
+            return new ActionResult(
+                startMinute,
+                State.CurrentMinute,
+                State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray(),
+                ActionStatus.Blocked);
+        }
+        var senderBelief = State.Beliefs.Values
+            .Where(item => string.Equals(item.HolderId, actorId, StringComparison.Ordinal))
+            .Where(item => string.Equals(item.PropositionId, propositionId, StringComparison.Ordinal))
+            .OrderByDescending(item => item.ConfidenceBp)
+            .ThenBy(item => item.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        var confidenceBp = senderBelief?.ConfidenceBp ?? 6000;
+        var parentMessageId = senderBelief?.SourceEventId is { } sourceEventId
+            ? State.Messages.Values.FirstOrDefault(message => message.DeliveredEventId == sourceEventId)?.Id
+            : null;
+        var messageId = $"message.{created.Sequence:D8}";
+        var delivered = AppendEvent(
+            "message_delivered",
+            State.CurrentMinute,
+            actor.LocationId,
+            [messageId, actorId, recipientId],
+            [created.Id],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["confidence_bp"] = confidenceBp.ToString(CultureInfo.InvariantCulture),
+                ["parent_message_id"] = parentMessageId ?? string.Empty,
+                ["proposition_id"] = propositionId,
+            });
+        State.AddMessage(new MessageState(
+            messageId,
+            propositionId,
+            actorId,
+            recipientId,
+            confidenceBp,
+            startMinute,
+            created.Id,
+            delivered.Id,
+            parentMessageId));
+
+        var belief = State.Beliefs.Values
+            .Where(item => string.Equals(item.HolderId, recipientId, StringComparison.Ordinal))
+            .FirstOrDefault(item => string.Equals(item.PropositionId, propositionId, StringComparison.Ordinal));
+        if (belief is null)
+        {
+            belief = new BeliefState(
+                $"belief.message.{delivered.Sequence:D8}",
+                recipientId,
+                propositionId,
+                confidenceBp,
+                "direct_message",
+                State.CurrentMinute,
+                delivered.Id);
+            State.AddBelief(belief);
+        }
+        else
+        {
+            belief.ConfidenceBp = confidenceBp;
+            belief.Source = "direct_message";
+            belief.AcquiredAtMinute = State.CurrentMinute;
+            belief.SourceEventId = delivered.Id;
+        }
+
+        _ = AppendEvent(
+            "belief_updated",
+            State.CurrentMinute,
+            actor.LocationId,
+            [belief.Id, recipientId],
+            [delivered.Id],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["confidence_bp"] = confidenceBp.ToString(CultureInfo.InvariantCulture),
+                ["proposition_id"] = propositionId,
+                ["source"] = "direct_message",
+            });
+
         var completedTargets = State.Commitments.Values
             .Where(commitment => commitment.Status == "completed")
             .Select(commitment => commitment.Id)
@@ -272,19 +419,22 @@ public sealed partial class WorldEngine
         foreach (var commitment in reportCommitments)
         {
             commitment.Status = "completed";
-            events.Add(AppendEvent(
+            _ = AppendEvent(
                 "commitment_completed",
                 State.CurrentMinute,
                 actor.LocationId,
                 [commitment.Id, actorId, recipientId],
-                [told.Id],
+                [delivered.Id],
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["completion_kind"] = "reported",
-                }));
+                });
         }
 
-        return new ActionResult(startMinute, State.CurrentMinute, events);
+        return new ActionResult(
+            startMinute,
+            State.CurrentMinute,
+            State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray());
     }
 
     public ActionResult Wait(long minutes, string? actorId = null)

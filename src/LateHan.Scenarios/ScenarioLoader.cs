@@ -69,7 +69,12 @@ public sealed class ScenarioLoader
             computedHash,
             manifest.PlayerActorId,
             manifest.Start.Minute,
-            actors.Persons.Select(person => new ActorState(person.Id, person.Name, person.Location)),
+            actors.Persons.Select(person => new ActorState(
+                person.Id,
+                person.Name,
+                person.Location,
+                null,
+                person.Memberships.Select(item => new ActorMembership(item.Organization, item.Role)))),
             world.Places.Select(place => new PlaceDefinition(place.Id, place.Name, place.AccessRule, place.Controller)),
             world.Routes.Select(MapRoute),
             state.Items.Select(item => new ItemState(
@@ -79,7 +84,9 @@ public sealed class ScenarioLoader
                 item.Holder,
                 item.Author,
                 item.IntendedRecipient,
-                item.PropositionIds)),
+                item.PropositionIds,
+                item.ValidFor,
+                item.ExpiresAtMinute)),
             state.Commitments.Select(commitment => new CommitmentState(
                 commitment.Id,
                 commitment.Debtor,
@@ -98,7 +105,17 @@ public sealed class ScenarioLoader
                 belief.ConfidenceBp,
                 belief.Source,
                 belief.AcquiredAtMinute)),
-            plans: state.Plans.Select(MapPlan));
+            plans: state.Plans.Select(MapPlan),
+            accessRules: world.AccessRules.Select(rule => new AccessRuleDefinition(
+                rule.Id,
+                rule.Name,
+                rule.Requirements,
+                rule.MayQueue)),
+            placeAccessStates: state.PlaceStates.Select(item => new PlaceAccessState(
+                item.Place,
+                item.Open,
+                item.QueueCount,
+                item.SecurityPosture)));
 
         new WorldEngine(domainWorld).InitializePlans();
 
@@ -218,6 +235,7 @@ public sealed class ScenarioLoader
         }
 
         var placeIds = world.Places.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
+        var organizationIds = world.Organizations.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
         var accessRuleIds = world.AccessRules.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
         var actorIds = actors.Persons.Select(item => item.Id)
             .Concat(actors.Groups.Select(item => item.Id))
@@ -249,6 +267,10 @@ public sealed class ScenarioLoader
         foreach (var person in actors.Persons)
         {
             Require(placeIds, person.Location, $"person '{person.Id}'.location", errors);
+            foreach (var membership in person.Memberships)
+            {
+                Require(organizationIds, membership.Organization, $"person '{person.Id}'.memberships", errors);
+            }
         }
 
         foreach (var group in actors.Groups)
@@ -272,6 +294,20 @@ public sealed class ScenarioLoader
             foreach (var propositionId in item.PropositionIds)
             {
                 Require(propositionIds, propositionId, $"item '{item.Id}'.proposition_ids", errors);
+            }
+
+            foreach (var accessRuleId in item.ValidFor)
+            {
+                Require(accessRuleIds, accessRuleId, $"item '{item.Id}'.valid_for", errors);
+            }
+        }
+
+        foreach (var placeState in state.PlaceStates)
+        {
+            Require(placeIds, placeState.Place, "place_state.place", errors);
+            if (placeState.QueueCount < 0)
+            {
+                errors.Add($"SCN-NUM-004 Place state '{placeState.Place}' queue_count cannot be negative.");
             }
         }
 

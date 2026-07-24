@@ -101,6 +101,9 @@ internal sealed class CliSession
                 case "go":
                     ExecuteGo(tokens);
                     break;
+                case "enter":
+                    ExecuteEnter(tokens);
+                    break;
                 case "travel":
                     ExecuteTravel(tokens);
                     break;
@@ -127,6 +130,9 @@ internal sealed class CliSession
                     break;
                 case "history":
                     PrintHistory();
+                    break;
+                case "messages":
+                    PrintMessages(tokens);
                     break;
                 case "dev":
                     ExecuteDeveloperCommand(tokens);
@@ -169,6 +175,7 @@ internal sealed class CliSession
         Console.WriteLine("  beliefs [person-id]");
         Console.WriteLine("  plans [person-id]");
         Console.WriteLine("  go <place-id> [walk|horse|with-group]");
+        Console.WriteLine("  enter <place-id>");
         Console.WriteLine("  travel start <place-id> [walk|horse|with-group]");
         Console.WriteLine("  actions");
         Console.WriteLine("  advance <action-id>");
@@ -178,6 +185,7 @@ internal sealed class CliSession
         Console.WriteLine("  tell <person-id> <proposition-id>");
         Console.WriteLine("  wait <minutes|Nh|Nm>");
         Console.WriteLine("  history");
+        Console.WriteLine("  messages [person-id]");
         Console.WriteLine("  dev queue");
         Console.WriteLine("  dev rng <domain> <entity-id> [count]");
         Console.WriteLine("  dev schedule <minute> <phase> <subject-id> <kind> [interrupt]");
@@ -311,6 +319,20 @@ internal sealed class CliSession
         Console.WriteLine($"抵达；耗时 {result.EndMinute - result.StartMinute} 分钟。事件 {result.Events[^1].Id}");
     }
 
+    private void ExecuteEnter(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax usage: enter <place-id>");
+            return;
+        }
+
+        var result = _engine.Enter(_engine.State.PlayerActorId, tokens[1]);
+        Console.WriteLine(
+            $"access status={result.Status.ToString().ToLowerInvariant()} " +
+            $"minute={result.EndMinute} event={result.Events[^1].Id}");
+    }
+
     private void ExecuteTravel(string[] tokens)
     {
         if (tokens.Length is < 3 or > 4 || !string.Equals(tokens[1], "start", StringComparison.OrdinalIgnoreCase))
@@ -442,6 +464,36 @@ internal sealed class CliSession
 
         Console.WriteLine($"事件指纹 {_engine.State.ComputeEventFingerprint()}");
         Console.WriteLine($"回放状态 {(_engine.State.ReplayModified ? "modified" : "canonical")}");
+    }
+
+    private void PrintMessages(string[] tokens)
+    {
+        if (tokens.Length > 2)
+        {
+            Console.WriteLine("invalid:syntax usage: messages [person-id]");
+            return;
+        }
+
+        var personId = tokens.Length == 2 ? tokens[1] : _engine.State.PlayerActorId;
+        var messages = _engine.State.Messages.Values
+            .Where(item => string.Equals(item.SenderId, personId, StringComparison.Ordinal) ||
+                           string.Equals(item.RecipientId, personId, StringComparison.Ordinal))
+            .OrderBy(item => item.CreatedAtMinute)
+            .ThenBy(item => item.Id, StringComparer.Ordinal)
+            .ToArray();
+        if (messages.Length == 0)
+        {
+            Console.WriteLine($"no messages for {personId}");
+            return;
+        }
+
+        foreach (var message in messages)
+        {
+            Console.WriteLine(
+                $"{message.Id} {message.SenderId}->{message.RecipientId} " +
+                $"proposition={message.PropositionId} confidence={message.ConfidenceBp} " +
+                $"parent={message.ParentMessageId ?? "-"}");
+        }
     }
 
     private void ExecuteDeveloperCommand(string[] tokens)

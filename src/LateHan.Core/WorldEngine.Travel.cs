@@ -27,6 +27,14 @@ public sealed partial class WorldEngine
             throw new DomainCommandException("actor_busy", $"Actor '{actorId}' already has an active action.");
         }
 
+        var accessDecision = EvaluateAccess(actor, destinationPlaceId);
+        if (!accessDecision.Allowed)
+        {
+            throw new DomainCommandException(
+                "access_denied",
+                $"Access to '{destinationPlaceId}' is denied: {accessDecision.Reason}.");
+        }
+
         var legs = FindTravelPath(actor.LocationId, destinationPlaceId, mode);
         var firstLeg = legs[0];
         var firstDuration = firstLeg.GetMinutes(mode);
@@ -270,6 +278,7 @@ public sealed partial class WorldEngine
         {
             "travel_segment_completed" or "travel_completed" => ProcessTravelCompletion(scheduled),
             "plan_evaluation_due" => ProcessPlanEvaluation(scheduled),
+            "place_access_changed" => [ProcessPlaceAccessChange(scheduled)],
             "actor_relocated" => [ProcessActorRelocation(scheduled)],
             _ => [AppendScheduledEvent(scheduled)],
         };
@@ -297,6 +306,29 @@ public sealed partial class WorldEngine
         travel.SegmentRemainingMinutes = 0;
         travel.PendingScheduledEventId = null;
         action.LastUpdatedMinute = scheduled.DueMinute;
+        var isFinalLeg = travel.CurrentLegIndex == travel.Legs.Count - 1;
+        var accessDecision = EvaluateAccess(actor, leg.ToPlaceId);
+        if (isFinalLeg && !accessDecision.Allowed)
+        {
+            actor.LocationId = leg.FromPlaceId;
+            action.Status = ActionStatus.Blocked;
+            action.Phase = "blocked_by_access";
+            var blockedDetails = scheduled.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            blockedDetails["scheduled_event_id"] = scheduled.Id;
+            blockedDetails["destination"] = leg.ToPlaceId;
+            blockedDetails["reason"] = accessDecision.Reason;
+            return
+            [
+                AppendEvent(
+                    "travel_access_blocked",
+                    scheduled.DueMinute,
+                    leg.FromPlaceId,
+                    [action.ActorId],
+                    scheduled.CauseIds,
+                    blockedDetails),
+            ];
+        }
+
         actor.LocationId = leg.ToPlaceId;
         var details = scheduled.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         details["scheduled_event_id"] = scheduled.Id;

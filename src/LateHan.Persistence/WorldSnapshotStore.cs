@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.4";
+    public string SnapshotSchemaVersion { get; init; } = "0.5";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -80,6 +80,12 @@ internal sealed class WorldSnapshot
 
     public List<PlanSnapshot> Plans { get; init; } = [];
 
+    public List<AccessRuleSnapshot> AccessRules { get; init; } = [];
+
+    public List<PlaceAccessSnapshot> PlaceAccessStates { get; init; } = [];
+
+    public List<MessageSnapshot> Messages { get; init; } = [];
+
     public List<CommitmentSnapshot> Commitments { get; init; } = [];
 
     public List<EventSnapshot> Events { get; init; } = [];
@@ -119,7 +125,10 @@ internal sealed class WorldSnapshot
                         item.Transit.RouteId,
                         item.Transit.FromPlaceId,
                         item.Transit.ToPlaceId,
-                        item.Transit.ProgressQ1000))).ToList(),
+                        item.Transit.ProgressQ1000),
+                item.Memberships.Select(membership => new MembershipSnapshot(
+                    membership.OrganizationId,
+                    membership.RoleId)).ToList())).ToList(),
             Places = world.Places.Values.Select(item => new PlaceSnapshot(item.Id, item.Name, item.AccessRuleId, item.ControllerId)).ToList(),
             Routes = world.Routes.Values.Select(item => new RouteSnapshot(
                 item.Id,
@@ -135,7 +144,9 @@ internal sealed class WorldSnapshot
                 item.HolderId,
                 item.AuthorId,
                 item.IntendedRecipientId,
-                item.PropositionIds.ToList())).ToList(),
+                item.PropositionIds.ToList(),
+                item.ValidForAccessRuleIds.ToList(),
+                item.ExpiresAtMinute)).ToList(),
             Beliefs = world.Beliefs.Values.Select(item => new BeliefSnapshot(
                 item.Id,
                 item.HolderId,
@@ -161,6 +172,26 @@ internal sealed class WorldSnapshot
                 item.PendingScheduledEventId,
                 item.ActiveActionId,
                 item.LastEvaluationMinute)).ToList(),
+            AccessRules = world.AccessRules.Values.Select(item => new AccessRuleSnapshot(
+                item.Id,
+                item.Name,
+                item.Requirements.ToList(),
+                item.MayQueue)).ToList(),
+            PlaceAccessStates = world.PlaceAccessStates.Values.Select(item => new PlaceAccessSnapshot(
+                item.PlaceId,
+                item.Open,
+                item.QueueCount,
+                item.SecurityPosture)).ToList(),
+            Messages = world.Messages.Values.Select(item => new MessageSnapshot(
+                item.Id,
+                item.PropositionId,
+                item.SenderId,
+                item.RecipientId,
+                item.ConfidenceBp,
+                item.CreatedAtMinute,
+                item.CreatedEventId,
+                item.DeliveredEventId,
+                item.ParentMessageId)).ToList(),
             Commitments = world.Commitments.Values.Select(item => new CommitmentSnapshot(
                 item.Id,
                 item.DebtorId,
@@ -230,7 +261,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.4", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.5", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -261,7 +292,10 @@ internal sealed class WorldSnapshot
                         item.Transit.RouteId,
                         item.Transit.FromPlaceId,
                         item.Transit.ToPlaceId,
-                        item.Transit.ProgressQ1000))),
+                        item.Transit.ProgressQ1000),
+                item.Memberships.Select(membership => new ActorMembership(
+                    membership.OrganizationId,
+                    membership.RoleId)))),
             Places.Select(item => new PlaceDefinition(item.Id, item.Name, item.AccessRuleId, item.ControllerId)),
             Routes.Select(item => new RouteDefinition(
                 item.Id,
@@ -277,7 +311,9 @@ internal sealed class WorldSnapshot
                 item.HolderId,
                 item.AuthorId,
                 item.IntendedRecipientId,
-                item.PropositionIds)),
+                item.PropositionIds,
+                item.ValidForAccessRuleIds,
+                item.ExpiresAtMinute)),
             Commitments.Select(item => new CommitmentState(
                 item.Id,
                 item.DebtorId,
@@ -372,7 +408,27 @@ internal sealed class WorldSnapshot
                 item.Status,
                 item.PendingScheduledEventId,
                 item.ActiveActionId,
-                item.LastEvaluationMinute)));
+                item.LastEvaluationMinute)),
+            AccessRules.Select(item => new AccessRuleDefinition(
+                item.Id,
+                item.Name,
+                item.Requirements,
+                item.MayQueue)),
+            PlaceAccessStates.Select(item => new PlaceAccessState(
+                item.PlaceId,
+                item.Open,
+                item.QueueCount,
+                item.SecurityPosture)),
+            Messages.Select(item => new MessageState(
+                item.Id,
+                item.PropositionId,
+                item.SenderId,
+                item.RecipientId,
+                item.ConfidenceBp,
+                item.CreatedAtMinute,
+                item.CreatedEventId,
+                item.DeliveredEventId,
+                item.ParentMessageId)));
     }
 }
 
@@ -380,7 +436,10 @@ internal sealed record ActorSnapshot(
     string Id,
     string Name,
     string? PlaceId,
-    TransitPositionSnapshot? Transit);
+    TransitPositionSnapshot? Transit,
+    List<MembershipSnapshot> Memberships);
+
+internal sealed record MembershipSnapshot(string OrganizationId, string RoleId);
 
 internal sealed record TransitPositionSnapshot(
     string ActionId,
@@ -406,7 +465,32 @@ internal sealed record ItemSnapshot(
     string HolderId,
     string? AuthorId,
     string? IntendedRecipientId,
-    List<string> PropositionIds);
+    List<string> PropositionIds,
+    List<string> ValidForAccessRuleIds,
+    long? ExpiresAtMinute);
+
+internal sealed record AccessRuleSnapshot(
+    string Id,
+    string Name,
+    List<string> Requirements,
+    bool MayQueue);
+
+internal sealed record PlaceAccessSnapshot(
+    string PlaceId,
+    bool Open,
+    int QueueCount,
+    string SecurityPosture);
+
+internal sealed record MessageSnapshot(
+    string Id,
+    string PropositionId,
+    string SenderId,
+    string RecipientId,
+    int ConfidenceBp,
+    long CreatedAtMinute,
+    string CreatedEventId,
+    string DeliveredEventId,
+    string? ParentMessageId);
 
 internal sealed record BeliefSnapshot(
     string Id,

@@ -48,7 +48,7 @@ internal sealed class WorldDocument : ComponentDocument
 {
     public List<NamedDocument> Organizations { get; init; } = [];
 
-    public List<NamedDocument> AccessRules { get; init; } = [];
+    public List<AccessRuleDocument> AccessRules { get; init; } = [];
 
     public List<PlaceDocument> Places { get; init; } = [];
 
@@ -64,6 +64,8 @@ internal sealed class ActorsDocument : ComponentDocument
 
 internal sealed class StateDocument : ComponentDocument
 {
+    public List<PlaceStateDocument> PlaceStates { get; init; } = [];
+
     public List<ItemDocument> Items { get; init; } = [];
 
     public List<NamedDocument> Propositions { get; init; } = [];
@@ -89,6 +91,24 @@ internal sealed class PlaceDocument : NamedDocument
     public string? Controller { get; init; }
 }
 
+internal sealed class AccessRuleDocument : NamedDocument
+{
+    public List<string> Requirements { get; init; } = [];
+
+    public bool MayQueue { get; init; }
+}
+
+internal sealed class PlaceStateDocument
+{
+    public string Place { get; init; } = string.Empty;
+
+    public bool Open { get; init; }
+
+    public int QueueCount { get; init; }
+
+    public string SecurityPosture { get; init; } = string.Empty;
+}
+
 internal sealed class RouteDocument : NamedDocument
 {
     public string From { get; init; } = string.Empty;
@@ -105,6 +125,15 @@ internal sealed class RouteDocument : NamedDocument
 internal sealed class PersonDocument : NamedDocument
 {
     public string Location { get; init; } = string.Empty;
+
+    public List<MembershipDocument> Memberships { get; init; } = [];
+}
+
+internal sealed class MembershipDocument
+{
+    public string Organization { get; init; } = string.Empty;
+
+    public string Role { get; init; } = string.Empty;
 }
 
 internal sealed class GroupDocument : NamedDocument
@@ -123,6 +152,10 @@ internal sealed class ItemDocument : NamedDocument
     public string? IntendedRecipient { get; init; }
 
     public List<string> PropositionIds { get; init; } = [];
+
+    public List<string> ValidFor { get; init; } = [];
+
+    public long? ExpiresAtMinute { get; init; }
 }
 
 internal sealed class BeliefDocument : NamedDocument

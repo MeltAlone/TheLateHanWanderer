@@ -53,7 +53,9 @@ public sealed class WorldEngineTests
                 "commitment_completed",
                 "travel_started",
                 "travel_completed",
-                "proposition_told",
+                "message_created",
+                "message_delivered",
+                "belief_updated",
                 "commitment_completed",
             ],
             engine.State.Events.Select(worldEvent => worldEvent.Type));
