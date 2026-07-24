@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.2.0-spike";
+    public const string Version = "0.3.0-spike";
 }
 
 public enum TravelMode
@@ -20,17 +20,48 @@ public enum TravelMode
 public sealed class ActorState
 {
     public ActorState(string id, string name, string locationId)
+        : this(id, name, locationId, null)
     {
+    }
+
+    public ActorState(string id, string name, string? placeId, TransitPositionState? transit)
+    {
+        if ((placeId is null) == (transit is null))
+        {
+            throw new ArgumentException("An actor must be at exactly one place or transit position.", nameof(placeId));
+        }
+
         Id = id;
         Name = name;
-        LocationId = locationId;
+        PlaceId = placeId;
+        Transit = transit;
     }
 
     public string Id { get; }
 
     public string Name { get; }
 
-    public string LocationId { get; internal set; }
+    public string? PlaceId { get; internal set; }
+
+    public TransitPositionState? Transit { get; internal set; }
+
+    public string LocationId
+    {
+        get => PlaceId ?? throw new InvalidOperationException($"Actor '{Id}' is currently in transit.");
+        internal set
+        {
+            PlaceId = value;
+            Transit = null;
+        }
+    }
+
+    public bool IsInTransit => Transit is not null;
+
+    internal void BeginTransit(TransitPositionState transit)
+    {
+        PlaceId = null;
+        Transit = transit;
+    }
 }
 
 public sealed record PlaceDefinition(string Id, string Name, string AccessRuleId, string? ControllerId);
@@ -156,6 +187,7 @@ public sealed class WorldState
     private readonly SortedDictionary<string, CommitmentState> _commitments;
     private readonly List<WorldEvent> _events;
     private readonly SortedSet<ScheduledWorldEvent> _scheduledEvents;
+    private readonly SortedDictionary<string, ActionInstanceState> _actions;
 
     public WorldState(
         string scenarioId,
@@ -178,7 +210,9 @@ public sealed class WorldState
         IEnumerable<RandomStreamState>? randomStreams = null,
         IEnumerable<ScheduledWorldEvent>? scheduledEvents = null,
         long nextScheduledEventSequence = 1,
-        bool replayModified = false)
+        bool replayModified = false,
+        IEnumerable<ActionInstanceState>? actions = null,
+        long nextActionSequence = 1)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -195,6 +229,9 @@ public sealed class WorldState
         _commitments = new SortedDictionary<string, CommitmentState>(commitments.ToDictionary(item => item.Id), StringComparer.Ordinal);
         _events = events?.OrderBy(worldEvent => worldEvent.Sequence).ToList() ?? [];
         _scheduledEvents = new SortedSet<ScheduledWorldEvent>(scheduledEvents ?? [], ScheduledWorldEventComparer.Instance);
+        _actions = new SortedDictionary<string, ActionInstanceState>(
+            (actions ?? []).ToDictionary(action => action.Id),
+            StringComparer.Ordinal);
         if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
         {
             throw new ArgumentException("Scheduled events cannot be earlier than the current world minute.", nameof(scheduledEvents));
@@ -212,8 +249,16 @@ public sealed class WorldState
                 "Scheduled event sequence cursor must exceed every queued sequence.");
         }
 
+        if (nextActionSequence <= _actions.Values.Select(item => item.Sequence).DefaultIfEmpty(0).Max())
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(nextActionSequence),
+                "Action sequence cursor must exceed every action sequence.");
+        }
+
         NextEventSequence = nextEventSequence;
         NextScheduledEventSequence = nextScheduledEventSequence;
+        NextActionSequence = nextActionSequence;
         RandomStreams = new RandomStreamRegistry(rngVersion, rngRootSeedHex, rngDerivation, randomStreams);
         ReplayModified = replayModified;
     }
@@ -248,6 +293,8 @@ public sealed class WorldState
 
     public IReadOnlyList<ScheduledWorldEvent> ScheduledEvents => _scheduledEvents.ToArray();
 
+    public IReadOnlyDictionary<string, ActionInstanceState> Actions => _actions;
+
     public RandomStreamRegistry RandomStreams { get; }
 
     public bool ReplayModified { get; internal set; }
@@ -256,9 +303,13 @@ public sealed class WorldState
 
     public long ScheduledEventSequenceCursor => NextScheduledEventSequence;
 
+    public long ActionSequenceCursor => NextActionSequence;
+
     internal long NextEventSequence { get; set; }
 
     internal long NextScheduledEventSequence { get; set; }
+
+    internal long NextActionSequence { get; set; }
 
     internal void AddEvent(WorldEvent worldEvent) => _events.Add(worldEvent);
 
@@ -273,6 +324,21 @@ public sealed class WorldState
     internal ScheduledWorldEvent? PeekScheduledEvent() => _scheduledEvents.Count == 0 ? null : _scheduledEvents.Min;
 
     internal bool RemoveScheduledEvent(ScheduledWorldEvent scheduledEvent) => _scheduledEvents.Remove(scheduledEvent);
+
+    internal bool RemoveScheduledEvent(string scheduledEventId)
+    {
+        var scheduledEvent = _scheduledEvents.FirstOrDefault(
+            item => string.Equals(item.Id, scheduledEventId, StringComparison.Ordinal));
+        return scheduledEvent is not null && _scheduledEvents.Remove(scheduledEvent);
+    }
+
+    internal void AddAction(ActionInstanceState action)
+    {
+        if (!_actions.TryAdd(action.Id, action))
+        {
+            throw new InvalidOperationException($"Duplicate action '{action.Id}'.");
+        }
+    }
 
     public string ComputeEventFingerprint()
     {

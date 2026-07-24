@@ -95,6 +95,21 @@ internal sealed class CliSession
                 case "go":
                     ExecuteGo(tokens);
                     break;
+                case "travel":
+                    ExecuteTravel(tokens);
+                    break;
+                case "actions":
+                    PrintActions();
+                    break;
+                case "advance":
+                    ExecuteAdvance(tokens);
+                    break;
+                case "resume":
+                    ExecuteResume(tokens);
+                    break;
+                case "cancel":
+                    ExecuteCancel(tokens);
+                    break;
                 case "give":
                     ExecuteGive(tokens);
                     break;
@@ -146,6 +161,11 @@ internal sealed class CliSession
         Console.WriteLine("  status");
         Console.WriteLine("  commitments");
         Console.WriteLine("  go <place-id> [walk|horse|with-group]");
+        Console.WriteLine("  travel start <place-id> [walk|horse|with-group]");
+        Console.WriteLine("  actions");
+        Console.WriteLine("  advance <action-id>");
+        Console.WriteLine("  resume <action-id> [walk|horse|with-group]");
+        Console.WriteLine("  cancel <action-id>");
         Console.WriteLine("  give <item-id> to <person-id>");
         Console.WriteLine("  tell <person-id> <proposition-id>");
         Console.WriteLine("  wait <minutes|Nh|Nm>");
@@ -153,6 +173,7 @@ internal sealed class CliSession
         Console.WriteLine("  dev queue");
         Console.WriteLine("  dev rng <domain> <entity-id> [count]");
         Console.WriteLine("  dev schedule <minute> <phase> <subject-id> <kind> [interrupt]");
+        Console.WriteLine("  dev interrupt-travel <action-id> <minute> <reason>");
         Console.WriteLine("  save <path>");
         Console.WriteLine("  load <path>");
         Console.WriteLine("  quit");
@@ -217,7 +238,87 @@ internal sealed class CliSession
 
         var mode = tokens.Length == 3 ? ParseMode(tokens[2]) : TravelMode.Walk;
         var result = _engine.Move(_engine.State.PlayerActorId, tokens[1], mode);
+        if (result.Status == ActionStatus.Interrupted)
+        {
+            Console.WriteLine(
+                $"旅行被中断；耗时 {result.EndMinute - result.StartMinute} 分钟。" +
+                $"使用 actions 查看并用 resume 恢复。");
+            return;
+        }
+
         Console.WriteLine($"抵达；耗时 {result.EndMinute - result.StartMinute} 分钟。事件 {result.Events[^1].Id}");
+    }
+
+    private void ExecuteTravel(string[] tokens)
+    {
+        if (tokens.Length is < 3 or > 4 || !string.Equals(tokens[1], "start", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("invalid:syntax 用法：travel start <place-id> [walk|horse|with-group]");
+            return;
+        }
+
+        var mode = tokens.Length == 4 ? ParseMode(tokens[3]) : TravelMode.Walk;
+        var action = _engine.BeginTravel(_engine.State.PlayerActorId, tokens[2], mode);
+        Console.WriteLine($"已开始旅行 {action.Id}；使用 advance {action.Id} 推进到完成或中断。");
+    }
+
+    private void PrintActions()
+    {
+        if (_engine.State.Actions.Count == 0)
+        {
+            Console.WriteLine("尚无行动实例。");
+            return;
+        }
+
+        foreach (var action in _engine.State.Actions.Values)
+        {
+            Console.WriteLine(
+                $"{action.Id} actor={action.ActorId} kind={action.Kind.ToString().ToLowerInvariant()} " +
+                $"status={action.Status.ToString().ToLowerInvariant()} phase={action.Phase} " +
+                $"elapsed={action.Travel.ElapsedMinutes} route={action.Travel.CurrentLeg.RouteId} " +
+                $"progress={action.Travel.CurrentLegProgressQ1000}/1000");
+        }
+    }
+
+    private void ExecuteAdvance(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：advance <action-id>");
+            return;
+        }
+
+        var result = _engine.AdvanceAction(tokens[1]);
+        Console.WriteLine(
+            $"行动 {tokens[1]} 状态 {result.Status.ToString().ToLowerInvariant()}；" +
+            $"当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+    }
+
+    private void ExecuteResume(string[] tokens)
+    {
+        if (tokens.Length is < 2 or > 3)
+        {
+            Console.WriteLine("invalid:syntax 用法：resume <action-id> [walk|horse|with-group]");
+            return;
+        }
+
+        var mode = tokens.Length == 3 ? ParseMode(tokens[2]) : TravelMode.Walk;
+        var result = _engine.ResumeTravel(tokens[1], mode);
+        Console.WriteLine(
+            $"行动 {tokens[1]} 状态 {result.Status.ToString().ToLowerInvariant()}；" +
+            $"当前为开局后 {_engine.State.CurrentMinute} 分钟。");
+    }
+
+    private void ExecuteCancel(string[] tokens)
+    {
+        if (tokens.Length != 2)
+        {
+            Console.WriteLine("invalid:syntax 用法：cancel <action-id>");
+            return;
+        }
+
+        var result = _engine.CancelAction(tokens[1]);
+        Console.WriteLine($"行动 {tokens[1]} 状态 {result.Status.ToString().ToLowerInvariant()}。");
     }
 
     private void ExecuteGive(string[] tokens)
@@ -285,7 +386,7 @@ internal sealed class CliSession
     {
         if (tokens.Length < 2)
         {
-            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule> ...");
+            Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel> ...");
             return;
         }
 
@@ -300,8 +401,11 @@ internal sealed class CliSession
             case "schedule":
                 ScheduleDeveloperEvent(tokens);
                 break;
+            case "interrupt-travel":
+                ScheduleTravelInterruption(tokens);
+                break;
             default:
-                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule> ...");
+                Console.WriteLine("invalid:syntax 用法：dev <queue|rng|schedule|interrupt-travel> ...");
                 break;
         }
     }
@@ -370,6 +474,19 @@ internal sealed class CliSession
             tokens[5],
             interruptsPlayer: interrupts);
         Console.WriteLine($"已排定 {scheduled.Id}；回放已标记为 modified。");
+    }
+
+    private void ScheduleTravelInterruption(string[] tokens)
+    {
+        if (tokens.Length != 5 ||
+            !long.TryParse(tokens[3], NumberStyles.None, CultureInfo.InvariantCulture, out var minute))
+        {
+            Console.WriteLine("invalid:syntax 用法：dev interrupt-travel <action-id> <minute> <reason>");
+            return;
+        }
+
+        var scheduled = _engine.ScheduleExternalTravelInterruption(tokens[2], minute, tokens[4]);
+        Console.WriteLine($"已排定旅行中断 {scheduled.Id}；回放已标记为 modified。");
     }
 
     private void ExecuteSave(string[] tokens)

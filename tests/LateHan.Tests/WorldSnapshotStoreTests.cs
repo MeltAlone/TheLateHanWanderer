@@ -122,4 +122,94 @@ public sealed class WorldSnapshotStoreTests
             }
         }
     }
+
+    [Fact]
+    public void InterruptedTravelSaveLoadAndResumeMatchesContinuousRun()
+    {
+        var store = new WorldSnapshotStore();
+        var original = RepositoryFixture.CreateEngine();
+        var action = original.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.eastern_road",
+            TravelMode.Horse);
+        original.ScheduleTravelRiskCheck(action.Id, 40, "horse_injured", ulong.MaxValue);
+        _ = original.AdvanceAction(action.Id);
+        var snapshotPath = Path.Combine(Path.GetTempPath(), $"latehan-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            store.Save(original.State, snapshotPath);
+            var restored = new WorldEngine(store.Load(snapshotPath));
+
+            _ = original.ResumeTravel(action.Id, TravelMode.Walk);
+            _ = restored.ResumeTravel(action.Id, TravelMode.Walk);
+
+            Assert.Equal(original.State.CurrentMinute, restored.State.CurrentMinute);
+            Assert.Equal(original.State.ComputeEventFingerprint(), restored.State.ComputeEventFingerprint());
+            Assert.Equal(original.State.ActionSequenceCursor, restored.State.ActionSequenceCursor);
+            Assert.Equal(original.State.ScheduledEventSequenceCursor, restored.State.ScheduledEventSequenceCursor);
+            Assert.Equal(
+                original.State.RandomStreams.Streams[$"travel-risk:{action.Id}"].DrawCount,
+                restored.State.RandomStreams.Streams[$"travel-risk:{action.Id}"].DrawCount);
+            Assert.Equal(
+                original.State.Actors["person.player_clerk"].LocationId,
+                restored.State.Actors["person.player_clerk"].LocationId);
+            Assert.Equal(
+                original.State.Actions[action.Id].Travel.ElapsedMinutes,
+                restored.State.Actions[action.Id].Travel.ElapsedMinutes);
+            Assert.Equal(ActionStatus.Completed, restored.State.Actions[action.Id].Status);
+        }
+        finally
+        {
+            if (File.Exists(snapshotPath))
+            {
+                File.Delete(snapshotPath);
+            }
+
+            if (File.Exists($"{snapshotPath}.tmp"))
+            {
+                File.Delete($"{snapshotPath}.tmp");
+            }
+        }
+    }
+
+    [Fact]
+    public void RunningTravelSnapshotPreservesPendingCompletion()
+    {
+        var store = new WorldSnapshotStore();
+        var original = RepositoryFixture.CreateEngine();
+        var action = original.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.sili_office",
+            TravelMode.Walk);
+        var snapshotPath = Path.Combine(Path.GetTempPath(), $"latehan-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            store.Save(original.State, snapshotPath);
+            var restored = new WorldEngine(store.Load(snapshotPath));
+
+            _ = original.AdvanceAction(action.Id);
+            _ = restored.AdvanceAction(action.Id);
+
+            Assert.Equal(original.State.ComputeEventFingerprint(), restored.State.ComputeEventFingerprint());
+            Assert.Equal(22, restored.State.CurrentMinute);
+            Assert.Equal(ActionStatus.Completed, restored.State.Actions[action.Id].Status);
+            Assert.Equal(
+                "place.luoyang.sili_office",
+                restored.State.Actors["person.player_clerk"].LocationId);
+        }
+        finally
+        {
+            if (File.Exists(snapshotPath))
+            {
+                File.Delete(snapshotPath);
+            }
+
+            if (File.Exists($"{snapshotPath}.tmp"))
+            {
+                File.Delete($"{snapshotPath}.tmp");
+            }
+        }
+    }
 }

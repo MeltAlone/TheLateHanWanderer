@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.2";
+    public string SnapshotSchemaVersion { get; init; } = "0.3";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -66,6 +66,8 @@ internal sealed class WorldSnapshot
 
     public bool ReplayModified { get; init; }
 
+    public long NextActionSequence { get; init; }
+
     public List<ActorSnapshot> Actors { get; init; } = [];
 
     public List<PlaceSnapshot> Places { get; init; } = [];
@@ -81,6 +83,8 @@ internal sealed class WorldSnapshot
     public List<RandomStreamSnapshot> RandomStreams { get; init; } = [];
 
     public List<ScheduledEventSnapshot> ScheduledEvents { get; init; } = [];
+
+    public List<ActionSnapshot> Actions { get; init; } = [];
 
     public static WorldSnapshot FromWorld(WorldState world)
     {
@@ -99,7 +103,19 @@ internal sealed class WorldSnapshot
             RngDerivation = world.RandomStreams.Derivation,
             NextScheduledEventSequence = world.ScheduledEventSequenceCursor,
             ReplayModified = world.ReplayModified,
-            Actors = world.Actors.Values.Select(item => new ActorSnapshot(item.Id, item.Name, item.LocationId)).ToList(),
+            NextActionSequence = world.ActionSequenceCursor,
+            Actors = world.Actors.Values.Select(item => new ActorSnapshot(
+                item.Id,
+                item.Name,
+                item.PlaceId,
+                item.Transit is null
+                    ? null
+                    : new TransitPositionSnapshot(
+                        item.Transit.ActionId,
+                        item.Transit.RouteId,
+                        item.Transit.FromPlaceId,
+                        item.Transit.ToPlaceId,
+                        item.Transit.ProgressQ1000))).ToList(),
             Places = world.Places.Values.Select(item => new PlaceSnapshot(item.Id, item.Name, item.AccessRuleId, item.ControllerId)).ToList(),
             Routes = world.Routes.Values.Select(item => new RouteSnapshot(
                 item.Id,
@@ -145,12 +161,40 @@ internal sealed class WorldSnapshot
                 item.InterruptsPlayer,
                 item.CauseIds.ToList(),
                 item.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal))).ToList(),
+            Actions = world.Actions.Values.Select(item => new ActionSnapshot(
+                item.Sequence,
+                item.Id,
+                item.ActorId,
+                item.Kind,
+                item.Status,
+                item.StartedMinute,
+                item.LastUpdatedMinute,
+                item.Phase,
+                item.StartedByEventId,
+                new TravelActionSnapshot(
+                    item.Travel.OriginPlaceId,
+                    item.Travel.DestinationPlaceId,
+                    item.Travel.Mode,
+                    item.Travel.Legs.Select(leg => new TravelLegSnapshot(
+                        leg.RouteId,
+                        leg.FromPlaceId,
+                        leg.ToPlaceId,
+                        leg.WalkMinutes,
+                        leg.HorseMinutes,
+                        leg.WithGroupMinutes)).ToList(),
+                    item.Travel.CurrentLegIndex,
+                    item.Travel.CurrentLegProgressQ1000,
+                    item.Travel.SegmentStartedMinute,
+                    item.Travel.SegmentRemainingMinutes,
+                    item.Travel.ElapsedMinutes,
+                    item.Travel.PendingScheduledEventId,
+                    item.Travel.InterruptionEventId))).ToList(),
         };
     }
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.2", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.3", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -170,7 +214,18 @@ internal sealed class WorldSnapshot
             ContentHash,
             PlayerActorId,
             CurrentMinute,
-            Actors.Select(item => new ActorState(item.Id, item.Name, item.LocationId)),
+            Actors.Select(item => new ActorState(
+                item.Id,
+                item.Name,
+                item.PlaceId,
+                item.Transit is null
+                    ? null
+                    : new TransitPositionState(
+                        item.Transit.ActionId,
+                        item.Transit.RouteId,
+                        item.Transit.FromPlaceId,
+                        item.Transit.ToPlaceId,
+                        item.Transit.ProgressQ1000))),
             Places.Select(item => new PlaceDefinition(item.Id, item.Name, item.AccessRuleId, item.ControllerId)),
             Routes.Select(item => new RouteDefinition(
                 item.Id,
@@ -220,11 +275,51 @@ internal sealed class WorldSnapshot
                 item.CauseIds,
                 item.Details)),
             NextScheduledEventSequence,
-            ReplayModified);
+            ReplayModified,
+            Actions.Select(item => new ActionInstanceState(
+                item.Sequence,
+                item.Id,
+                item.ActorId,
+                item.Kind,
+                item.Status,
+                item.StartedMinute,
+                item.LastUpdatedMinute,
+                item.Phase,
+                item.StartedByEventId,
+                new TravelActionState(
+                    item.Travel.OriginPlaceId,
+                    item.Travel.DestinationPlaceId,
+                    item.Travel.Mode,
+                    item.Travel.Legs.Select(leg => new TravelLegState(
+                        leg.RouteId,
+                        leg.FromPlaceId,
+                        leg.ToPlaceId,
+                        leg.WalkMinutes,
+                        leg.HorseMinutes,
+                        leg.WithGroupMinutes)),
+                    item.Travel.CurrentLegIndex,
+                    item.Travel.CurrentLegProgressQ1000,
+                    item.Travel.SegmentStartedMinute,
+                    item.Travel.SegmentRemainingMinutes,
+                    item.Travel.ElapsedMinutes,
+                    item.Travel.PendingScheduledEventId,
+                    item.Travel.InterruptionEventId))),
+            NextActionSequence);
     }
 }
 
-internal sealed record ActorSnapshot(string Id, string Name, string LocationId);
+internal sealed record ActorSnapshot(
+    string Id,
+    string Name,
+    string? PlaceId,
+    TransitPositionSnapshot? Transit);
+
+internal sealed record TransitPositionSnapshot(
+    string ActionId,
+    string RouteId,
+    string FromPlaceId,
+    string ToPlaceId,
+    int ProgressQ1000);
 
 internal sealed record PlaceSnapshot(string Id, string Name, string AccessRuleId, string? ControllerId);
 
@@ -277,3 +372,36 @@ internal sealed record ScheduledEventSnapshot(
     bool InterruptsPlayer,
     List<string> CauseIds,
     Dictionary<string, string> Details);
+
+internal sealed record ActionSnapshot(
+    long Sequence,
+    string Id,
+    string ActorId,
+    WorldActionKind Kind,
+    ActionStatus Status,
+    long StartedMinute,
+    long LastUpdatedMinute,
+    string Phase,
+    string StartedByEventId,
+    TravelActionSnapshot Travel);
+
+internal sealed record TravelActionSnapshot(
+    string OriginPlaceId,
+    string DestinationPlaceId,
+    TravelMode Mode,
+    List<TravelLegSnapshot> Legs,
+    int CurrentLegIndex,
+    int CurrentLegProgressQ1000,
+    long SegmentStartedMinute,
+    int SegmentRemainingMinutes,
+    long ElapsedMinutes,
+    string? PendingScheduledEventId,
+    string? InterruptionEventId);
+
+internal sealed record TravelLegSnapshot(
+    string RouteId,
+    string FromPlaceId,
+    string ToPlaceId,
+    int WalkMinutes,
+    int HorseMinutes,
+    int WithGroupMinutes);

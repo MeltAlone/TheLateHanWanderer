@@ -70,6 +70,9 @@ public sealed class WorldEngineTests
         Assert.Equal("unknown_place", exception.Code);
         Assert.Equal(0, engine.State.CurrentMinute);
         Assert.Empty(engine.State.Events);
+        Assert.Empty(engine.State.Actions);
+        Assert.Empty(engine.State.ScheduledEvents);
+        Assert.Equal(1, engine.State.ActionSequenceCursor);
     }
 
     [Fact]
@@ -179,6 +182,159 @@ public sealed class WorldEngineTests
 
         Assert.Equal(10, engine.State.CurrentMinute);
         Assert.Equal(eventCursor, engine.State.EventSequenceCursor);
+    }
+
+    [Fact]
+    public void TravelInterruptionPreservesElapsedTimeAndRoutePosition()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var action = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.eastern_road",
+            TravelMode.Horse);
+        engine.ScheduleTravelRiskCheck(action.Id, 40, "horse_injured", ulong.MaxValue);
+
+        var result = engine.AdvanceAction(action.Id);
+
+        Assert.Equal(ActionStatus.Interrupted, result.Status);
+        Assert.Equal(40, engine.State.CurrentMinute);
+        Assert.Equal(40, action.Travel.ElapsedMinutes);
+        Assert.Equal("route.east_market_east_gate", action.Travel.CurrentLeg.RouteId);
+        Assert.Equal(272, action.Travel.CurrentLegProgressQ1000);
+        Assert.Null(engine.State.Actors["person.player_clerk"].PlaceId);
+        Assert.Equal(272, engine.State.Actors["person.player_clerk"].Transit?.ProgressQ1000);
+        Assert.Contains(result.Events, item => item.Type == "travel_disrupted");
+        Assert.Contains(result.Events, item => item.Type == "travel_interrupted");
+        Assert.Equal(1UL, engine.State.RandomStreams.Streams[$"travel-risk:{action.Id}"].DrawCount);
+        Assert.Contains("rng_draw", result.Events.First(item => item.Type == "travel_disrupted").Details.Keys);
+        Assert.DoesNotContain(engine.State.ScheduledEvents, item => item.Kind == "travel_segment_completed");
+    }
+
+    [Fact]
+    public void InterruptedTravelCanResumeOnFootWithoutLosingProgress()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var action = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.eastern_road",
+            TravelMode.Horse);
+        engine.ScheduleTravelInterruption(action.Id, 40, "horse_injured");
+        _ = engine.AdvanceAction(action.Id);
+
+        var result = engine.ResumeTravel(action.Id, TravelMode.Walk);
+
+        Assert.Equal(ActionStatus.Completed, result.Status);
+        Assert.Equal(172, engine.State.CurrentMinute);
+        Assert.Equal(172, action.Travel.ElapsedMinutes);
+        Assert.Equal("place.luoyang.eastern_road", engine.State.Actors["person.player_clerk"].LocationId);
+        Assert.Null(engine.State.Actors["person.player_clerk"].Transit);
+        Assert.Contains(result.Events, item => item.Type == "travel_resumed");
+        Assert.Equal("travel_completed", result.Events[^1].Type);
+    }
+
+    [Fact]
+    public void TargetCanLeaveWhilePlayerIsTraveling()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        engine.Schedule(
+            10,
+            ScheduledEventPhase.ArrivalAndDeparture,
+            "person.yuan_shao",
+            "actor_relocated",
+            details: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["destination_place_id"] = "place.luoyang.henan_office",
+            });
+
+        var travel = engine.Move(
+            "person.player_clerk",
+            "place.luoyang.sili_office",
+            TravelMode.Walk);
+        var exception = Assert.Throws<DomainCommandException>(() => engine.Deliver(
+            "person.player_clerk",
+            "item.sealed_note_to_yuan_shao",
+            "person.yuan_shao"));
+
+        Assert.Equal(ActionStatus.Completed, travel.Status);
+        Assert.Equal(22, engine.State.CurrentMinute);
+        Assert.Equal("place.luoyang.henan_office", engine.State.Actors["person.yuan_shao"].LocationId);
+        Assert.Equal("recipient_not_present", exception.Code);
+        Assert.Equal("person.player_clerk", engine.State.Items["item.sealed_note_to_yuan_shao"].HolderId);
+        Assert.Equal("open", engine.State.Commitments["commitment.player.deliver_note"].Status);
+    }
+
+    [Fact]
+    public void InterruptedTravelCanBeCancelledWithoutRewindingPosition()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var action = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.eastern_road",
+            TravelMode.Horse);
+        engine.ScheduleTravelInterruption(action.Id, 10, "horse_injured");
+        _ = engine.AdvanceAction(action.Id);
+        var progress = action.Travel.CurrentLegProgressQ1000;
+
+        var result = engine.CancelAction(action.Id);
+
+        Assert.Equal(ActionStatus.Cancelled, result.Status);
+        Assert.Equal(10, engine.State.CurrentMinute);
+        Assert.Equal(progress, engine.State.Actors["person.player_clerk"].Transit?.ProgressQ1000);
+        Assert.Empty(engine.State.ScheduledEvents);
+        Assert.Equal("travel_cancelled", result.Events.Single().Type);
+        Assert.Throws<DomainCommandException>(() => engine.ResumeTravel(action.Id, TravelMode.Walk));
+    }
+
+    [Fact]
+    public void HigherPrioritySameMinuteInterruptionPreventsArrival()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var action = engine.BeginTravel(
+            "person.player_clerk",
+            "place.luoyang.sili_office",
+            TravelMode.Walk);
+        engine.Schedule(
+            22,
+            ScheduledEventPhase.DeathOrRemoval,
+            "person.player_clerk",
+            "actor_incapacitated",
+            interruptsPlayer: true);
+
+        var result = engine.AdvanceAction(action.Id);
+
+        Assert.Equal(ActionStatus.Interrupted, result.Status);
+        Assert.Equal(22, engine.State.CurrentMinute);
+        Assert.Null(engine.State.Actors["person.player_clerk"].PlaceId);
+        Assert.Equal("route.office_sili", engine.State.Actors["person.player_clerk"].Transit?.RouteId);
+        Assert.Equal(999, engine.State.Actors["person.player_clerk"].Transit?.ProgressQ1000);
+        Assert.DoesNotContain(result.Events, item => item.Type == "travel_completed");
+        Assert.DoesNotContain(engine.State.ScheduledEvents, item => item.Kind == "travel_completed");
+    }
+
+    [Fact]
+    public void InterruptedTravelerCanWaitInPlaceAndRemoteTransitDoesNotBreakLook()
+    {
+        var engine = RepositoryFixture.CreateEngine();
+        var action = engine.BeginTravel(
+            "person.yuan_shao",
+            "place.luoyang.eastern_road",
+            TravelMode.Horse);
+        engine.Schedule(
+            10,
+            ScheduledEventPhase.DeathOrRemoval,
+            "person.yuan_shao",
+            "actor_incapacitated",
+            interruptsPlayer: false);
+        _ = engine.AdvanceAction(action.Id);
+
+        var look = engine.Look("person.player_clerk");
+        var wait = engine.Wait(5, "person.yuan_shao");
+
+        Assert.Equal("place.luoyang.general_in_chief_office", look.PlaceId);
+        Assert.Equal(ActionStatus.Completed, wait.Status);
+        Assert.Equal(15, engine.State.CurrentMinute);
+        Assert.True(engine.State.Actors["person.yuan_shao"].IsInTransit);
+        Assert.Null(wait.Events[0].LocationId);
     }
 
     private static WorldEngine RunDeliveryPath()

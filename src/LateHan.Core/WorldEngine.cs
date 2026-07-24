@@ -20,6 +20,8 @@ public sealed record StatusView(
 
 public enum ActionStatus
 {
+    Scheduled,
+    Running,
     Completed,
     PartiallyCompleted,
     Refused,
@@ -35,7 +37,7 @@ public sealed record ActionResult(
     IReadOnlyList<WorldEvent> Events,
     ActionStatus Status = ActionStatus.Completed);
 
-public sealed class WorldEngine
+public sealed partial class WorldEngine
 {
     public WorldEngine(WorldState state)
     {
@@ -47,9 +49,24 @@ public sealed class WorldEngine
     public LocationView Look(string? actorId = null)
     {
         var actor = GetActor(actorId ?? State.PlayerActorId);
+        if (actor.Transit is { } transit)
+        {
+            var visibleTravelers = State.Actors.Values
+                .Where(candidate => candidate.Id != actor.Id)
+                .Where(candidate => candidate.Transit?.RouteId == transit.RouteId)
+                .OrderBy(candidate => candidate.Id, StringComparer.Ordinal)
+                .Select(candidate => (candidate.Id, candidate.Name))
+                .ToArray();
+            return new LocationView(
+                State.CurrentMinute,
+                transit.RouteId,
+                $"途中：{transit.FromPlaceId} -> {transit.ToPlaceId} ({transit.ProgressQ1000}/1000)",
+                visibleTravelers);
+        }
+
         var place = GetPlace(actor.LocationId);
         var visibleActors = State.Actors.Values
-            .Where(candidate => candidate.LocationId == actor.LocationId && candidate.Id != actor.Id)
+            .Where(candidate => candidate.PlaceId == actor.PlaceId && candidate.Id != actor.Id)
             .OrderBy(candidate => candidate.Id, StringComparer.Ordinal)
             .Select(candidate => (candidate.Id, candidate.Name))
             .ToArray();
@@ -60,7 +77,10 @@ public sealed class WorldEngine
     public StatusView Status(string? actorId = null)
     {
         var actor = GetActor(actorId ?? State.PlayerActorId);
-        var place = GetPlace(actor.LocationId);
+        var positionId = actor.Transit?.RouteId ?? actor.LocationId;
+        var positionName = actor.Transit is { } transit
+            ? $"途中：{transit.FromPlaceId} -> {transit.ToPlaceId} ({transit.ProgressQ1000}/1000)"
+            : GetPlace(actor.LocationId).Name;
         var heldItems = State.Items.Values
             .Where(item => item.HolderId == actor.Id)
             .OrderBy(item => item.Id, StringComparer.Ordinal)
@@ -72,60 +92,31 @@ public sealed class WorldEngine
             .ThenBy(commitment => commitment.Id, StringComparer.Ordinal)
             .ToArray();
 
-        return new StatusView(State.CurrentMinute, actor.Id, actor.Name, place.Id, place.Name, heldItems, commitments);
+        return new StatusView(State.CurrentMinute, actor.Id, actor.Name, positionId, positionName, heldItems, commitments);
     }
 
     public ActionResult Move(string actorId, string destinationPlaceId, TravelMode mode)
     {
-        var actor = GetActor(actorId);
-        _ = GetPlace(destinationPlaceId);
-        if (actor.LocationId == destinationPlaceId)
-        {
-            throw new DomainCommandException("already_at_destination", $"Actor '{actorId}' is already at '{destinationPlaceId}'.");
-        }
-
-        var path = FindShortestPath(actor.LocationId, destinationPlaceId, mode);
         var startMinute = State.CurrentMinute;
-        var totalMinutes = path.Sum(route => route.GetMinutes(mode));
-        var started = AppendEvent(
-            "travel_started",
-            startMinute,
-            actor.LocationId,
-            [actorId],
-            [],
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["destination"] = destinationPlaceId,
-                ["mode"] = ToModeId(mode),
-                ["route_ids"] = string.Join(',', path.Select(route => route.Id)),
-                ["expected_minutes"] = totalMinutes.ToString(CultureInfo.InvariantCulture),
-            });
-
-        State.CurrentMinute += totalMinutes;
-        actor.LocationId = destinationPlaceId;
-        var completed = AppendEvent(
-            "travel_completed",
-            State.CurrentMinute,
-            destinationPlaceId,
-            [actorId],
-            [started.Id],
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["origin"] = started.LocationId ?? string.Empty,
-                ["mode"] = ToModeId(mode),
-                ["elapsed_minutes"] = totalMinutes.ToString(CultureInfo.InvariantCulture),
-            });
-
-        return new ActionResult(startMinute, State.CurrentMinute, [started, completed]);
+        var firstEventSequence = State.EventSequenceCursor;
+        var action = BeginTravel(actorId, destinationPlaceId, mode);
+        _ = AdvanceAction(action.Id);
+        var events = State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray();
+        return new ActionResult(startMinute, State.CurrentMinute, events, action.Status);
     }
 
     public ActionResult Deliver(string actorId, string itemId, string recipientId)
     {
         var actor = GetActor(actorId);
         var recipient = GetActor(recipientId);
-        if (actor.LocationId != recipient.LocationId)
+        if (actor.PlaceId is null)
         {
-            throw new DomainCommandException("recipient_not_present", $"Recipient '{recipientId}' is not at '{actor.LocationId}'.");
+            throw new DomainCommandException("actor_in_transit", $"Actor '{actorId}' cannot deliver while in transit.");
+        }
+
+        if (recipient.PlaceId is null || actor.PlaceId != recipient.PlaceId)
+        {
+            throw new DomainCommandException("recipient_not_present", $"Recipient '{recipientId}' is not at '{actor.PlaceId}'.");
         }
 
         if (!State.Items.TryGetValue(itemId, out var item))
@@ -192,9 +183,14 @@ public sealed class WorldEngine
     {
         var actor = GetActor(actorId);
         var recipient = GetActor(recipientId);
-        if (actor.LocationId != recipient.LocationId)
+        if (actor.PlaceId is null)
         {
-            throw new DomainCommandException("recipient_not_present", $"Recipient '{recipientId}' is not at '{actor.LocationId}'.");
+            throw new DomainCommandException("actor_in_transit", $"Actor '{actorId}' cannot speak while in transit.");
+        }
+
+        if (recipient.PlaceId is null || actor.PlaceId != recipient.PlaceId)
+        {
+            throw new DomainCommandException("recipient_not_present", $"Recipient '{recipientId}' is not at '{actor.PlaceId}'.");
         }
 
         var startMinute = State.CurrentMinute;
@@ -254,7 +250,7 @@ public sealed class WorldEngine
         var started = AppendEvent(
             "wait_started",
             startMinute,
-            actor.LocationId,
+            actor.PlaceId,
             [actor.Id],
             [],
             new Dictionary<string, string>(StringComparer.Ordinal)
@@ -271,7 +267,7 @@ public sealed class WorldEngine
             events.Add(AppendEvent(
                 "wait_interrupted",
                 State.CurrentMinute,
-                actor.LocationId,
+                actor.PlaceId,
                 [actor.Id],
                 causes,
                 new Dictionary<string, string>(StringComparer.Ordinal)
@@ -285,7 +281,7 @@ public sealed class WorldEngine
         var completed = AppendEvent(
             "wait_completed",
             State.CurrentMinute,
-            actor.LocationId,
+            actor.PlaceId,
             [actor.Id],
             [started.Id],
             new Dictionary<string, string>(StringComparer.Ordinal));
@@ -328,6 +324,7 @@ public sealed class WorldEngine
         string kind,
         string? locationId = null,
         bool interruptsPlayer = false,
+        IReadOnlyList<string>? causeIds = null,
         IReadOnlyDictionary<string, string>? details = null)
     {
         ValidateScheduleRequest(dueMinute, phase, stableSubjectId, kind);
@@ -344,6 +341,8 @@ public sealed class WorldEngine
                 ["scheduled_kind"] = kind,
             });
         State.ReplayModified = true;
+        var scheduledCauses = new List<string> { intervention.Id };
+        scheduledCauses.AddRange(causeIds ?? []);
         return Schedule(
             dueMinute,
             phase,
@@ -351,7 +350,7 @@ public sealed class WorldEngine
             kind,
             locationId,
             interruptsPlayer,
-            [intervention.Id],
+            scheduledCauses,
             details);
     }
 
@@ -376,7 +375,7 @@ public sealed class WorldEngine
         }
     }
 
-    private TimeAdvancementResult AdvanceTimeTo(long targetMinute)
+    private TimeAdvancementResult AdvanceTimeTo(long targetMinute, string? stopWhenActionId = null)
     {
         var events = new List<WorldEvent>();
         while (State.PeekScheduledEvent() is { } next && next.DueMinute <= targetMinute)
@@ -391,26 +390,37 @@ public sealed class WorldEngine
                     throw new InvalidOperationException($"Could not remove scheduled event '{scheduled.Id}'.");
                 }
 
-                var details = scheduled.Details.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-                details["scheduled_event_id"] = scheduled.Id;
-                details["scheduled_phase"] = ToPhaseId(scheduled.Phase);
-                var occurred = AppendEvent(
-                    scheduled.Kind,
-                    scheduled.DueMinute,
-                    scheduled.LocationId,
-                    [scheduled.StableSubjectId],
-                    scheduled.CauseIds,
-                    details);
-                events.Add(occurred);
+                var occurred = ProcessScheduledEvent(scheduled);
+                events.AddRange(occurred);
+                if (scheduled.Kind is "travel_disrupted" or "actor_incapacitated" or "actor_removed")
+                {
+                    if (InterruptRunningTravel(scheduled.StableSubjectId, [occurred[0].Id]) is { } subjectInterrupted)
+                    {
+                        events.Add(subjectInterrupted);
+                    }
+                }
+
                 if (scheduled.InterruptsPlayer)
                 {
-                    interruptIds.Add(occurred.Id);
+                    interruptIds.Add(occurred[0].Id);
+                    if (!string.Equals(scheduled.StableSubjectId, State.PlayerActorId, StringComparison.Ordinal) &&
+                        InterruptRunningTravel(State.PlayerActorId, [occurred[0].Id]) is { } interrupted)
+                    {
+                        events.Add(interrupted);
+                    }
                 }
             }
 
             if (interruptIds.Count > 0)
             {
                 return new TimeAdvancementResult(events, interruptIds);
+            }
+
+            if (stopWhenActionId is not null &&
+                State.Actions.TryGetValue(stopWhenActionId, out var monitoredAction) &&
+                monitoredAction.Status != ActionStatus.Running)
+            {
+                return new TimeAdvancementResult(events, []);
             }
         }
 
@@ -430,61 +440,6 @@ public sealed class WorldEngine
         return State.Places.TryGetValue(placeId, out var place)
             ? place
             : throw new DomainCommandException("unknown_place", $"Unknown place '{placeId}'.");
-    }
-
-    private IReadOnlyList<RouteDefinition> FindShortestPath(string startPlaceId, string destinationPlaceId, TravelMode mode)
-    {
-        var distances = new Dictionary<string, int>(StringComparer.Ordinal) { [startPlaceId] = 0 };
-        var previous = new Dictionary<string, (string PlaceId, RouteDefinition Route)>(StringComparer.Ordinal);
-        var frontier = new SortedSet<PathCandidate>(PathCandidateComparer.Instance)
-        {
-            new(startPlaceId, 0),
-        };
-
-        while (frontier.Count > 0)
-        {
-            var current = frontier.Min!;
-            frontier.Remove(current);
-            if (current.Cost != distances[current.PlaceId])
-            {
-                continue;
-            }
-
-            if (current.PlaceId == destinationPlaceId)
-            {
-                break;
-            }
-
-            foreach (var edge in GetEdges(current.PlaceId, mode))
-            {
-                var nextCost = checked(current.Cost + edge.Route.GetMinutes(mode));
-                if (distances.TryGetValue(edge.NextPlaceId, out var knownCost) && knownCost <= nextCost)
-                {
-                    continue;
-                }
-
-                distances[edge.NextPlaceId] = nextCost;
-                previous[edge.NextPlaceId] = (current.PlaceId, edge.Route);
-                frontier.Add(new PathCandidate(edge.NextPlaceId, nextCost));
-            }
-        }
-
-        if (!distances.ContainsKey(destinationPlaceId))
-        {
-            throw new DomainCommandException("destination_unreachable", $"No {mode} route reaches '{destinationPlaceId}'.");
-        }
-
-        var path = new List<RouteDefinition>();
-        var cursor = destinationPlaceId;
-        while (cursor != startPlaceId)
-        {
-            var step = previous[cursor];
-            path.Add(step.Route);
-            cursor = step.PlaceId;
-        }
-
-        path.Reverse();
-        return path;
     }
 
     private IEnumerable<(string NextPlaceId, RouteDefinition Route)> GetEdges(string placeId, TravelMode mode)
@@ -556,31 +511,4 @@ public sealed class WorldEngine
         IReadOnlyList<WorldEvent> Events,
         IReadOnlyList<string> InterruptEventIds);
 
-    private sealed record PathCandidate(string PlaceId, int Cost);
-
-    private sealed class PathCandidateComparer : IComparer<PathCandidate>
-    {
-        public static PathCandidateComparer Instance { get; } = new();
-
-        public int Compare(PathCandidate? x, PathCandidate? y)
-        {
-            if (ReferenceEquals(x, y))
-            {
-                return 0;
-            }
-
-            if (x is null)
-            {
-                return -1;
-            }
-
-            if (y is null)
-            {
-                return 1;
-            }
-
-            var cost = x.Cost.CompareTo(y.Cost);
-            return cost != 0 ? cost : StringComparer.Ordinal.Compare(x.PlaceId, y.PlaceId);
-        }
-    }
 }
