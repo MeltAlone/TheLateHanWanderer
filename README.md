@@ -119,10 +119,19 @@ dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release 
   --command "dev demote person.promoted.00000001"
 ```
 
-缩小版 B1、B4 和确定性交付基准可用 `all` 一次运行：
+缩小版 B1-B4 和确定性交付基准可用 `all` 一次运行：
 
 ```powershell
 dotnet run --project tests/LateHan.Benchmarks/LateHan.Benchmarks.csproj --configuration Release -- all
+```
+
+精度策略可以按玩家注意空间与人物因果负债显式重平衡：
+
+```powershell
+dotnet run --project src/LateHan.Cli/LateHan.Cli.csproj --configuration Release -- `
+  --command "dev rebalance-detail" `
+  --command "detail person.player_clerk" `
+  --command "detail person.chen_zhi"
 ```
 
 ## 基本工作流
