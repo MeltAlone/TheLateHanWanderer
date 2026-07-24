@@ -71,7 +71,8 @@ public sealed class WorldEngineTests
         Assert.Equal(0, engine.State.CurrentMinute);
         Assert.Empty(engine.State.Events);
         Assert.Empty(engine.State.Actions);
-        Assert.Empty(engine.State.ScheduledEvents);
+        Assert.Single(engine.State.ScheduledEvents);
+        Assert.Equal("plan_evaluation_due", engine.State.ScheduledEvents[0].Kind);
         Assert.Equal(1, engine.State.ActionSequenceCursor);
     }
 
@@ -121,8 +122,9 @@ public sealed class WorldEngineTests
             ["wait_started", "actor_removed", "urgent_recall", "remote_summary", "wait_interrupted"],
             result.Events.Select(item => item.Type));
         Assert.Equal("145", result.Events[^1].Details["remaining_minutes"]);
-        Assert.Single(engine.State.ScheduledEvents);
-        Assert.Equal(120, engine.State.ScheduledEvents[0].DueMinute);
+        Assert.Equal(2, engine.State.ScheduledEvents.Count);
+        Assert.Contains(engine.State.ScheduledEvents, item => item.DueMinute == 120);
+        Assert.Contains(engine.State.ScheduledEvents, item => item.DueMinute == 210);
     }
 
     [Fact]
@@ -280,7 +282,7 @@ public sealed class WorldEngineTests
         Assert.Equal(ActionStatus.Cancelled, result.Status);
         Assert.Equal(10, engine.State.CurrentMinute);
         Assert.Equal(progress, engine.State.Actors["person.player_clerk"].Transit?.ProgressQ1000);
-        Assert.Empty(engine.State.ScheduledEvents);
+        Assert.Single(engine.State.ScheduledEvents);
         Assert.Equal("travel_cancelled", result.Events.Single().Type);
         Assert.Throws<DomainCommandException>(() => engine.ResumeTravel(action.Id, TravelMode.Walk));
     }

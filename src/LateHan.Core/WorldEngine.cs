@@ -107,6 +107,7 @@ public sealed partial class WorldEngine
 
     public ActionResult Deliver(string actorId, string itemId, string recipientId)
     {
+        var firstEventSequence = State.EventSequenceCursor;
         var actor = GetActor(actorId);
         var recipient = GetActor(recipientId);
         if (actor.PlaceId is null)
@@ -176,7 +177,56 @@ public sealed partial class WorldEngine
                 }));
         }
 
-        return new ActionResult(startMinute, State.CurrentMinute, events);
+        if (string.Equals(item.IntendedRecipientId, recipientId, StringComparison.Ordinal))
+        {
+            foreach (var belief in State.Beliefs.Values
+                         .Where(candidate => string.Equals(candidate.HolderId, recipientId, StringComparison.Ordinal))
+                         .Where(candidate => item.PropositionIds.Contains(candidate.PropositionId, StringComparer.Ordinal))
+                         .OrderBy(candidate => candidate.Id, StringComparer.Ordinal))
+            {
+                belief.ConfidenceBp = 8500;
+                belief.Source = "official_document";
+                belief.AcquiredAtMinute = State.CurrentMinute;
+                belief.SourceEventId = transferred.Id;
+                var updated = AppendEvent(
+                    "belief_updated",
+                    State.CurrentMinute,
+                    actor.LocationId,
+                    [belief.Id, recipientId],
+                    [transferred.Id],
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["confidence_bp"] = belief.ConfidenceBp.ToString(CultureInfo.InvariantCulture),
+                        ["proposition_id"] = belief.PropositionId,
+                        ["source"] = belief.Source,
+                    });
+                events.Add(updated);
+
+                foreach (var plan in State.Plans.Values
+                             .Where(candidate => candidate.Status == PlanStatus.Active)
+                             .Where(candidate => candidate.EvaluationRule == PlanEvaluationRule.WrittenReportInspection)
+                             .Where(candidate => string.Equals(candidate.OwnerId, recipientId, StringComparison.Ordinal))
+                             .Where(candidate => string.Equals(candidate.TriggerItemId, item.Id, StringComparison.Ordinal))
+                             .Where(candidate => candidate.BeliefRequirementIds.Contains(belief.Id, StringComparer.Ordinal))
+                             .OrderBy(candidate => candidate.Id, StringComparer.Ordinal))
+                {
+                    if (plan.PendingScheduledEventId is { } pendingId)
+                    {
+                        _ = State.RemoveScheduledEvent(pendingId);
+                        plan.PendingScheduledEventId = null;
+                    }
+
+                    SchedulePlanEvaluation(plan, State.CurrentMinute, [updated.Id]);
+                }
+            }
+
+            _ = AdvanceTimeTo(State.CurrentMinute);
+        }
+
+        return new ActionResult(
+            startMinute,
+            State.CurrentMinute,
+            State.Events.Where(item => item.Sequence >= firstEventSequence).ToArray());
     }
 
     public ActionResult Tell(string actorId, string recipientId, string propositionId)

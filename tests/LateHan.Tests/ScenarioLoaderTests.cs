@@ -21,7 +21,13 @@ public sealed class ScenarioLoaderTests
         Assert.Equal("xoshiro256ss.v1", loaded.World.RngVersion);
         Assert.Equal("18908D2400000001", loaded.World.RandomStreams.RootSeedHex);
         Assert.Equal("sha256-le.v1", loaded.World.RandomStreams.Derivation);
-        Assert.Equal("0.3.0-spike", loaded.World.EngineVersion);
+        Assert.Equal("0.4.0-spike", loaded.World.EngineVersion);
+        Assert.NotEmpty(loaded.World.Beliefs);
+        Assert.Contains("belief.wang_yun.traffic", loaded.World.Beliefs.Keys);
+        Assert.NotEmpty(loaded.World.Plans);
+        Assert.Contains("plan.wang_yun.review_gate_security", loaded.World.Plans.Keys);
+        Assert.Single(loaded.World.ScheduledEvents);
+        Assert.Equal(210, loaded.World.ScheduledEvents[0].DueMinute);
         Assert.StartsWith("sha256:", loaded.ComputedContentHash, StringComparison.Ordinal);
         Assert.Equal(loaded.DeclaredContentHash, loaded.ComputedContentHash);
         Assert.NotEqual("pending-tooling", loaded.World.ContentHash);

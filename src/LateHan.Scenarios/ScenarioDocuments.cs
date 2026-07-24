@@ -117,6 +117,12 @@ internal sealed class ItemDocument : NamedDocument
     public string Kind { get; init; } = string.Empty;
 
     public string Holder { get; init; } = string.Empty;
+
+    public string? Author { get; init; }
+
+    public string? IntendedRecipient { get; init; }
+
+    public List<string> PropositionIds { get; init; } = [];
 }
 
 internal sealed class BeliefDocument : NamedDocument
@@ -124,6 +130,12 @@ internal sealed class BeliefDocument : NamedDocument
     public string Holder { get; init; } = string.Empty;
 
     public string Proposition { get; init; } = string.Empty;
+
+    public int ConfidenceBp { get; init; }
+
+    public string Source { get; init; } = string.Empty;
+
+    public long AcquiredAtMinute { get; init; }
 }
 
 internal sealed class CommitmentDocument : NamedDocument
@@ -148,4 +160,22 @@ internal sealed class PlanDocument : NamedDocument
     public string Owner { get; init; } = string.Empty;
 
     public List<string> BeliefRequirements { get; init; } = [];
+
+    public string Intent { get; init; } = string.Empty;
+
+    public string Stage { get; init; } = string.Empty;
+
+    public long NextEvaluationMinute { get; init; }
+
+    public string? EvaluationRule { get; init; }
+
+    public string? TriggerItemId { get; init; }
+
+    public string? TriggerPropositionId { get; init; }
+
+    public string? DestinationPlaceId { get; init; }
+
+    public int ConfidenceThresholdBp { get; init; }
+
+    public int ReevaluationIntervalMinutes { get; init; } = 60;
 }

@@ -38,7 +38,7 @@ public sealed class WorldSnapshotStore
 
 internal sealed class WorldSnapshot
 {
-    public string SnapshotSchemaVersion { get; init; } = "0.3";
+    public string SnapshotSchemaVersion { get; init; } = "0.4";
 
     public string ScenarioId { get; init; } = string.Empty;
 
@@ -75,6 +75,10 @@ internal sealed class WorldSnapshot
     public List<RouteSnapshot> Routes { get; init; } = [];
 
     public List<ItemSnapshot> Items { get; init; } = [];
+
+    public List<BeliefSnapshot> Beliefs { get; init; } = [];
+
+    public List<PlanSnapshot> Plans { get; init; } = [];
 
     public List<CommitmentSnapshot> Commitments { get; init; } = [];
 
@@ -124,7 +128,39 @@ internal sealed class WorldSnapshot
                 item.DistanceLiQ10,
                 item.Bidirectional,
                 item.MinutesByMode.ToDictionary(pair => pair.Key, pair => pair.Value))).ToList(),
-            Items = world.Items.Values.Select(item => new ItemSnapshot(item.Id, item.Name, item.Kind, item.HolderId)).ToList(),
+            Items = world.Items.Values.Select(item => new ItemSnapshot(
+                item.Id,
+                item.Name,
+                item.Kind,
+                item.HolderId,
+                item.AuthorId,
+                item.IntendedRecipientId,
+                item.PropositionIds.ToList())).ToList(),
+            Beliefs = world.Beliefs.Values.Select(item => new BeliefSnapshot(
+                item.Id,
+                item.HolderId,
+                item.PropositionId,
+                item.ConfidenceBp,
+                item.Source,
+                item.AcquiredAtMinute,
+                item.SourceEventId)).ToList(),
+            Plans = world.Plans.Values.Select(item => new PlanSnapshot(
+                item.Id,
+                item.OwnerId,
+                item.Intent,
+                item.Stage,
+                item.BeliefRequirementIds.ToList(),
+                item.NextEvaluationMinute,
+                item.EvaluationRule,
+                item.TriggerItemId,
+                item.TriggerPropositionId,
+                item.DestinationPlaceId,
+                item.ConfidenceThresholdBp,
+                item.ReevaluationIntervalMinutes,
+                item.Status,
+                item.PendingScheduledEventId,
+                item.ActiveActionId,
+                item.LastEvaluationMinute)).ToList(),
             Commitments = world.Commitments.Values.Select(item => new CommitmentSnapshot(
                 item.Id,
                 item.DebtorId,
@@ -194,7 +230,7 @@ internal sealed class WorldSnapshot
 
     public WorldState ToWorld()
     {
-        if (!string.Equals(SnapshotSchemaVersion, "0.3", StringComparison.Ordinal))
+        if (!string.Equals(SnapshotSchemaVersion, "0.4", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"Unsupported snapshot schema '{SnapshotSchemaVersion}'.");
         }
@@ -234,7 +270,14 @@ internal sealed class WorldSnapshot
                 item.DistanceLiQ10,
                 item.Bidirectional,
                 item.MinutesByMode)),
-            Items.Select(item => new ItemState(item.Id, item.Name, item.Kind, item.HolderId)),
+            Items.Select(item => new ItemState(
+                item.Id,
+                item.Name,
+                item.Kind,
+                item.HolderId,
+                item.AuthorId,
+                item.IntendedRecipientId,
+                item.PropositionIds)),
             Commitments.Select(item => new CommitmentState(
                 item.Id,
                 item.DebtorId,
@@ -304,7 +347,32 @@ internal sealed class WorldSnapshot
                     item.Travel.ElapsedMinutes,
                     item.Travel.PendingScheduledEventId,
                     item.Travel.InterruptionEventId))),
-            NextActionSequence);
+            NextActionSequence,
+            Beliefs.Select(item => new BeliefState(
+                item.Id,
+                item.HolderId,
+                item.PropositionId,
+                item.ConfidenceBp,
+                item.Source,
+                item.AcquiredAtMinute,
+                item.SourceEventId)),
+            Plans.Select(item => new PlanState(
+                item.Id,
+                item.OwnerId,
+                item.Intent,
+                item.Stage,
+                item.BeliefRequirementIds,
+                item.NextEvaluationMinute,
+                item.EvaluationRule,
+                item.TriggerItemId,
+                item.TriggerPropositionId,
+                item.DestinationPlaceId,
+                item.ConfidenceThresholdBp,
+                item.ReevaluationIntervalMinutes,
+                item.Status,
+                item.PendingScheduledEventId,
+                item.ActiveActionId,
+                item.LastEvaluationMinute)));
     }
 }
 
@@ -331,7 +399,41 @@ internal sealed record RouteSnapshot(
     bool Bidirectional,
     Dictionary<TravelMode, int> MinutesByMode);
 
-internal sealed record ItemSnapshot(string Id, string Name, string Kind, string HolderId);
+internal sealed record ItemSnapshot(
+    string Id,
+    string Name,
+    string Kind,
+    string HolderId,
+    string? AuthorId,
+    string? IntendedRecipientId,
+    List<string> PropositionIds);
+
+internal sealed record BeliefSnapshot(
+    string Id,
+    string HolderId,
+    string PropositionId,
+    int ConfidenceBp,
+    string Source,
+    long AcquiredAtMinute,
+    string? SourceEventId);
+
+internal sealed record PlanSnapshot(
+    string Id,
+    string OwnerId,
+    string Intent,
+    string Stage,
+    List<string> BeliefRequirementIds,
+    long NextEvaluationMinute,
+    PlanEvaluationRule EvaluationRule,
+    string? TriggerItemId,
+    string? TriggerPropositionId,
+    string? DestinationPlaceId,
+    int ConfidenceThresholdBp,
+    int ReevaluationIntervalMinutes,
+    PlanStatus Status,
+    string? PendingScheduledEventId,
+    string? ActiveActionId,
+    long? LastEvaluationMinute);
 
 internal sealed record CommitmentSnapshot(
     string Id,

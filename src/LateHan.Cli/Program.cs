@@ -92,6 +92,12 @@ internal sealed class CliSession
                 case "commitments":
                     PrintCommitments();
                     break;
+                case "beliefs":
+                    PrintBeliefs(tokens);
+                    break;
+                case "plans":
+                    PrintPlans(tokens);
+                    break;
                 case "go":
                     ExecuteGo(tokens);
                     break;
@@ -160,6 +166,8 @@ internal sealed class CliSession
         Console.WriteLine("  look");
         Console.WriteLine("  status");
         Console.WriteLine("  commitments");
+        Console.WriteLine("  beliefs [person-id]");
+        Console.WriteLine("  plans [person-id]");
         Console.WriteLine("  go <place-id> [walk|horse|with-group]");
         Console.WriteLine("  travel start <place-id> [walk|horse|with-group]");
         Console.WriteLine("  actions");
@@ -225,6 +233,60 @@ internal sealed class CliSession
             Console.WriteLine(
                 $"{commitment.Id}: {commitment.Action} {commitment.TargetId} -> {commitment.RecipientId}; " +
                 $"期限 {commitment.DueMinute}; 状态 {commitment.Status}");
+        }
+    }
+
+    private void PrintBeliefs(string[] tokens)
+    {
+        if (tokens.Length > 2)
+        {
+            Console.WriteLine("invalid:syntax usage: beliefs [person-id]");
+            return;
+        }
+
+        var holderId = tokens.Length == 2 ? tokens[1] : _engine.State.PlayerActorId;
+        var beliefs = _engine.State.Beliefs.Values
+            .Where(item => string.Equals(item.HolderId, holderId, StringComparison.Ordinal))
+            .OrderBy(item => item.Id, StringComparer.Ordinal)
+            .ToArray();
+        if (beliefs.Length == 0)
+        {
+            Console.WriteLine($"no beliefs for {holderId}");
+            return;
+        }
+
+        foreach (var belief in beliefs)
+        {
+            Console.WriteLine(
+                $"{belief.Id} confidence={belief.ConfidenceBp} source={belief.Source} " +
+                $"acquired={belief.AcquiredAtMinute} proposition={belief.PropositionId}");
+        }
+    }
+
+    private void PrintPlans(string[] tokens)
+    {
+        if (tokens.Length > 2)
+        {
+            Console.WriteLine("invalid:syntax usage: plans [person-id]");
+            return;
+        }
+
+        var ownerId = tokens.Length == 2 ? tokens[1] : _engine.State.PlayerActorId;
+        var plans = _engine.State.Plans.Values
+            .Where(item => string.Equals(item.OwnerId, ownerId, StringComparison.Ordinal))
+            .OrderBy(item => item.Id, StringComparer.Ordinal)
+            .ToArray();
+        if (plans.Length == 0)
+        {
+            Console.WriteLine($"no plans for {ownerId}");
+            return;
+        }
+
+        foreach (var plan in plans)
+        {
+            Console.WriteLine(
+                $"{plan.Id} status={plan.Status.ToString().ToLowerInvariant()} stage={plan.Stage} " +
+                $"action={plan.ActiveActionId ?? "-"} next={plan.NextEvaluationMinute}");
         }
     }
 

@@ -7,7 +7,7 @@ namespace LateHan.Core;
 
 public static class EngineMetadata
 {
-    public const string Version = "0.3.0-spike";
+    public const string Version = "0.4.0-spike";
 }
 
 public enum TravelMode
@@ -112,12 +112,24 @@ public sealed class RouteDefinition
 
 public sealed class ItemState
 {
-    public ItemState(string id, string name, string kind, string holderId)
+    private readonly IReadOnlyList<string> _propositionIds;
+
+    public ItemState(
+        string id,
+        string name,
+        string kind,
+        string holderId,
+        string? authorId = null,
+        string? intendedRecipientId = null,
+        IEnumerable<string>? propositionIds = null)
     {
         Id = id;
         Name = name;
         Kind = kind;
         HolderId = holderId;
+        AuthorId = authorId;
+        IntendedRecipientId = intendedRecipientId;
+        _propositionIds = new ReadOnlyCollection<string>((propositionIds ?? []).ToArray());
     }
 
     public string Id { get; }
@@ -127,6 +139,12 @@ public sealed class ItemState
     public string Kind { get; }
 
     public string HolderId { get; internal set; }
+
+    public string? AuthorId { get; }
+
+    public string? IntendedRecipientId { get; }
+
+    public IReadOnlyList<string> PropositionIds => _propositionIds;
 }
 
 public sealed class CommitmentState
@@ -188,6 +206,8 @@ public sealed class WorldState
     private readonly List<WorldEvent> _events;
     private readonly SortedSet<ScheduledWorldEvent> _scheduledEvents;
     private readonly SortedDictionary<string, ActionInstanceState> _actions;
+    private readonly SortedDictionary<string, BeliefState> _beliefs;
+    private readonly SortedDictionary<string, PlanState> _plans;
 
     public WorldState(
         string scenarioId,
@@ -212,7 +232,9 @@ public sealed class WorldState
         long nextScheduledEventSequence = 1,
         bool replayModified = false,
         IEnumerable<ActionInstanceState>? actions = null,
-        long nextActionSequence = 1)
+        long nextActionSequence = 1,
+        IEnumerable<BeliefState>? beliefs = null,
+        IEnumerable<PlanState>? plans = null)
     {
         ScenarioId = scenarioId;
         ScenarioVersion = scenarioVersion;
@@ -231,6 +253,12 @@ public sealed class WorldState
         _scheduledEvents = new SortedSet<ScheduledWorldEvent>(scheduledEvents ?? [], ScheduledWorldEventComparer.Instance);
         _actions = new SortedDictionary<string, ActionInstanceState>(
             (actions ?? []).ToDictionary(action => action.Id),
+            StringComparer.Ordinal);
+        _beliefs = new SortedDictionary<string, BeliefState>(
+            (beliefs ?? []).ToDictionary(belief => belief.Id),
+            StringComparer.Ordinal);
+        _plans = new SortedDictionary<string, PlanState>(
+            (plans ?? []).ToDictionary(plan => plan.Id),
             StringComparer.Ordinal);
         if (_scheduledEvents.Any(item => item.DueMinute < currentMinute))
         {
@@ -294,6 +322,10 @@ public sealed class WorldState
     public IReadOnlyList<ScheduledWorldEvent> ScheduledEvents => _scheduledEvents.ToArray();
 
     public IReadOnlyDictionary<string, ActionInstanceState> Actions => _actions;
+
+    public IReadOnlyDictionary<string, BeliefState> Beliefs => _beliefs;
+
+    public IReadOnlyDictionary<string, PlanState> Plans => _plans;
 
     public RandomStreamRegistry RandomStreams { get; }
 

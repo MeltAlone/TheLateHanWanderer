@@ -72,7 +72,14 @@ public sealed class ScenarioLoader
             actors.Persons.Select(person => new ActorState(person.Id, person.Name, person.Location)),
             world.Places.Select(place => new PlaceDefinition(place.Id, place.Name, place.AccessRule, place.Controller)),
             world.Routes.Select(MapRoute),
-            state.Items.Select(item => new ItemState(item.Id, item.Name, item.Kind, item.Holder)),
+            state.Items.Select(item => new ItemState(
+                item.Id,
+                item.Name,
+                item.Kind,
+                item.Holder,
+                item.Author,
+                item.IntendedRecipient,
+                item.PropositionIds)),
             state.Commitments.Select(commitment => new CommitmentState(
                 commitment.Id,
                 commitment.Debtor,
@@ -83,9 +90,44 @@ public sealed class ScenarioLoader
                 commitment.DueMinute,
                 commitment.Status)),
             rngRootSeedHex: manifest.Rng.RootSeedHex,
-            rngDerivation: manifest.Rng.Derivation);
+            rngDerivation: manifest.Rng.Derivation,
+            beliefs: state.Beliefs.Select(belief => new BeliefState(
+                belief.Id,
+                belief.Holder,
+                belief.Proposition,
+                belief.ConfidenceBp,
+                belief.Source,
+                belief.AcquiredAtMinute)),
+            plans: state.Plans.Select(MapPlan));
+
+        new WorldEngine(domainWorld).InitializePlans();
 
         return new LoadedScenario(domainWorld, computedHash, manifest.ContentHash);
+    }
+
+    private static PlanState MapPlan(PlanDocument plan)
+    {
+        var evaluationRule = plan.EvaluationRule switch
+        {
+            null or "" => PlanEvaluationRule.None,
+            "written_report_inspection.v1" => PlanEvaluationRule.WrittenReportInspection,
+            _ => throw new ScenarioValidationException(
+                [$"SCN-PLAN-001 Unknown evaluation rule '{plan.EvaluationRule}' on '{plan.Id}'."]),
+        };
+
+        return new PlanState(
+            plan.Id,
+            plan.Owner,
+            plan.Intent,
+            plan.Stage,
+            plan.BeliefRequirements,
+            plan.NextEvaluationMinute,
+            evaluationRule,
+            plan.TriggerItemId,
+            plan.TriggerPropositionId,
+            plan.DestinationPlaceId,
+            plan.ConfidenceThresholdBp,
+            plan.ReevaluationIntervalMinutes);
     }
 
     private static RouteDefinition MapRoute(RouteDocument route)
@@ -217,6 +259,20 @@ public sealed class ScenarioLoader
         foreach (var item in state.Items)
         {
             Require(holderIds, item.Holder, $"item '{item.Id}'.holder", errors);
+            if (!string.IsNullOrWhiteSpace(item.Author))
+            {
+                Require(actorIds, item.Author, $"item '{item.Id}'.author", errors);
+            }
+
+            if (!string.IsNullOrWhiteSpace(item.IntendedRecipient))
+            {
+                Require(actorIds, item.IntendedRecipient, $"item '{item.Id}'.intended_recipient", errors);
+            }
+
+            foreach (var propositionId in item.PropositionIds)
+            {
+                Require(propositionIds, propositionId, $"item '{item.Id}'.proposition_ids", errors);
+            }
         }
 
         foreach (var belief in state.Beliefs)
@@ -239,6 +295,31 @@ public sealed class ScenarioLoader
             foreach (var beliefId in plan.BeliefRequirements)
             {
                 Require(beliefIds, beliefId, $"plan '{plan.Id}'.belief_requirements", errors);
+            }
+
+            if (!string.IsNullOrWhiteSpace(plan.TriggerItemId))
+            {
+                Require(allIds, plan.TriggerItemId, $"plan '{plan.Id}'.trigger_item_id", errors);
+            }
+
+            if (!string.IsNullOrWhiteSpace(plan.TriggerPropositionId))
+            {
+                Require(propositionIds, plan.TriggerPropositionId, $"plan '{plan.Id}'.trigger_proposition_id", errors);
+            }
+
+            if (!string.IsNullOrWhiteSpace(plan.DestinationPlaceId))
+            {
+                Require(placeIds, plan.DestinationPlaceId, $"plan '{plan.Id}'.destination_place_id", errors);
+            }
+
+            if (plan.ConfidenceThresholdBp is < 0 or > 10000)
+            {
+                errors.Add($"SCN-NUM-002 Plan '{plan.Id}' confidence_threshold_bp must be between 0 and 10000.");
+            }
+
+            if (plan.ReevaluationIntervalMinutes <= 0)
+            {
+                errors.Add($"SCN-NUM-003 Plan '{plan.Id}' reevaluation_interval_minutes must be positive.");
             }
         }
     }

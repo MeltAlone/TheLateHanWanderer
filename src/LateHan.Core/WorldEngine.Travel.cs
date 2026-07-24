@@ -4,7 +4,11 @@ namespace LateHan.Core;
 
 public sealed partial class WorldEngine
 {
-    public ActionInstanceState BeginTravel(string actorId, string destinationPlaceId, TravelMode mode)
+    public ActionInstanceState BeginTravel(
+        string actorId,
+        string destinationPlaceId,
+        TravelMode mode,
+        IReadOnlyList<string>? causeIds = null)
     {
         var actor = GetActor(actorId);
         _ = GetPlace(destinationPlaceId);
@@ -35,7 +39,7 @@ public sealed partial class WorldEngine
             State.CurrentMinute,
             actor.LocationId,
             [actorId],
-            [],
+            causeIds ?? [],
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["action_id"] = actionId,
@@ -265,6 +269,7 @@ public sealed partial class WorldEngine
         return scheduled.Kind switch
         {
             "travel_segment_completed" or "travel_completed" => ProcessTravelCompletion(scheduled),
+            "plan_evaluation_due" => ProcessPlanEvaluation(scheduled),
             "actor_relocated" => [ProcessActorRelocation(scheduled)],
             _ => [AppendScheduledEvent(scheduled)],
         };
@@ -315,7 +320,9 @@ public sealed partial class WorldEngine
         {
             action.Status = ActionStatus.Completed;
             action.Phase = "completed";
-            return [completed];
+            var events = new List<WorldEvent> { completed };
+            CompleteLinkedPlan(action, completed, events);
+            return events;
         }
 
         travel.CurrentLegIndex++;

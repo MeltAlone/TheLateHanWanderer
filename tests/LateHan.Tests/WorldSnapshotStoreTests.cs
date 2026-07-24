@@ -107,7 +107,7 @@ public sealed class WorldSnapshotStoreTests
 
             Assert.True(restored.ReplayModified);
             Assert.Equal(2, restored.EventSequenceCursor);
-            Assert.Equal(2, restored.ScheduledEventSequenceCursor);
+            Assert.Equal(3, restored.ScheduledEventSequenceCursor);
         }
         finally
         {
