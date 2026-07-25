@@ -28,6 +28,8 @@ public sealed class JsonGameSaveStoreTests
             Assert.Equal(session.Log, restored.Log);
             Assert.Equal(session.SettlementStates, restored.SettlementStates);
             Assert.Equal(session.RoadStates, restored.RoadStates);
+            Assert.Equal(session.Career, restored.Career);
+            Assert.Equal(session.HistoricalBranches, restored.HistoricalBranches);
 
             restored.TravelTo("settlement.henei");
             Assert.Equal("settlement.henei", restored.Player.SettlementId);
@@ -93,6 +95,30 @@ public sealed class JsonGameSaveStoreTests
         Assert.Equal(42, restored.StateOf("settlement.luoyang").Security);
         Assert.Equal(38, restored.StateOfRoad("road.luoyang.mengjin").Risk);
         Assert.Equal(scenario.Characters.Count, restored.CharacterPlans.Count);
+        Assert.Equal(CareerGoalStatus.Active, restored.Career.Goal.Status);
+        Assert.Equal(3, restored.HistoricalBranches.Count);
+    }
+
+    [Fact]
+    public void VersionThreeSnapshotReceivesCareerAndBranchDefaults()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds[1]);
+        session.Rest(30);
+        var versionThree = session.CreateSnapshot() with
+        {
+            SchemaVersion = 3,
+            Career = null,
+            HistoricalBranches = null,
+        };
+
+        var restored = GameSession.Restore(scenario, versionThree);
+
+        Assert.Equal("background.clerk", restored.Career.BackgroundId);
+        Assert.Equal(new(189, 10, 18), restored.Career.Goal.Deadline);
+        Assert.Equal(HistoricalBranchStatus.Resolved, restored.HistoricalBranches[0].Status);
+        Assert.Equal(HistoricalBranchStatus.Active, restored.HistoricalBranches[1].Status);
+        Assert.Equal(HistoricalBranchStatus.Upcoming, restored.HistoricalBranches[2].Status);
     }
 
     [Fact]

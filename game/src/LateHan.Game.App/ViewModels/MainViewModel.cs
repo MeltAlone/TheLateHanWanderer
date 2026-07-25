@@ -183,6 +183,33 @@ public sealed class ContextActionViewModel
     public IRelayCommand ExecuteCommand { get; }
 }
 
+public sealed class CareerOpportunityViewModel
+{
+    public CareerOpportunityViewModel(CareerOpportunity opportunity, Action<CareerOpportunity> execute)
+    {
+        Opportunity = opportunity;
+        var cost = opportunity.MoneyCost > 0 ? $"，耗{opportunity.MoneyCost}钱" : string.Empty;
+        Title = $"{opportunity.Title}（{opportunity.DurationDays}日{cost}）";
+        Description = opportunity.IsEnabled
+            ? opportunity.Description
+            : $"{opportunity.Description}\n受阻：{opportunity.BlockReason}";
+        IsEnabled = opportunity.IsEnabled;
+        ExecuteCommand = new RelayCommand(() => execute(opportunity), () => opportunity.IsEnabled);
+    }
+
+    public CareerOpportunity Opportunity { get; }
+
+    public string Title { get; }
+
+    public string Description { get; }
+
+    public bool IsEnabled { get; }
+
+    public IRelayCommand ExecuteCommand { get; }
+}
+
+public sealed record HistoricalBranchViewModel(string Title, string Status, string Timing, string Description);
+
 public sealed record CommitmentViewModel(string CharacterName, string DueDate, string Place, string Status);
 
 public sealed record LogEntryViewModel(string Date, string Category, string Text);
@@ -216,6 +243,10 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<CharacterViewModel> LocalCharacters { get; } = [];
 
     public ObservableCollection<ContextActionViewModel> ContextActions { get; } = [];
+
+    public ObservableCollection<CareerOpportunityViewModel> CareerOpportunities { get; } = [];
+
+    public ObservableCollection<HistoricalBranchViewModel> HistoricalBranches { get; } = [];
 
     public ObservableCollection<CommitmentViewModel> Commitments { get; } = [];
 
@@ -253,6 +284,9 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string SettlementStateText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string CareerGoalText { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = "选择一个出身，进入中平六年的动态世界。";
@@ -337,6 +371,9 @@ public partial class MainViewModel : ViewModelBase
     private void ExecuteInteraction(AvailableAction action) =>
         RunAction(current => current.ExecuteInteraction(action.Id));
 
+    private void ExecuteCareerOpportunity(CareerOpportunity opportunity) =>
+        RunAction(current => current.ExecuteCareerOpportunity(opportunity.Id));
+
     private void RunAction(Action<GameSession> action)
     {
         if (session is null)
@@ -366,7 +403,10 @@ public partial class MainViewModel : ViewModelBase
         DateText = session.Date.ToString();
         PlaceText = $"{session.CurrentSettlement.Name} · {session.CurrentUrbanLocation.Name}";
         PlayerSummary = $"{session.Player.Background.Name}　钱财 {session.Player.Money}　" +
-            $"学识 {session.Player.Abilities.Learning}";
+            $"声望 {session.Career.Reputation}　人脉 {session.Career.Network}　生计压力 {session.Career.FinancialPressure}";
+        CareerGoalText = $"阶段目标：{session.Career.Goal.Title}　" +
+            $"进度 {session.Career.Goal.Progress}/{session.Career.Goal.Target}　" +
+            $"期限 {session.Career.Goal.Deadline}　{CareerGoalStatusName(session.Career.Goal.Status)}";
         SettlementName = $"{session.CurrentSettlement.Name}｜{session.CurrentSettlement.RegionName}";
         SettlementDescription = session.CurrentSettlement.Description;
         LocationDescription = session.CurrentUrbanLocation.Description;
@@ -399,6 +439,13 @@ public partial class MainViewModel : ViewModelBase
                 var location = settlement.UrbanLocations.Single(location => location.Id == item.UrbanLocationId);
                 return new CommitmentViewModel(character.Name, item.DueDate.ToString(), $"{settlement.Name}·{location.Name}", "待履行");
             }));
+        Replace(CareerOpportunities, session.CareerOpportunities.Select(item =>
+            new CareerOpportunityViewModel(item, ExecuteCareerOpportunity)));
+        Replace(HistoricalBranches, session.HistoricalBranches.Select(item => new HistoricalBranchViewModel(
+            item.Title,
+            BranchStatusName(item),
+            $"{item.OpensOn} 至 {item.ResolvesOn}",
+            item.Status == HistoricalBranchStatus.Resolved ? item.Result : item.Description)));
         Replace(LogEntries, session.Log.Reverse().Take(80).Select(item => new LogEntryViewModel(
             item.Date.ToString(),
             CategoryName(item.Category),
@@ -410,12 +457,30 @@ public partial class MainViewModel : ViewModelBase
     private static string CategoryName(LogCategory category) => category switch
     {
         LogCategory.Personal => "个人",
+        LogCategory.Career => "生涯",
         LogCategory.Travel => "行旅",
         LogCategory.Encounter => "交游",
         LogCategory.World => "天下",
         LogCategory.Period => "旬报",
         LogCategory.Commitment => "约定",
         _ => "记录",
+    };
+
+    private static string CareerGoalStatusName(CareerGoalStatus status) => status switch
+    {
+        CareerGoalStatus.Active => "进行中",
+        CareerGoalStatus.Completed => "已完成",
+        CareerGoalStatus.Failed => "已失败",
+        _ => "未知",
+    };
+
+    private static string BranchStatusName(HistoricalBranchState branch) => branch.Status switch
+    {
+        HistoricalBranchStatus.Upcoming => "尚未发生",
+        HistoricalBranchStatus.Active => "正在发展",
+        HistoricalBranchStatus.Resolved when branch.Outcome == HistoricalBranchOutcome.PlayerInfluenced => "已受你影响",
+        HistoricalBranchStatus.Resolved => "已自行收束",
+        _ => "未知",
     };
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> source)

@@ -193,8 +193,91 @@ public sealed class GameSessionTests
         session.Work();
 
         Assert.Equal(learning + 1, session.Player.Abilities.Learning);
-        Assert.True(session.Player.Money > money);
+        Assert.NotEqual(money, session.Player.Money);
+        Assert.Equal(90, session.Career.UpkeepPaid);
         Assert.Equal(new(189, 8, 24), session.Date);
+    }
+
+    [Fact]
+    public void BackgroundsReceiveDifferentCareerPathsAndAccessRequirements()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var scholar = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.scholar"));
+        var clerk = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        var ranger = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.ranger"));
+
+        var scholarPath = Assert.Single(scholar.CareerOpportunities);
+        var clerkPath = Assert.Single(clerk.CareerOpportunities);
+        var rangerPath = Assert.Single(ranger.CareerOpportunities);
+
+        Assert.Equal("参与士人清议", scholarPath.Title);
+        Assert.Equal("承办郡府急务", clerkPath.Title);
+        Assert.Equal("护送乡里商旅", rangerPath.Title);
+        Assert.All(new[] { scholarPath, clerkPath, rangerPath }, item => Assert.False(item.IsEnabled));
+    }
+
+    [Theory]
+    [InlineData("background.scholar", "luoyang.school")]
+    [InlineData("background.clerk", "luoyang.government")]
+    [InlineData("background.ranger", "luoyang.market")]
+    public void EachBackgroundCanCompleteItsSixtyDayCareerGoal(string backgroundId, string locationId)
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == backgroundId));
+        session.EnterUrbanLocation(locationId);
+
+        for (var i = 0; i < 4; i++)
+        {
+            var opportunity = session.CareerOpportunities.Single(item => item.Kind == CareerOpportunityKind.CareerPath);
+            Assert.True(opportunity.IsEnabled);
+            session.ExecuteCareerOpportunity(opportunity.Id);
+        }
+
+        Assert.Equal(CareerGoalStatus.Completed, session.Career.Goal.Status);
+        Assert.True(session.Career.Reputation >= 8);
+        Assert.True(session.Career.Network >= 4);
+        Assert.True(session.Date.DaysUntil(session.Career.Goal.Deadline) > 0);
+
+        session.Rest(44);
+
+        Assert.Equal(session.Career.Goal.Deadline, session.Date);
+        Assert.Equal(CareerGoalStatus.Completed, session.Career.Goal.Status);
+        Assert.All(session.HistoricalBranches, branch => Assert.Equal(HistoricalBranchStatus.Resolved, branch.Status));
+    }
+
+    [Fact]
+    public void SixtyDaysOfBystandingFailsTheGoalAndResolvesAllBranches()
+    {
+        var session = CreateSession();
+
+        session.Rest(61);
+
+        Assert.Equal(CareerGoalStatus.Failed, session.Career.Goal.Status);
+        Assert.All(session.HistoricalBranches, branch =>
+        {
+            Assert.Equal(HistoricalBranchStatus.Resolved, branch.Status);
+            Assert.Equal(HistoricalBranchOutcome.Bystander, branch.Outcome);
+        });
+        Assert.Contains(session.Log, item => item.Category == LogCategory.World && item.Text.Contains("旁观同样成为历史", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PlayerCanInterveneInAnActiveBranchAndChangeItsOutcome()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        session.EnterUrbanLocation("luoyang.government");
+        session.Rest(3);
+
+        var intervention = session.CareerOpportunities.Single(item => item.BranchId == "branch.capital_refugees");
+        Assert.True(intervention.IsEnabled);
+        session.ExecuteCareerOpportunity(intervention.Id);
+
+        var branch = session.HistoricalBranches.Single(item => item.Id == "branch.capital_refugees");
+        Assert.Equal(HistoricalBranchOutcome.PlayerInfluenced, branch.Outcome);
+        Assert.Contains("登记安置流民", branch.PlayerApproach, StringComparison.Ordinal);
+        Assert.True(session.Career.Reputation >= 4);
+        Assert.Contains(session.Log, item => item.Text.Contains("受到你的介入", StringComparison.Ordinal));
     }
 
     private static GameSession CreateSession()

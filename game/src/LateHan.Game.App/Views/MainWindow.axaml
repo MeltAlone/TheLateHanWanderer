@@ -97,7 +97,7 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" ColumnDefinitions="330,*,350" Margin="12" ColumnSpacing="12">
+            <Grid Grid.Row="1" ColumnDefinitions="330,*,380" Margin="12" ColumnSpacing="12">
                 <Border Grid.Column="0" Classes="panel" Padding="14">
                     <Grid RowDefinitions="Auto,*,Auto,210">
                         <StackPanel>
@@ -143,7 +143,7 @@
                     </Grid>
                 </Border>
 
-                <Grid Grid.Column="1" RowDefinitions="Auto,210,*,Auto" RowSpacing="12">
+                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,210,*,Auto" RowSpacing="12">
                     <Border Grid.Row="0" Classes="panel" Padding="18">
                         <StackPanel Spacing="7">
                             <TextBlock Text="{Binding SettlementName}" FontSize="24" Foreground="#D9B96E" />
@@ -153,7 +153,11 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="1" Classes="panel" Padding="14">
+                    <Border Grid.Row="1" Classes="panel" Padding="12">
+                        <TextBlock Text="{Binding CareerGoalText}" Foreground="#D9B96E" TextWrapping="Wrap" />
+                    </Border>
+
+                    <Border Grid.Row="2" Classes="panel" Padding="14">
                         <Grid RowDefinitions="Auto,*">
                             <TextBlock Text="此处人物" Classes="sectionTitle" />
                             <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
@@ -179,7 +183,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="2" Classes="panel" Padding="14">
+                    <Border Grid.Row="3" Classes="panel" Padding="14">
                         <Grid RowDefinitions="Auto,*">
                             <TextBlock Text="世界记录" Classes="sectionTitle" />
                             <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
@@ -200,11 +204,11 @@
                         </Grid>
                     </Border>
 
-                    <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Foreground="#D9B96E" TextWrapping="Wrap" Margin="4,0" />
+                    <TextBlock Grid.Row="4" Text="{Binding StatusMessage}" Foreground="#D9B96E" TextWrapping="Wrap" Margin="4,0" />
                 </Grid>
 
                 <Border Grid.Column="2" Classes="panel" Padding="14">
-                    <Grid RowDefinitions="Auto,Auto,Auto,200,Auto,*,Auto,110">
+                    <Grid RowDefinitions="Auto,Auto,Auto,130,Auto,135,Auto,95,Auto,*">
                         <TextBlock Text="可做之事" Classes="sectionTitle" />
                         <UniformGrid Grid.Row="1" Columns="2" Margin="0,10,0,0">
                             <Button Content="打听消息（1日）" Command="{Binding GatherInformationCommand}" Margin="3" />
@@ -231,8 +235,22 @@
                             </Grid>
                         </ScrollViewer>
 
-                        <TextBlock Grid.Row="4" Text="因势可行" Classes="sectionTitle" Margin="0,14,0,8" />
+                        <TextBlock Grid.Row="4" Text="生涯机会" Classes="sectionTitle" Margin="0,12,0,6" />
                         <ScrollViewer Grid.Row="5">
+                            <ItemsControl ItemsSource="{Binding CareerOpportunities}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:CareerOpportunityViewModel">
+                                        <StackPanel Margin="0,0,0,9" Spacing="3">
+                                            <Button Content="{Binding Title}" Command="{Binding ExecuteCommand}" IsEnabled="{Binding IsEnabled}" HorizontalAlignment="Stretch" />
+                                            <TextBlock Text="{Binding Description}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <TextBlock Grid.Row="6" Text="因势可行" Classes="sectionTitle" Margin="0,12,0,6" />
+                        <ScrollViewer Grid.Row="7">
                             <ItemsControl ItemsSource="{Binding ContextActions}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ContextActionViewModel">
@@ -245,8 +263,23 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <TextBlock Grid.Row="6" Text="约定" Classes="sectionTitle" Margin="0,12,0,6" />
-                        <ScrollViewer Grid.Row="7">
+                        <TextBlock Grid.Row="8" Text="局势与约定" Classes="sectionTitle" Margin="0,12,0,6" />
+                        <ScrollViewer Grid.Row="9">
+                            <StackPanel>
+                            <ItemsControl ItemsSource="{Binding HistoricalBranches}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:HistoricalBranchViewModel">
+                                        <StackPanel Margin="0,0,0,9">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Text="{Binding Title}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="#D9B96E" FontSize="11" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Timing}" Classes="muted" FontSize="10" />
+                                            <TextBlock Text="{Binding Description}" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <ItemsControl ItemsSource="{Binding Commitments}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:CommitmentViewModel">
@@ -263,13 +296,14 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            </StackPanel>
                         </ScrollViewer>
                     </Grid>
                 </Border>
             </Grid>
 
             <Border Grid.Row="2" Background="#100F0C" BorderBrush="#403927" BorderThickness="0,1,0,0" Padding="18,8">
-                <TextBlock Text="当前版本：方向验证切片。地图、时间、人物与世界推进是真实领域状态；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
+                <TextBlock Text="当前版本：60 日个人生涯纵向切片。地图、时间、人物、地方与局势会持续推进；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
             </Border>
         </Grid>
     </Grid>
