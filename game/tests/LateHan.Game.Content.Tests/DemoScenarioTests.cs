@@ -13,6 +13,8 @@ public sealed class DemoScenarioTests
         Assert.Equal(3, scenario.Backgrounds.Count);
         Assert.Equal(4, scenario.Topics.Count);
         Assert.InRange(scenario.Characters.Count, 20, 30);
+        Assert.Equal(scenario.Map.Settlements.Count, scenario.SettlementConditions.Count);
+        Assert.Equal(scenario.Map.Roads.Count, scenario.RoadConditions.Count);
         Assert.All(scenario.Map.Settlements, settlement => Assert.NotEmpty(settlement.UrbanLocations));
     }
 

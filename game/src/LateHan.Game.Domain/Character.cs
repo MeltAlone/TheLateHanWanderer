@@ -69,4 +69,6 @@ public sealed record GameScenario(
     WorldMap Map,
     IReadOnlyList<Character> Characters,
     IReadOnlyList<PlayerBackground> Backgrounds,
-    IReadOnlyList<ConversationTopic> Topics);
+    IReadOnlyList<ConversationTopic> Topics,
+    IReadOnlyList<SettlementConditionSeed> SettlementConditions,
+    IReadOnlyList<RoadConditionSeed> RoadConditions);

@@ -30,6 +30,53 @@ public sealed class GameSessionTests
     }
 
     [Fact]
+    public void ThreeTenDayPeriodsProduceDifferentLocalStatesWithExplanations()
+    {
+        var session = CreateSession();
+        var initial = session.SettlementStates.ToDictionary(item => item.Key, item => item.Value);
+
+        session.Rest(23);
+
+        var changed = session.SettlementStates.Values
+            .Where(item => item != initial[item.SettlementId])
+            .ToArray();
+        Assert.True(changed.Length >= 3);
+        Assert.Contains(session.Log, item =>
+            item.Category == LogCategory.Period &&
+            item.Text.Contains("缘由：", StringComparison.Ordinal) &&
+            item.Text.Contains("治安", StringComparison.Ordinal));
+        Assert.Contains(session.CharacterPlans.Values, item => item.LastIntent.Contains("整顿", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PlayerWorkChangesTheNextPeriodOutcome()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var passive = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        var active = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+
+        passive.Rest(3);
+        active.Work();
+
+        var passiveState = passive.StateOf("settlement.luoyang");
+        var activeState = active.StateOf("settlement.luoyang");
+        Assert.True(activeState.GovernmentControl > passiveState.GovernmentControl);
+        Assert.Contains(active.Log, item => item.Category == LogCategory.Period && item.Text.Contains("玩家参与官府文书", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TravelContributesToRoadRiskAtPeriodBoundary()
+    {
+        var session = CreateSession();
+        var initialRisk = session.StateOfRoad("road.luoyang.mengjin").Risk;
+
+        session.TravelTo("settlement.mengjin");
+        session.Rest();
+
+        Assert.True(session.StateOfRoad("road.luoyang.mengjin").Risk > initialRisk);
+    }
+
+    [Fact]
     public void BackgroundChangesAccessToTheSameOfficial()
     {
         var scenario = DemoScenarioFactory.Create();

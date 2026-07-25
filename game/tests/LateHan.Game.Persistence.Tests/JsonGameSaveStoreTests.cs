@@ -26,6 +26,8 @@ public sealed class JsonGameSaveStoreTests
             Assert.Equal(session.Player.SettlementId, restored.Player.SettlementId);
             Assert.Equal(session.Player.Money, restored.Player.Money);
             Assert.Equal(session.Log, restored.Log);
+            Assert.Equal(session.SettlementStates, restored.SettlementStates);
+            Assert.Equal(session.RoadStates, restored.RoadStates);
 
             restored.TravelTo("settlement.henei");
             Assert.Equal("settlement.henei", restored.Player.SettlementId);
@@ -69,6 +71,28 @@ public sealed class JsonGameSaveStoreTests
                 Directory.Delete(directory, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public void VersionTwoSnapshotReceivesScenarioLocalStateDefaults()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds[0]);
+        var versionTwo = session.CreateSnapshot() with
+        {
+            SchemaVersion = 2,
+            SettlementStates = null,
+            RoadStates = null,
+            PendingLocalPressures = null,
+            PendingRoadPressures = null,
+            CharacterPlans = null,
+        };
+
+        var restored = GameSession.Restore(scenario, versionTwo);
+
+        Assert.Equal(42, restored.StateOf("settlement.luoyang").Security);
+        Assert.Equal(38, restored.StateOfRoad("road.luoyang.mengjin").Risk);
+        Assert.Equal(scenario.Characters.Count, restored.CharacterPlans.Count);
     }
 
     [Fact]

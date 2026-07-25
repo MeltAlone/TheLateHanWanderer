@@ -42,6 +42,11 @@ public sealed record GameSnapshot(
     IReadOnlyDictionary<string, RelationshipState>? SocialConnections,
     IReadOnlyList<string>? KnownTopicIds,
     IReadOnlyList<MeetingCommitment>? Commitments,
+    IReadOnlyDictionary<string, SettlementState>? SettlementStates,
+    IReadOnlyDictionary<string, RoadState>? RoadStates,
+    IReadOnlyDictionary<string, LocalPressure>? PendingLocalPressures,
+    IReadOnlyDictionary<string, int>? PendingRoadPressures,
+    IReadOnlyDictionary<string, CharacterPlanState>? CharacterPlans,
     IReadOnlyList<CharacterLocationSnapshot> CharacterLocations,
     IReadOnlyList<GameLogEntry> Log);
 
@@ -51,6 +56,11 @@ public sealed class GameSession
     private readonly Dictionary<string, RelationshipState> socialConnections = new(StringComparer.Ordinal);
     private readonly HashSet<string> knownTopicIds = new(StringComparer.Ordinal);
     private readonly List<MeetingCommitment> commitments = [];
+    private readonly Dictionary<string, SettlementState> settlementStates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RoadState> roadStates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, LocalPressure> pendingLocalPressures = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> pendingRoadPressures = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CharacterPlanState> characterPlans = new(StringComparer.Ordinal);
     private readonly List<GameLogEntry> log = [];
 
     public GameSession(GameScenario scenario, PlayerBackground background, string playerName = "无名")
@@ -64,6 +74,7 @@ public sealed class GameSession
             item => item.Id,
             item => new CharacterState(item, item.SettlementId, item.UrbanLocationId),
             StringComparer.Ordinal);
+        InitializeLocalWorldState();
 
         foreach (var character in scenario.Characters)
         {
@@ -91,7 +102,7 @@ public sealed class GameSession
 
     private GameSession(GameScenario scenario, GameSnapshot snapshot)
     {
-        if (snapshot.SchemaVersion is < 1 or > 2)
+        if (snapshot.SchemaVersion is < 1 or > 3)
         {
             throw new InvalidOperationException($"不支持的存档版本：{snapshot.SchemaVersion}");
         }
@@ -104,6 +115,7 @@ public sealed class GameSession
         Scenario = scenario;
         Date = snapshot.Date;
         var background = scenario.Backgrounds.Single(item => item.Id == snapshot.BackgroundId);
+        InitializeLocalWorldState();
 
         if (snapshot.SchemaVersion == 1)
         {
@@ -134,6 +146,15 @@ public sealed class GameSession
             }
 
             commitments.AddRange(snapshot.Commitments ?? []);
+        }
+
+        if (snapshot.SchemaVersion >= 3)
+        {
+            ReplaceDictionary(settlementStates, snapshot.SettlementStates);
+            ReplaceDictionary(roadStates, snapshot.RoadStates);
+            ReplaceDictionary(pendingLocalPressures, snapshot.PendingLocalPressures);
+            ReplaceDictionary(pendingRoadPressures, snapshot.PendingRoadPressures);
+            ReplaceDictionary(characterPlans, snapshot.CharacterPlans);
         }
 
         var savedLocations = snapshot.CharacterLocations.ToDictionary(item => item.CharacterId, StringComparer.Ordinal);
@@ -167,6 +188,14 @@ public sealed class GameSession
 
     public IReadOnlyList<MeetingCommitment> Commitments => commitments;
 
+    public IReadOnlyDictionary<string, SettlementState> SettlementStates => settlementStates;
+
+    public IReadOnlyDictionary<string, RoadState> RoadStates => roadStates;
+
+    public IReadOnlyDictionary<string, CharacterPlanState> CharacterPlans => characterPlans;
+
+    public SettlementState CurrentSettlementState => settlementStates[Player.SettlementId];
+
     public IReadOnlyList<ConversationTopic> KnownTopics => Scenario.Topics
         .Where(item => knownTopicIds.Contains(item.Id))
         .ToArray();
@@ -184,10 +213,14 @@ public sealed class GameSession
     public RelationshipState ConnectionWith(string characterId) =>
         socialConnections.GetValueOrDefault(characterId, RelationshipState.Unknown);
 
+    public SettlementState StateOf(string settlementId) => settlementStates[settlementId];
+
+    public RoadState StateOfRoad(string roadId) => roadStates[roadId];
+
     public static GameSession Restore(GameScenario scenario, GameSnapshot snapshot) => new(scenario, snapshot);
 
     public GameSnapshot CreateSnapshot() => new(
-        2,
+        3,
         Scenario.Id,
         Date,
         Player.Background.Id,
@@ -200,6 +233,11 @@ public sealed class GameSession
         new Dictionary<string, RelationshipState>(socialConnections, StringComparer.Ordinal),
         knownTopicIds.Order(StringComparer.Ordinal).ToArray(),
         commitments.ToArray(),
+        new Dictionary<string, SettlementState>(settlementStates, StringComparer.Ordinal),
+        new Dictionary<string, RoadState>(roadStates, StringComparer.Ordinal),
+        new Dictionary<string, LocalPressure>(pendingLocalPressures, StringComparer.Ordinal),
+        new Dictionary<string, int>(pendingRoadPressures, StringComparer.Ordinal),
+        new Dictionary<string, CharacterPlanState>(characterPlans, StringComparer.Ordinal),
         characters.Values
             .OrderBy(item => item.Profile.Id, StringComparer.Ordinal)
             .Select(item => new CharacterLocationSnapshot(item.Profile.Id, item.SettlementId, item.UrbanLocationId))
@@ -214,6 +252,8 @@ public sealed class GameSession
             throw new InvalidOperationException("此处没有通往该地点的直接道路。");
         }
 
+        AddRoadPressure(route.Road.Id, 1);
+        AddLocalPressure(Player.SettlementId, 0, 0, 1, 0, $"玩家沿官道前往{route.Destination.Name}，带来行旅需求");
         AddLog(LogCategory.Travel, $"你离开{CurrentSettlement.Name}，沿{route.Road.Description}前往{route.Destination.Name}。预计用时{route.Road.TravelDays}日。");
         AdvanceDays(route.Road.TravelDays);
         Player = Player with
@@ -373,6 +413,7 @@ public sealed class GameSession
     public void GatherInformation()
     {
         var unknownTopic = Scenario.Topics.FirstOrDefault(item => !knownTopicIds.Contains(item.Id));
+        AddLocalPressure(Player.SettlementId, 0, 0, 1, 0, "玩家在市井搜集并转述消息");
         AdvanceDays(1);
         if (unknownTopic is not null)
         {
@@ -398,6 +439,19 @@ public sealed class GameSession
 
     public void Work()
     {
+        var contribution = Player.Background.Id switch
+        {
+            "background.clerk" => (Security: 1, Grain: 0, Prosperity: 0, Control: 2, Source: "玩家参与官府文书与地方差事"),
+            "background.ranger" => (Security: 2, Grain: 0, Prosperity: 0, Control: -1, Source: "玩家以游侠人脉协助维持市井秩序"),
+            _ => (Security: 0, Grain: -1, Prosperity: 2, Control: 0, Source: "玩家以学识协助商旅与地方士人"),
+        };
+        AddLocalPressure(
+            Player.SettlementId,
+            contribution.Security,
+            contribution.Grain,
+            contribution.Prosperity,
+            contribution.Control,
+            contribution.Source);
         AdvanceDays(3);
         var income = Player.Background.Id switch
         {
@@ -544,7 +598,7 @@ public sealed class GameSession
 
             if (Date.Period != previous.Period || Date.Month != previous.Month)
             {
-                AddLog(LogCategory.Period, $"{Date.Year}年{Date.Month}月{Date.Period.ToChinese()}开始，各地势力重新评估粮秣、治安与人事。旬结算已经发生。");
+                ResolveTenDayPeriod();
             }
         }
     }
@@ -574,6 +628,11 @@ public sealed class GameSession
 
     private void RunDailyWorldStep()
     {
+        foreach (var actor in characters.Values.OrderBy(item => item.Profile.Id, StringComparer.Ordinal))
+        {
+            ApplyCharacterIntent(actor);
+        }
+
         if (Date.Day % 5 != 0 || characters.Count == 0)
         {
             return;
@@ -589,20 +648,188 @@ public sealed class GameSession
             return;
         }
 
-        var actor = ordered[(Date.Day + Date.Month) % ordered.Length];
-        var destinations = Scenario.Map.GetDestinations(actor.SettlementId);
+        var traveler = ordered[(Date.Day + Date.Month) % ordered.Length];
+        var destinations = Scenario.Map.GetDestinations(traveler.SettlementId);
         if (destinations.Count == 0)
         {
             return;
         }
 
         var destination = destinations[(Date.Day / 5) % destinations.Count].Destination;
-        characters[actor.Profile.Id] = actor with
+        var road = destinations.Single(item => item.Destination.Id == destination.Id).Road;
+        characters[traveler.Profile.Id] = traveler with
         {
             SettlementId = destination.Id,
             UrbanLocationId = destination.UrbanLocations[0].Id,
         };
-        AddLog(LogCategory.World, $"传闻：{actor.Profile.Name}离开{Scenario.Map.GetSettlement(actor.SettlementId).Name}，动身前往{destination.Name}。这件事并非由玩家触发。");
+        AddRoadPressure(road.Id, 1);
+        AddLog(LogCategory.World, $"传闻：{traveler.Profile.Name}离开{Scenario.Map.GetSettlement(traveler.SettlementId).Name}，动身前往{destination.Name}。这件事并非由玩家触发。");
+    }
+
+    private void InitializeLocalWorldState()
+    {
+        foreach (var seed in Scenario.SettlementConditions)
+        {
+            settlementStates[seed.SettlementId] = new SettlementState(
+                seed.SettlementId,
+                seed.Security,
+                seed.GrainPrice,
+                seed.Prosperity,
+                seed.GovernmentControl);
+        }
+
+        foreach (var seed in Scenario.RoadConditions)
+        {
+            roadStates[seed.RoadId] = new RoadState(seed.RoadId, seed.Risk);
+        }
+
+        foreach (var character in Scenario.Characters)
+        {
+            characterPlans[character.Id] = new CharacterPlanState(
+                character.Id,
+                GoalFor(character),
+                [character.SettlementId],
+                "尚未形成新的行动意图");
+        }
+    }
+
+    private void ApplyCharacterIntent(CharacterState actor)
+    {
+        if ((Date.Day - 1) % 10 != StableScheduleDay(actor.Profile.Id))
+        {
+            return;
+        }
+
+        var plan = characterPlans[actor.Profile.Id];
+        var settlementName = Scenario.Map.GetSettlement(actor.SettlementId).Name;
+        var (security, grain, prosperity, control, intent) = plan.Goal switch
+        {
+            CharacterGoal.MaintainOrder => (1, 0, 0, 1, $"{actor.Profile.Name}在{settlementName}整顿治安与公事"),
+            CharacterGoal.SecureSupplies => (0, -1, 1, 0, $"{actor.Profile.Name}在{settlementName}调度粮货与运输"),
+            CharacterGoal.BuildInfluence => (0, 0, 1, 1, $"{actor.Profile.Name}在{settlementName}经营地方关系"),
+            _ => (0, 1, 1, 0, $"{actor.Profile.Name}在{settlementName}访求机会，引来额外需求"),
+        };
+        AddLocalPressure(actor.SettlementId, security, grain, prosperity, control, intent);
+        characterPlans[actor.Profile.Id] = plan with
+        {
+            KnownSettlementIds = plan.KnownSettlementIds.Append(actor.SettlementId).Distinct(StringComparer.Ordinal).ToArray(),
+            LastIntent = intent,
+        };
+    }
+
+    private void ResolveTenDayPeriod()
+    {
+        var summaries = new List<string>();
+        foreach (var settlement in Scenario.Map.Settlements.OrderBy(item => item.Id, StringComparer.Ordinal))
+        {
+            var before = settlementStates[settlement.Id];
+            var pressure = pendingLocalPressures.GetValueOrDefault(settlement.Id, LocalPressure.None);
+            var structural = StructuralPressure(settlement.Id);
+            var total = pressure.Add(
+                structural.Security,
+                structural.GrainPrice,
+                structural.Prosperity,
+                structural.GovernmentControl,
+                structural.Source);
+            var after = before.Apply(total);
+            settlementStates[settlement.Id] = after;
+            if (before != after)
+            {
+                var sources = string.Join("、", total.Sources.Take(3));
+                summaries.Add($"{settlement.Name}：治安 {Signed(after.Security - before.Security)}，粮价 {Signed(after.GrainPrice - before.GrainPrice)}，繁荣 {Signed(after.Prosperity - before.Prosperity)}，官府控制 {Signed(after.GovernmentControl - before.GovernmentControl)}；缘由：{sources}");
+            }
+        }
+
+        foreach (var road in Scenario.Map.Roads.OrderBy(item => item.Id, StringComparer.Ordinal))
+        {
+            var before = roadStates[road.Id];
+            var usage = pendingRoadPressures.GetValueOrDefault(road.Id);
+            var endpoints = new[] { settlementStates[road.FromSettlementId], settlementStates[road.ToSettlementId] };
+            var insecurity = endpoints.Sum(item => 50 - item.Security) / 40;
+            var delta = usage > 0
+                ? Math.Clamp(usage + insecurity, 0, 4)
+                : Math.Clamp(insecurity - 1, -2, 2);
+            roadStates[road.Id] = before.Apply(delta);
+        }
+
+        pendingLocalPressures.Clear();
+        pendingRoadPressures.Clear();
+        AddLog(
+            LogCategory.Period,
+            summaries.Count == 0
+                ? $"{Date.Year}年{Date.Month}月{Date.Period.ToChinese()}开始。本旬各地压力暂时相互抵消，没有形成明显变化。"
+                : $"{Date.Year}年{Date.Month}月{Date.Period.ToChinese()}开始，旬结算完成；{summaries.Count}座城邑形成了可观察变化。");
+        foreach (var summary in summaries)
+        {
+            AddLog(LogCategory.Period, summary);
+        }
+    }
+
+    private (int Security, int GrainPrice, int Prosperity, int GovernmentControl, string Source) StructuralPressure(string settlementId)
+    {
+        var state = settlementStates[settlementId];
+        var adjacentRisk = Scenario.Map.Roads
+            .Where(item => item.Connects(settlementId))
+            .Select(item => roadStates[item.Id].Risk)
+            .DefaultIfEmpty(0)
+            .Average();
+        return (
+            adjacentRisk >= 45 ? -2 : adjacentRisk <= 30 ? 1 : 0,
+            adjacentRisk >= 40 ? 2 : -1,
+            state.Security >= 65 ? 1 : state.Security < 45 ? -1 : 0,
+            settlementId == "settlement.luoyang" ? -1 : 0,
+            adjacentRisk >= 40 ? "道路风险与运输阻滞" : "地方既有秩序与商贸基础");
+    }
+
+    private void AddLocalPressure(
+        string settlementId,
+        int security,
+        int grainPrice,
+        int prosperity,
+        int governmentControl,
+        string source)
+    {
+        var current = pendingLocalPressures.GetValueOrDefault(settlementId, LocalPressure.None);
+        pendingLocalPressures[settlementId] = current.Add(security, grainPrice, prosperity, governmentControl, source);
+    }
+
+    private void AddRoadPressure(string roadId, int amount) =>
+        pendingRoadPressures[roadId] = pendingRoadPressures.GetValueOrDefault(roadId) + amount;
+
+    private static CharacterGoal GoalFor(Character character)
+    {
+        if (character.Roles.HasFlag(CharacterRole.Official) || character.Roles.HasFlag(CharacterRole.General))
+        {
+            return CharacterGoal.MaintainOrder;
+        }
+
+        if (character.Roles.HasFlag(CharacterRole.Merchant))
+        {
+            return CharacterGoal.SecureSupplies;
+        }
+
+        return character.Roles.HasFlag(CharacterRole.LocalNotable)
+            ? CharacterGoal.BuildInfluence
+            : CharacterGoal.SeekOpportunity;
+    }
+
+    private static int StableScheduleDay(string characterId) =>
+        characterId.Aggregate(0, (sum, character) => (sum + character) % 10);
+
+    private static string Signed(int value) => value >= 0 ? $"+{value}" : value.ToString();
+
+    private static void ReplaceDictionary<T>(Dictionary<string, T> target, IReadOnlyDictionary<string, T>? source)
+    {
+        if (source is null)
+        {
+            return;
+        }
+
+        target.Clear();
+        foreach (var pair in source)
+        {
+            target[pair.Key] = pair.Value;
+        }
     }
 
     private static RecognitionLevel StartingRecognition(PlayerBackground background, Character character)

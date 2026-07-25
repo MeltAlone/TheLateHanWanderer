@@ -56,6 +56,15 @@ public sealed record Road(
     };
 }
 
+public sealed record SettlementConditionSeed(
+    string SettlementId,
+    int Security,
+    int GrainPrice,
+    int Prosperity,
+    int GovernmentControl);
+
+public sealed record RoadConditionSeed(string RoadId, int Risk);
+
 public sealed class WorldMap
 {
     private readonly IReadOnlyDictionary<string, Settlement> settlements;

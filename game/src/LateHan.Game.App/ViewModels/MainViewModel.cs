@@ -31,7 +31,13 @@ public sealed class BackgroundOptionViewModel
 
 public sealed class MapNodeViewModel
 {
-    public MapNodeViewModel(Settlement settlement, bool isCurrent, Road? road, Action<string> travel)
+    public MapNodeViewModel(
+        Settlement settlement,
+        SettlementState localState,
+        bool isCurrent,
+        Road? road,
+        RoadState? roadState,
+        Action<string> travel)
     {
         Id = settlement.Id;
         Name = settlement.Name;
@@ -39,7 +45,8 @@ public sealed class MapNodeViewModel
         Coordinate = $"{settlement.Coordinate.X}, {settlement.Coordinate.Y}";
         IsCurrent = isCurrent;
         IsReachable = road is not null;
-        Status = isCurrent ? "当前位置" : road is null ? "尚无直达道路" : $"{road.TravelDays}日可达";
+        Status = isCurrent ? "当前位置" : road is null ? "尚无直达道路" : $"{road.TravelDays}日可达 · 风险 {roadState!.Risk}";
+        Condition = $"治安 {localState.Security} · 粮价 {localState.GrainPrice}";
         TravelCommand = new RelayCommand(() => travel(Id), () => IsReachable);
     }
 
@@ -52,6 +59,8 @@ public sealed class MapNodeViewModel
     public string Coordinate { get; }
 
     public string Status { get; }
+
+    public string Condition { get; }
 
     public bool IsCurrent { get; }
 
@@ -243,6 +252,9 @@ public partial class MainViewModel : ViewModelBase
     public partial string LocationDescription { get; set; } = string.Empty;
 
     [ObservableProperty]
+    public partial string SettlementStateText { get; set; } = string.Empty;
+
+    [ObservableProperty]
     public partial string StatusMessage { get; set; } = "选择一个出身，进入中平六年的动态世界。";
 
     [ObservableProperty]
@@ -358,12 +370,17 @@ public partial class MainViewModel : ViewModelBase
         SettlementName = $"{session.CurrentSettlement.Name}｜{session.CurrentSettlement.RegionName}";
         SettlementDescription = session.CurrentSettlement.Description;
         LocationDescription = session.CurrentUrbanLocation.Description;
+        var localState = session.CurrentSettlementState;
+        SettlementStateText = $"治安 {localState.Security}　粮价 {localState.GrainPrice}　" +
+            $"繁荣 {localState.Prosperity}　官府控制 {localState.GovernmentControl}";
 
         var destinations = session.AvailableDestinations.ToDictionary(item => item.Destination.Id, item => item.Road, StringComparer.Ordinal);
         Replace(MapNodes, scenario.Map.Settlements.Select(item => new MapNodeViewModel(
             item,
+            session.StateOf(item.Id),
             item.Id == session.Player.SettlementId,
             destinations.GetValueOrDefault(item.Id),
+            destinations.TryGetValue(item.Id, out var road) ? session.StateOfRoad(road.Id) : null,
             Travel)));
         Replace(UrbanLocations, session.CurrentSettlement.UrbanLocations.Select(item => new UrbanLocationViewModel(
             item,

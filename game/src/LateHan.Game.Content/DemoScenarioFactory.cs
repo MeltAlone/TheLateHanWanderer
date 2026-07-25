@@ -17,7 +17,9 @@ public static class DemoScenarioFactory
             new WorldMap(settlements, CreateRoads()),
             CreateCharacters(),
             CreateBackgrounds(),
-            CreateTopics());
+            CreateTopics(),
+            CreateSettlementConditions(),
+            CreateRoadConditions());
     }
 
     private static IReadOnlyList<Settlement> CreateSettlements() =>
@@ -93,6 +95,30 @@ public static class DemoScenarioFactory
         new("topic.eastern_roads", "东方道路", "虎牢关以东的关津盘查和行旅风险正在发生变化。"),
         new("topic.grain_prices", "粮价波动", "京畿征发与商路不稳正在影响沿途城邑的粮价。"),
         new("topic.local_recruitment", "地方征辟", "部分郡府正在物色能处理文书、治安和军需的人才。"),
+    ];
+
+    private static IReadOnlyList<SettlementConditionSeed> CreateSettlementConditions() =>
+    [
+        new("settlement.luoyang", 42, 68, 78, 82),
+        new("settlement.mengjin", 55, 61, 58, 66),
+        new("settlement.henei", 67, 46, 64, 61),
+        new("settlement.hulao", 74, 57, 42, 78),
+        new("settlement.chenggao", 59, 52, 55, 57),
+        new("settlement.xingyang", 56, 49, 63, 60),
+        new("settlement.chenliu", 62, 44, 72, 55),
+        new("settlement.yingchuan", 69, 48, 76, 58),
+    ];
+
+    private static IReadOnlyList<RoadConditionSeed> CreateRoadConditions() =>
+    [
+        new("road.luoyang.mengjin", 38),
+        new("road.mengjin.henei", 33),
+        new("road.luoyang.hulao", 46),
+        new("road.hulao.chenggao", 41),
+        new("road.chenggao.xingyang", 35),
+        new("road.xingyang.chenliu", 31),
+        new("road.xingyang.yingchuan", 29),
+        new("road.luoyang.yingchuan", 44),
     ];
 
     private static IReadOnlyList<Character> CreateCharacters() =>

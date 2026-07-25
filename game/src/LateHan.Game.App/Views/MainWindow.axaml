@@ -113,6 +113,7 @@
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding Name}" FontSize="16" />
                                                     <TextBlock Text="{Binding Region}" Classes="muted" FontSize="11" />
+                                                    <TextBlock Text="{Binding Condition}" Classes="muted" FontSize="10" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                                                     <TextBlock Text="{Binding Status}" Foreground="#D9B96E" FontSize="11" HorizontalAlignment="Right" />
@@ -147,6 +148,7 @@
                         <StackPanel Spacing="7">
                             <TextBlock Text="{Binding SettlementName}" FontSize="24" Foreground="#D9B96E" />
                             <TextBlock Text="{Binding SettlementDescription}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SettlementStateText}" Foreground="#D9B96E" TextWrapping="Wrap" />
                             <TextBlock Text="{Binding LocationDescription}" Classes="muted" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
