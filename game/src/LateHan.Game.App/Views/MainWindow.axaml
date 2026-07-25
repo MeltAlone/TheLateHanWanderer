@@ -303,7 +303,7 @@
             </Grid>
 
             <Border Grid.Row="2" Background="#100F0C" BorderBrush="#403927" BorderThickness="0,1,0,0" Padding="18,8">
-                <TextBlock Text="当前版本：60 日个人生涯纵向切片。地图、时间、人物、地方与局势会持续推进；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
+                <TextBlock Text="当前版本：个人生涯与组织资源纵向切片。组织需求会形成限时委托，完成或失约都会改变地方账本与后续旬报；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
             </Border>
         </Grid>
     </Grid>

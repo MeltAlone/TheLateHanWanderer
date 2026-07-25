@@ -280,6 +280,110 @@ public sealed class GameSessionTests
         Assert.Contains(session.Log, item => item.Text.Contains("受到你的介入", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void LocalOrganizationCreatesACommissionFromItsResourceShortage()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        session.EnterUrbanLocation("luoyang.government");
+
+        var offer = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+
+        Assert.Equal(OrganizationNeedKind.Grain, offer.OrganizationNeed);
+        Assert.Contains("粮储仅为", offer.Description, StringComparison.Ordinal);
+        Assert.Contains("八日内", offer.Description, StringComparison.Ordinal);
+        Assert.True(offer.RewardMoney > 0);
+    }
+
+    [Fact]
+    public void AcceptingAndFulfillingACommissionChangesLedgerAndOrganizationAssets()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        session.EnterUrbanLocation("luoyang.government");
+        var grainBefore = session.CurrentResourceLedger.Grain;
+        var offer = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+
+        session.ExecuteCareerOpportunity(offer.Id);
+
+        var accepted = Assert.Single(session.OrganizationCommissions);
+        Assert.Equal(OrganizationCommissionStatus.Accepted, accepted.Status);
+        Assert.Equal(session.Date.AddDays(8), accepted.DueDate);
+        var fulfillment = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && !item.IsAcceptance);
+        Assert.Contains("期限", fulfillment.Description, StringComparison.Ordinal);
+
+        session.ExecuteCareerOpportunity(fulfillment.Id);
+
+        Assert.Equal(OrganizationCommissionStatus.Completed, Assert.Single(session.OrganizationCommissions).Status);
+        Assert.True(session.CurrentResourceLedger.Grain >= grainBefore + 10);
+        Assert.True(session.Player.Money > scenario.Backgrounds.Single(item => item.Id == "background.clerk").StartingMoney);
+        Assert.Contains(session.Log, item =>
+            item.Category == LogCategory.Career && item.Text.Contains("资源账本", StringComparison.Ordinal));
+        Assert.DoesNotContain(session.CareerOpportunities, item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+    }
+
+    [Fact]
+    public void CompletedCommissionReturnsOnlyAfterItsTenDayCooldown()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        session.EnterUrbanLocation("luoyang.government");
+        var offer = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+        session.ExecuteCareerOpportunity(offer.Id);
+        var fulfillment = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && !item.IsAcceptance);
+        session.ExecuteCareerOpportunity(fulfillment.Id);
+
+        session.Rest(6);
+
+        Assert.DoesNotContain(session.CareerOpportunities, item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+
+        session.Rest(1);
+
+        Assert.Contains(session.CareerOpportunities, item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+    }
+
+    [Fact]
+    public void MissingACommissionDeadlineWorsensTheOriginalShortage()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        session.EnterUrbanLocation("luoyang.government");
+        var offer = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+        session.ExecuteCareerOpportunity(offer.Id);
+        var grainBeforeFailure = session.CurrentResourceLedger.Grain;
+
+        session.Rest(9);
+
+        Assert.Equal(OrganizationCommissionStatus.Failed, Assert.Single(session.OrganizationCommissions).Status);
+        Assert.True(session.CurrentResourceLedger.Grain < grainBeforeFailure);
+        Assert.Contains(session.Log, item =>
+            item.Category == LogCategory.Commitment && item.Text.Contains("组织资产", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NinetyDaysProduceDistinctResourceAndOrganizationTrajectories()
+    {
+        var session = CreateSession();
+        var initialOrganizations = session.Organizations.ToDictionary(item => item.Key, item => item.Value);
+
+        session.Rest(90);
+
+        Assert.True(session.ResourceLedgers.Values.Select(item => item.Grain).Distinct().Count() >= 3);
+        Assert.True(session.ResourceLedgers.Values.Select(item => item.Treasury).Distinct().Count() >= 3);
+        Assert.Contains(session.Organizations, item => item.Value != initialOrganizations[item.Key]);
+        Assert.Contains(session.Log, item =>
+            item.Category == LogCategory.Period && item.Text.Contains("账本粮储", StringComparison.Ordinal));
+    }
+
     private static GameSession CreateSession()
     {
         var scenario = DemoScenarioFactory.Create();

@@ -30,6 +30,9 @@ public sealed class JsonGameSaveStoreTests
             Assert.Equal(session.RoadStates, restored.RoadStates);
             Assert.Equal(session.Career, restored.Career);
             Assert.Equal(session.HistoricalBranches, restored.HistoricalBranches);
+            Assert.Equal(session.ResourceLedgers, restored.ResourceLedgers);
+            Assert.Equal(session.Organizations, restored.Organizations);
+            Assert.Equal(session.OrganizationCommissions, restored.OrganizationCommissions);
 
             restored.TravelTo("settlement.henei");
             Assert.Equal("settlement.henei", restored.Player.SettlementId);
@@ -119,6 +122,58 @@ public sealed class JsonGameSaveStoreTests
         Assert.Equal(HistoricalBranchStatus.Resolved, restored.HistoricalBranches[0].Status);
         Assert.Equal(HistoricalBranchStatus.Active, restored.HistoricalBranches[1].Status);
         Assert.Equal(HistoricalBranchStatus.Upcoming, restored.HistoricalBranches[2].Status);
+    }
+
+    [Fact]
+    public void VersionFourSnapshotReceivesOrganizationWorldDefaults()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds[1]);
+        var versionFour = session.CreateSnapshot() with
+        {
+            SchemaVersion = 4,
+            ResourceLedgers = null,
+            Organizations = null,
+            OrganizationCommissions = null,
+        };
+
+        var restored = GameSession.Restore(scenario, versionFour);
+
+        Assert.Equal(scenario.Map.Settlements.Count, restored.ResourceLedgers.Count);
+        Assert.True(restored.Organizations.Count >= scenario.Map.Settlements.Count);
+        Assert.Empty(restored.OrganizationCommissions);
+    }
+
+    [Fact]
+    public void VersionFiveSavePreservesAnAcceptedOrganizationCommission()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds[1]);
+        session.EnterUrbanLocation("luoyang.government");
+        var offer = session.CareerOpportunities.Single(item =>
+            item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
+        session.ExecuteCareerOpportunity(offer.Id);
+        var directory = Path.Combine(Path.GetTempPath(), $"latehan-game-organization-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "save.json");
+
+        try
+        {
+            var store = new JsonGameSaveStore();
+            store.Save(path, session.CreateSnapshot());
+            var restored = GameSession.Restore(scenario, store.Load(path));
+
+            Assert.Equal(session.OrganizationCommissions, restored.OrganizationCommissions);
+            Assert.Equal(session.ResourceLedgers, restored.ResourceLedgers);
+            Assert.Contains(restored.CareerOpportunities, item =>
+                item.Kind == CareerOpportunityKind.OrganizationCommission && !item.IsAcceptance);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
     }
 
     [Fact]

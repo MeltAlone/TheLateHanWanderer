@@ -30,6 +30,7 @@ public enum CareerOpportunityKind
 {
     CareerPath,
     BranchIntervention,
+    OrganizationCommission,
 }
 
 public sealed record CareerOpportunity(
@@ -41,7 +42,12 @@ public sealed record CareerOpportunity(
     int MoneyCost,
     bool IsEnabled,
     string? BlockReason = null,
-    string? BranchId = null);
+    string? BranchId = null,
+    string? OrganizationId = null,
+    OrganizationNeedKind? OrganizationNeed = null,
+    string? CommissionId = null,
+    bool IsAcceptance = false,
+    int RewardMoney = 0);
 
 public enum HistoricalBranchStatus
 {

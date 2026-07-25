@@ -51,7 +51,10 @@ public sealed record GameSnapshot(
     CareerState? Career,
     IReadOnlyDictionary<string, HistoricalBranchState>? HistoricalBranches,
     IReadOnlyList<CharacterLocationSnapshot> CharacterLocations,
-    IReadOnlyList<GameLogEntry> Log);
+    IReadOnlyList<GameLogEntry> Log,
+    IReadOnlyDictionary<string, SettlementResourceLedger>? ResourceLedgers = null,
+    IReadOnlyDictionary<string, OrganizationState>? Organizations = null,
+    IReadOnlyList<OrganizationCommissionState>? OrganizationCommissions = null);
 
 public sealed class GameSession
 {
@@ -65,6 +68,9 @@ public sealed class GameSession
     private readonly Dictionary<string, int> pendingRoadPressures = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CharacterPlanState> characterPlans = new(StringComparer.Ordinal);
     private readonly Dictionary<string, HistoricalBranchState> historicalBranches = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SettlementResourceLedger> resourceLedgers = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OrganizationState> organizations = new(StringComparer.Ordinal);
+    private readonly List<OrganizationCommissionState> organizationCommissions = [];
     private readonly List<GameLogEntry> log = [];
 
     public GameSession(GameScenario scenario, PlayerBackground background, string playerName = "无名")
@@ -79,6 +85,7 @@ public sealed class GameSession
             item => new CharacterState(item, item.SettlementId, item.UrbanLocationId),
             StringComparer.Ordinal);
         InitializeLocalWorldState();
+        InitializeOrganizationWorldState();
         Career = CreateInitialCareerState(background);
         InitializeHistoricalBranches();
 
@@ -108,7 +115,7 @@ public sealed class GameSession
 
     private GameSession(GameScenario scenario, GameSnapshot snapshot)
     {
-        if (snapshot.SchemaVersion is < 1 or > 4)
+        if (snapshot.SchemaVersion is < 1 or > 5)
         {
             throw new InvalidOperationException($"不支持的存档版本：{snapshot.SchemaVersion}");
         }
@@ -122,6 +129,7 @@ public sealed class GameSession
         Date = snapshot.Date;
         var background = scenario.Backgrounds.Single(item => item.Id == snapshot.BackgroundId);
         InitializeLocalWorldState();
+        InitializeOrganizationWorldState();
         Career = CreateInitialCareerState(background);
         InitializeHistoricalBranches();
 
@@ -171,6 +179,13 @@ public sealed class GameSession
             ReplaceDictionary(historicalBranches, snapshot.HistoricalBranches);
         }
 
+        if (snapshot.SchemaVersion >= 5)
+        {
+            ReplaceDictionary(resourceLedgers, snapshot.ResourceLedgers);
+            ReplaceDictionary(organizations, snapshot.Organizations);
+            organizationCommissions.AddRange(snapshot.OrganizationCommissions ?? []);
+        }
+
         var savedLocations = snapshot.CharacterLocations.ToDictionary(item => item.CharacterId, StringComparer.Ordinal);
         characters = scenario.Characters.ToDictionary(
             item => item.Id,
@@ -214,6 +229,19 @@ public sealed class GameSession
 
     public IReadOnlyDictionary<string, CharacterPlanState> CharacterPlans => characterPlans;
 
+    public IReadOnlyDictionary<string, SettlementResourceLedger> ResourceLedgers => resourceLedgers;
+
+    public IReadOnlyDictionary<string, OrganizationState> Organizations => organizations;
+
+    public IReadOnlyList<OrganizationCommissionState> OrganizationCommissions => organizationCommissions;
+
+    public SettlementResourceLedger CurrentResourceLedger => resourceLedgers[Player.SettlementId];
+
+    public IReadOnlyList<OrganizationState> OrganizationsAtCurrentLocation => organizations.Values
+        .Where(item => item.SettlementId == Player.SettlementId && item.UrbanLocationId == Player.UrbanLocationId)
+        .OrderBy(item => item.Name, StringComparer.Ordinal)
+        .ToArray();
+
     public IReadOnlyList<HistoricalBranchState> HistoricalBranches => historicalBranches.Values
         .OrderBy(item => item.OpensOn.Year)
         .ThenBy(item => item.OpensOn.Month)
@@ -248,7 +276,7 @@ public sealed class GameSession
     public static GameSession Restore(GameScenario scenario, GameSnapshot snapshot) => new(scenario, snapshot);
 
     public GameSnapshot CreateSnapshot() => new(
-        4,
+        5,
         Scenario.Id,
         Date,
         Player.Background.Id,
@@ -272,7 +300,10 @@ public sealed class GameSession
             .OrderBy(item => item.Profile.Id, StringComparer.Ordinal)
             .Select(item => new CharacterLocationSnapshot(item.Profile.Id, item.SettlementId, item.UrbanLocationId))
             .ToArray(),
-        log.ToArray());
+        log.ToArray(),
+        new Dictionary<string, SettlementResourceLedger>(resourceLedgers, StringComparer.Ordinal),
+        new Dictionary<string, OrganizationState>(organizations, StringComparer.Ordinal),
+        organizationCommissions.ToArray());
 
     public void TravelTo(string destinationId)
     {
@@ -513,6 +544,20 @@ public sealed class GameSession
             throw new InvalidOperationException(opportunity.BlockReason ?? "你目前无法抓住这个机会。");
         }
 
+        if (opportunity.Kind == CareerOpportunityKind.OrganizationCommission)
+        {
+            if (opportunity.IsAcceptance)
+            {
+                AcceptOrganizationCommission(opportunity);
+            }
+            else
+            {
+                FulfillOrganizationCommission(opportunity);
+            }
+
+            return;
+        }
+
         if (opportunity.Kind == CareerOpportunityKind.BranchIntervention)
         {
             InterveneInBranch(opportunity);
@@ -649,6 +694,7 @@ public sealed class GameSession
             var previous = Date;
             Date = Date.AddDays(1);
             UpdateCommitmentsForDate();
+            UpdateOrganizationCommissionsForDate();
             UpdateCareerForDate();
             UpdateHistoricalBranchesForDate();
             RunDailyWorldStep();
@@ -666,6 +712,7 @@ public sealed class GameSession
         {
             BuildBackgroundCareerOpportunity(),
         };
+        opportunities.AddRange(BuildOrganizationOpportunities());
         opportunities.AddRange(historicalBranches.Values
             .Where(item => item.Status == HistoricalBranchStatus.Active && item.Outcome == HistoricalBranchOutcome.Undecided)
             .OrderBy(item => item.ResolvesOn.Year)
@@ -673,6 +720,209 @@ public sealed class GameSession
             .ThenBy(item => item.ResolvesOn.Day)
             .Select(BuildBranchOpportunity));
         return opportunities;
+    }
+
+    private IReadOnlyList<CareerOpportunity> BuildOrganizationOpportunities()
+    {
+        var active = organizationCommissions.SingleOrDefault(item => item.Status == OrganizationCommissionStatus.Accepted);
+        if (active is not null)
+        {
+            var organization = organizations[active.OrganizationId];
+            var atRequiredPlace = Player.SettlementId == active.SettlementId &&
+                Player.UrbanLocationId == active.UrbanLocationId;
+            var canFinishBeforeDeadline = Date.AddDays(active.DurationDays).DaysUntil(active.DueDate) >= 0;
+            var settlement = Scenario.Map.GetSettlement(active.SettlementId);
+            var location = settlement.UrbanLocations.Single(item => item.Id == active.UrbanLocationId);
+            var blockReason = !atRequiredPlace
+                ? $"需要前往{settlement.Name}·{location.Name}向{organization.Name}交付。"
+                : !canFinishBeforeDeadline
+                    ? $"期限是{active.DueDate}，已经来不及完成。"
+                    : null;
+            return
+            [
+                new CareerOpportunity(
+                    $"commission:fulfill:{active.Id}",
+                    CareerOpportunityKind.OrganizationCommission,
+                    $"履行委托：{active.Title}",
+                    $"{active.Description} 委托方：{organization.Name}；期限：{active.DueDate}；完成后得{active.RewardMoney}钱，并真实改变当地账本。",
+                    active.DurationDays,
+                    0,
+                    blockReason is null,
+                    blockReason,
+                    OrganizationId: active.OrganizationId,
+                    OrganizationNeed: active.Need,
+                    CommissionId: active.Id,
+                    RewardMoney: active.RewardMoney),
+            ];
+        }
+
+        return OrganizationsAtCurrentLocation
+            .Where(organization => !organizationCommissions.Any(commission =>
+                commission.OrganizationId == organization.Id &&
+                commission.AcceptedOn.DaysUntil(Date) < 10))
+            .Select(BuildOrganizationOffer)
+            .ToArray();
+    }
+
+    private CareerOpportunity BuildOrganizationOffer(OrganizationState organization)
+    {
+        var need = DetermineOrganizationNeed(organization);
+        var definition = CommissionDefinition(need);
+        return new CareerOpportunity(
+            $"commission:accept:{organization.Id}:{need}",
+            CareerOpportunityKind.OrganizationCommission,
+            $"接受委托：{definition.Title}",
+            $"{organization.Name}因{NeedReason(organization, need)}发出委托。{definition.Description} 接下后须在八日内回来交付。",
+            0,
+            0,
+            true,
+            OrganizationId: organization.Id,
+            OrganizationNeed: need,
+            IsAcceptance: true,
+            RewardMoney: definition.Reward);
+    }
+
+    private (string Title, string Description, int Duration, int Reward) CommissionDefinition(OrganizationNeedKind need) =>
+        (need, Player.Background.Id) switch
+        {
+            (OrganizationNeedKind.Grain, "background.clerk") => ("核清仓廪出入", "核对仓册、查明积压，使可用粮秣重新进入调拨。", 3, 150),
+            (OrganizationNeedKind.Grain, "background.ranger") => ("护送一批粮车", "沿途联络乡里并护住粮车，把短缺的粮秣送入城中。", 3, 170),
+            (OrganizationNeedKind.Grain, _) => ("联络赈粮", "拜访士人与富户，协调一批能够立即动用的粮秣。", 3, 130),
+            (OrganizationNeedKind.Treasury, "background.clerk") => ("厘清积欠钱粮", "整理积欠与重复摊派，为组织追回能够动用的钱财。", 3, 160),
+            (OrganizationNeedKind.Treasury, "background.ranger") => ("追回商路欠款", "凭地方人脉找到拖欠者，促成一笔旧账结清。", 3, 170),
+            (OrganizationNeedKind.Treasury, _) => ("劝募地方助资", "以声望和书信联络地方人士，为眼前事务筹措经费。", 3, 140),
+            (OrganizationNeedKind.Labor, "background.clerk") => ("重编差役名册", "剔除重名与逃户，让有限人力能被实际调度。", 3, 150),
+            (OrganizationNeedKind.Labor, "background.ranger") => ("召集乡里帮手", "依靠乡里信用召集一批愿意承担急务的人手。", 3, 160),
+            (OrganizationNeedKind.Labor, _) => ("协调乡里出力", "解释事务利害，减少推诿并组织可用人手。", 3, 140),
+            (OrganizationNeedKind.RoadSecurity, "background.clerk") => ("查验沿途关津", "核对关津文书与巡检安排，压低沿路勒索和疏漏。", 3, 160),
+            (OrganizationNeedKind.RoadSecurity, "background.ranger") => ("巡护邻近道路", "带熟悉地形的同伴巡护道路，震慑劫掠者。", 3, 180),
+            _ => ("联络沿途坞壁", "以书信和地方关系协调沿路互保，减少行旅阻滞。", 3, 145),
+        };
+
+    private OrganizationNeedKind DetermineOrganizationNeed(OrganizationState organization)
+    {
+        var ledger = resourceLedgers[organization.SettlementId];
+        var roadRisk = Scenario.Map.Roads
+            .Where(item => item.Connects(organization.SettlementId))
+            .Select(item => roadStates[item.Id].Risk)
+            .DefaultIfEmpty(0)
+            .Max();
+        return organization.Kind switch
+        {
+            OrganizationKind.MerchantGuild when roadRisk >= 35 => OrganizationNeedKind.RoadSecurity,
+            OrganizationKind.LocalMilitia => OrganizationNeedKind.RoadSecurity,
+            OrganizationKind.ScholarNetwork when ledger.Labor < ledger.Grain => OrganizationNeedKind.Labor,
+            OrganizationKind.ScholarNetwork => OrganizationNeedKind.Grain,
+            _ when organization.Treasury <= organization.Grain && organization.Treasury <= organization.Personnel => OrganizationNeedKind.Treasury,
+            _ when organization.Grain <= organization.Personnel => OrganizationNeedKind.Grain,
+            _ => OrganizationNeedKind.Labor,
+        };
+    }
+
+    private string NeedReason(OrganizationState organization, OrganizationNeedKind need)
+    {
+        var ledger = resourceLedgers[organization.SettlementId];
+        return need switch
+        {
+            OrganizationNeedKind.Grain => $"当地粮储仅为 {ledger.Grain}/100",
+            OrganizationNeedKind.Treasury => $"组织可用钱财仅为 {organization.Treasury}/100",
+            OrganizationNeedKind.Labor => $"当地可用人力仅为 {ledger.Labor}/100",
+            _ => $"邻近道路最高风险已达 {HighestAdjacentRoadRisk(organization.SettlementId)}/100",
+        };
+    }
+
+    private int HighestAdjacentRoadRisk(string settlementId) => Scenario.Map.Roads
+        .Where(item => item.Connects(settlementId))
+        .Select(item => roadStates[item.Id].Risk)
+        .DefaultIfEmpty(0)
+        .Max();
+
+    private void AcceptOrganizationCommission(CareerOpportunity opportunity)
+    {
+        if (organizationCommissions.Any(item => item.Status == OrganizationCommissionStatus.Accepted))
+        {
+            throw new InvalidOperationException("你已有一项组织委托尚未交付，不能同时作出另一项承诺。");
+        }
+
+        var organization = organizations[opportunity.OrganizationId!];
+        var definition = CommissionDefinition(opportunity.OrganizationNeed!.Value);
+        var commission = new OrganizationCommissionState(
+            $"commission.{organizationCommissions.Count + 1:D4}",
+            organization.Id,
+            opportunity.OrganizationNeed.Value,
+            definition.Title,
+            definition.Description,
+            organization.SettlementId,
+            organization.UrbanLocationId,
+            Date,
+            Date.AddDays(8),
+            definition.Duration,
+            definition.Reward,
+            OrganizationCommissionStatus.Accepted,
+            string.Empty);
+        organizationCommissions.Add(commission);
+        AddLog(LogCategory.Commitment, $"你接下{organization.Name}的“{commission.Title}”，承诺在{commission.DueDate}前回到此处完成。委托来自真实资源缺口，不会永远停在原地等你。 ");
+    }
+
+    private void FulfillOrganizationCommission(CareerOpportunity opportunity)
+    {
+        var index = organizationCommissions.FindIndex(item =>
+            item.Id == opportunity.CommissionId && item.Status == OrganizationCommissionStatus.Accepted);
+        if (index < 0)
+        {
+            throw new InvalidOperationException("这项组织委托已经失效。");
+        }
+
+        var commission = organizationCommissions[index];
+        var organization = organizations[commission.OrganizationId];
+        AdvanceDays(commission.DurationDays);
+        ApplyCommissionImpact(commission, succeeded: true);
+        Player = Player with { Money = Player.Money + commission.RewardMoney };
+        GainCareer(2, 2, 1);
+        organizationCommissions[index] = commission with
+        {
+            Status = OrganizationCommissionStatus.Completed,
+            Result = $"你完成了委托，{organization.Name}的缺口得到缓解。",
+        };
+        AddLog(LogCategory.Career, $"你向{organization.Name}交付“{commission.Title}”，获得{commission.RewardMoney}钱；当地资源账本和组织资产已经同步改变。阶段目标推进 2，声望 +2，人脉 +1。 ");
+    }
+
+    private void ApplyCommissionImpact(OrganizationCommissionState commission, bool succeeded)
+    {
+        var direction = succeeded ? 1 : -1;
+        var ledger = resourceLedgers[commission.SettlementId];
+        var organization = organizations[commission.OrganizationId];
+        var cause = succeeded ? $"玩家完成{organization.Name}的“{commission.Title}”" : $"“{commission.Title}”逾期无人完成";
+        resourceLedgers[commission.SettlementId] = commission.Need switch
+        {
+            OrganizationNeedKind.Grain => ledger.Apply(0, 12 * direction, 0, -2 * direction, cause),
+            OrganizationNeedKind.Treasury => ledger.Apply(0, 0, 10 * direction, -1 * direction, cause),
+            OrganizationNeedKind.Labor => ledger.Apply(0, 0, 0, 12 * direction, cause),
+            _ => ledger.Apply(0, 2 * direction, 0, -3 * direction, cause),
+        };
+        organizations[commission.OrganizationId] = commission.Need switch
+        {
+            OrganizationNeedKind.Grain => organization.Apply(-2 * direction, 10 * direction, 1 * direction, 1 * direction),
+            OrganizationNeedKind.Treasury => organization.Apply(10 * direction, 0, 1 * direction, 1 * direction),
+            OrganizationNeedKind.Labor => organization.Apply(-2 * direction, 0, 10 * direction, 1 * direction),
+            _ => organization.Apply(-3 * direction, -1 * direction, 3 * direction, 2 * direction),
+        };
+
+        if (commission.Need == OrganizationNeedKind.RoadSecurity)
+        {
+            foreach (var road in Scenario.Map.Roads.Where(item => item.Connects(commission.SettlementId)))
+            {
+                roadStates[road.Id] = roadStates[road.Id].Apply(succeeded ? -6 : 4);
+            }
+        }
+
+        AddLocalPressure(
+            commission.SettlementId,
+            succeeded ? 2 : -2,
+            commission.Need == OrganizationNeedKind.Grain ? (succeeded ? -2 : 2) : 0,
+            succeeded ? 1 : -1,
+            succeeded ? 1 : -1,
+            cause);
     }
 
     private CareerOpportunity BuildBackgroundCareerOpportunity()
@@ -870,6 +1120,31 @@ public sealed class GameSession
         }
     }
 
+    private void UpdateOrganizationCommissionsForDate()
+    {
+        for (var i = 0; i < organizationCommissions.Count; i++)
+        {
+            var commission = organizationCommissions[i];
+            if (commission.Status != OrganizationCommissionStatus.Accepted || commission.DueDate.DaysUntil(Date) <= 0)
+            {
+                continue;
+            }
+
+            ApplyCommissionImpact(commission, succeeded: false);
+            organizationCommissions[i] = commission with
+            {
+                Status = OrganizationCommissionStatus.Failed,
+                Result = "你没有在期限内履行承诺，原有缺口进一步恶化。",
+            };
+            AddLog(LogCategory.Commitment, $"你错过了{organizations[commission.OrganizationId].Name}委托“{commission.Title}”的期限。承诺失败，组织资产、地方账本和你的生涯记录都留下了后果。 ");
+            Career = Career with
+            {
+                Reputation = Math.Max(0, Career.Reputation - 2),
+                Network = Math.Max(0, Career.Network - 1),
+            };
+        }
+    }
+
     private void UpdateCareerForDate()
     {
         if (Date.Day is 1 or 11 or 21)
@@ -1006,6 +1281,94 @@ public sealed class GameSession
         }
     }
 
+    private void InitializeOrganizationWorldState()
+    {
+        foreach (var settlement in Scenario.Map.Settlements)
+        {
+            var local = settlementStates[settlement.Id];
+            var ledger = new SettlementResourceLedger(
+                settlement.Id,
+                Math.Clamp(40 + (local.Prosperity / 2), 0, 100),
+                Math.Clamp(105 - local.GrainPrice, 0, 100),
+                Math.Clamp((local.GovernmentControl + local.Prosperity) / 2, 0, 100),
+                Math.Clamp((local.Security + local.GovernmentControl) / 2, 0, 100),
+                "依据地方状态建立的 D 级玩法标定");
+            resourceLedgers[settlement.Id] = ledger;
+
+            var primaryLocations = settlement.UrbanLocations
+                .Where(item => item.Type is UrbanLocationType.GovernmentOffice or UrbanLocationType.School or UrbanLocationType.Market or UrbanLocationType.Barracks)
+                .Select(item => (Location: item, Kind: OrganizationKindFor(item.Type)))
+                .ToList();
+            if (!primaryLocations.Any(item => item.Kind == OrganizationKind.MerchantGuild))
+            {
+                var fallback = settlement.UrbanLocations.FirstOrDefault(item => item.Type is UrbanLocationType.Inn or UrbanLocationType.Tavern);
+                if (fallback is not null)
+                {
+                    primaryLocations.Add((fallback, OrganizationKind.MerchantGuild));
+                }
+            }
+
+            foreach (var (location, kind) in primaryLocations)
+            {
+                var id = $"organization.{settlement.Id["settlement.".Length..]}.{OrganizationKindId(kind)}";
+                organizations[id] = CreateOrganization(id, settlement, location, kind, local, ledger);
+            }
+        }
+    }
+
+    private static OrganizationKind OrganizationKindFor(UrbanLocationType type) => type switch
+    {
+        UrbanLocationType.GovernmentOffice => OrganizationKind.Government,
+        UrbanLocationType.School => OrganizationKind.ScholarNetwork,
+        UrbanLocationType.Barracks => OrganizationKind.LocalMilitia,
+        _ => OrganizationKind.MerchantGuild,
+    };
+
+    private static string OrganizationKindId(OrganizationKind kind) => kind switch
+    {
+        OrganizationKind.Government => "government",
+        OrganizationKind.ScholarNetwork => "scholars",
+        OrganizationKind.MerchantGuild => "merchants",
+        OrganizationKind.LocalMilitia => "militia",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
+
+    private static OrganizationState CreateOrganization(
+        string id,
+        Settlement settlement,
+        UrbanLocation location,
+        OrganizationKind kind,
+        SettlementState local,
+        SettlementResourceLedger ledger)
+    {
+        var name = kind switch
+        {
+            OrganizationKind.Government => $"{settlement.Name}官署",
+            OrganizationKind.ScholarNetwork => $"{settlement.Name}士人网络",
+            OrganizationKind.MerchantGuild => $"{settlement.Name}商旅互助会",
+            OrganizationKind.LocalMilitia => $"{settlement.Name}地方守备",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+        var assets = kind switch
+        {
+            OrganizationKind.Government => (ledger.Treasury, ledger.Grain, ledger.Labor, local.GovernmentControl),
+            OrganizationKind.ScholarNetwork => (35 + (local.Prosperity / 4), ledger.Grain, 30 + (local.Prosperity / 3), local.Prosperity),
+            OrganizationKind.MerchantGuild => (local.Prosperity, ledger.Grain, 35 + (local.Security / 3), local.Prosperity),
+            OrganizationKind.LocalMilitia => (30 + (local.GovernmentControl / 3), ledger.Grain, local.Security, local.GovernmentControl),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+        return new OrganizationState(
+            id,
+            name,
+            kind,
+            settlement.Id,
+            location.Id,
+            Math.Clamp(assets.Item1, 0, 100),
+            Math.Clamp(assets.Item2, 0, 100),
+            Math.Clamp(assets.Item3, 0, 100),
+            Math.Clamp(assets.Item4, 0, 100));
+    }
+
     private CareerState CreateInitialCareerState(PlayerBackground background)
     {
         var (title, description, target) = background.Id switch
@@ -1134,6 +1497,7 @@ public sealed class GameSession
         foreach (var settlement in Scenario.Map.Settlements.OrderBy(item => item.Id, StringComparer.Ordinal))
         {
             var before = settlementStates[settlement.Id];
+            var ledgerBefore = resourceLedgers[settlement.Id];
             var pressure = pendingLocalPressures.GetValueOrDefault(settlement.Id, LocalPressure.None);
             var structural = StructuralPressure(settlement.Id);
             var total = pressure.Add(
@@ -1144,10 +1508,13 @@ public sealed class GameSession
                 structural.Source);
             var after = before.Apply(total);
             settlementStates[settlement.Id] = after;
-            if (before != after)
+            ApplyOrganizationPeriodActions(settlement.Id);
+            ResolveResourceLedger(settlement.Id, after);
+            var ledgerAfter = resourceLedgers[settlement.Id];
+            if (before != after || ledgerBefore != ledgerAfter)
             {
                 var sources = string.Join("、", total.Sources.Take(3));
-                summaries.Add($"{settlement.Name}：治安 {Signed(after.Security - before.Security)}，粮价 {Signed(after.GrainPrice - before.GrainPrice)}，繁荣 {Signed(after.Prosperity - before.Prosperity)}，官府控制 {Signed(after.GovernmentControl - before.GovernmentControl)}；缘由：{sources}");
+                summaries.Add($"{settlement.Name}：治安 {Signed(after.Security - before.Security)}，粮价 {Signed(after.GrainPrice - before.GrainPrice)}，繁荣 {Signed(after.Prosperity - before.Prosperity)}，官府控制 {Signed(after.GovernmentControl - before.GovernmentControl)}；账本粮储 {Signed(ledgerAfter.Grain - ledgerBefore.Grain)}，府库 {Signed(ledgerAfter.Treasury - ledgerBefore.Treasury)}，人力 {Signed(ledgerAfter.Labor - ledgerBefore.Labor)}；缘由：{sources}、{ledgerAfter.LastCause}");
             }
         }
 
@@ -1174,6 +1541,60 @@ public sealed class GameSession
         {
             AddLog(LogCategory.Period, summary);
         }
+    }
+
+    private void ApplyOrganizationPeriodActions(string settlementId)
+    {
+        foreach (var organization in organizations.Values
+            .Where(item => item.SettlementId == settlementId)
+            .OrderBy(item => item.Id, StringComparer.Ordinal)
+            .ToArray())
+        {
+            var ledger = resourceLedgers[settlementId];
+            var need = DetermineOrganizationNeed(organization);
+            switch (need)
+            {
+                case OrganizationNeedKind.Grain when organization.Grain >= 4:
+                    organizations[organization.Id] = organization.Apply(0, -4, -1, 0);
+                    resourceLedgers[settlementId] = ledger.Apply(0, 3, 0, 0, $"{organization.Name}动用粮秣平抑短缺");
+                    break;
+                case OrganizationNeedKind.Treasury when organization.Personnel >= 3:
+                    organizations[organization.Id] = organization.Apply(3, 0, -3, 0);
+                    resourceLedgers[settlementId] = ledger.Apply(0, 0, 2, -1, $"{organization.Name}催办积欠以补府库");
+                    break;
+                case OrganizationNeedKind.Labor when organization.Influence >= 3:
+                    organizations[organization.Id] = organization.Apply(-1, 0, 2, -3);
+                    resourceLedgers[settlementId] = ledger.Apply(0, 0, 0, 2, $"{organization.Name}消耗影响力组织人手");
+                    break;
+                case OrganizationNeedKind.RoadSecurity when
+                    organization.Treasury >= 2 &&
+                    !Scenario.Map.Roads.Any(item =>
+                        item.Connects(settlementId) && pendingRoadPressures.GetValueOrDefault(item.Id) > 0):
+                    organizations[organization.Id] = organization.Apply(-2, 0, -1, 0);
+                    foreach (var road in Scenario.Map.Roads.Where(item => item.Connects(settlementId)))
+                    {
+                        roadStates[road.Id] = roadStates[road.Id].Apply(-1);
+                    }
+                    resourceLedgers[settlementId] = ledger.Apply(0, 1, 0, -1, $"{organization.Name}出资维持邻近道路");
+                    break;
+            }
+        }
+    }
+
+    private void ResolveResourceLedger(string settlementId, SettlementState local)
+    {
+        var ledger = resourceLedgers[settlementId];
+        var risk = HighestAdjacentRoadRisk(settlementId);
+        var populationDelta = local.Security < 40 ? -1 : local.Prosperity >= 75 ? 1 : 0;
+        var grainDelta = (local.Prosperity / 30) - (ledger.Population / 45) - (risk / 35);
+        var treasuryDelta = (local.GovernmentControl / 35) + (local.Prosperity / 40) - 3;
+        var laborDelta = (local.Security >= 60 ? 1 : 0) - (local.Prosperity >= 70 ? 1 : 0);
+        resourceLedgers[settlementId] = ledger.Apply(
+            populationDelta,
+            grainDelta,
+            treasuryDelta,
+            laborDelta,
+            risk >= 40 ? "道路风险、人口消耗与旬内收支共同结算" : "地方生产、人口消耗与旬内收支共同结算");
     }
 
     private (int Security, int GrainPrice, int Prosperity, int GovernmentControl, string Source) StructuralPressure(string settlementId)

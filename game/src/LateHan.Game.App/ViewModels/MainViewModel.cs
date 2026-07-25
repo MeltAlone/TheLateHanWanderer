@@ -34,6 +34,7 @@ public sealed class MapNodeViewModel
     public MapNodeViewModel(
         Settlement settlement,
         SettlementState localState,
+        SettlementResourceLedger ledger,
         bool isCurrent,
         Road? road,
         RoadState? roadState,
@@ -46,7 +47,7 @@ public sealed class MapNodeViewModel
         IsCurrent = isCurrent;
         IsReachable = road is not null;
         Status = isCurrent ? "当前位置" : road is null ? "尚无直达道路" : $"{road.TravelDays}日可达 · 风险 {roadState!.Risk}";
-        Condition = $"治安 {localState.Security} · 粮价 {localState.GrainPrice}";
+        Condition = $"治安 {localState.Security} · 粮价 {localState.GrainPrice}\n粮储 {ledger.Grain} · 府库 {ledger.Treasury}";
         TravelCommand = new RelayCommand(() => travel(Id), () => IsReachable);
     }
 
@@ -189,7 +190,9 @@ public sealed class CareerOpportunityViewModel
     {
         Opportunity = opportunity;
         var cost = opportunity.MoneyCost > 0 ? $"，耗{opportunity.MoneyCost}钱" : string.Empty;
-        Title = $"{opportunity.Title}（{opportunity.DurationDays}日{cost}）";
+        var reward = opportunity.RewardMoney > 0 ? $"，得{opportunity.RewardMoney}钱" : string.Empty;
+        var duration = opportunity.IsAcceptance ? "立即立约" : $"{opportunity.DurationDays}日";
+        Title = $"{opportunity.Title}（{duration}{cost}{reward}）";
         Description = opportunity.IsEnabled
             ? opportunity.Description
             : $"{opportunity.Description}\n受阻：{opportunity.BlockReason}";
@@ -411,13 +414,21 @@ public partial class MainViewModel : ViewModelBase
         SettlementDescription = session.CurrentSettlement.Description;
         LocationDescription = session.CurrentUrbanLocation.Description;
         var localState = session.CurrentSettlementState;
+        var ledger = session.CurrentResourceLedger;
+        var localOrganizations = session.OrganizationsAtCurrentLocation;
+        var organizationText = localOrganizations.Count == 0
+            ? "当前地点没有常驻组织"
+            : $"当前组织：{string.Join("、", localOrganizations.Select(item => $"{item.Name}（钱财 {item.Treasury}／粮秣 {item.Grain}／人手 {item.Personnel}／影响 {item.Influence}）"))}";
         SettlementStateText = $"治安 {localState.Security}　粮价 {localState.GrainPrice}　" +
-            $"繁荣 {localState.Prosperity}　官府控制 {localState.GovernmentControl}";
+            $"繁荣 {localState.Prosperity}　官府控制 {localState.GovernmentControl}\n" +
+            $"资源账本（0–100，D级玩法标定）：人口 {ledger.Population}　粮储 {ledger.Grain}　府库 {ledger.Treasury}　可用人力 {ledger.Labor}\n" +
+            organizationText;
 
         var destinations = session.AvailableDestinations.ToDictionary(item => item.Destination.Id, item => item.Road, StringComparer.Ordinal);
         Replace(MapNodes, scenario.Map.Settlements.Select(item => new MapNodeViewModel(
             item,
             session.StateOf(item.Id),
+            session.ResourceLedgers[item.Id],
             item.Id == session.Player.SettlementId,
             destinations.GetValueOrDefault(item.Id),
             destinations.TryGetValue(item.Id, out var road) ? session.StateOfRoad(road.Id) : null,
@@ -430,7 +441,7 @@ public partial class MainViewModel : ViewModelBase
             item,
             session.ConnectionWith(item.Profile.Id),
             SelectCharacter)));
-        Replace(Commitments, session.Commitments
+        var meetingCommitments = session.Commitments
             .Where(item => item.Status == CommitmentStatus.Scheduled)
             .Select(item =>
             {
@@ -438,7 +449,17 @@ public partial class MainViewModel : ViewModelBase
                 var settlement = scenario.Map.GetSettlement(item.SettlementId);
                 var location = settlement.UrbanLocations.Single(location => location.Id == item.UrbanLocationId);
                 return new CommitmentViewModel(character.Name, item.DueDate.ToString(), $"{settlement.Name}·{location.Name}", "待履行");
-            }));
+            });
+        var organizationCommitments = session.OrganizationCommissions
+            .Where(item => item.Status == OrganizationCommissionStatus.Accepted)
+            .Select(item =>
+            {
+                var organization = session.Organizations[item.OrganizationId];
+                var settlement = scenario.Map.GetSettlement(item.SettlementId);
+                var location = settlement.UrbanLocations.Single(location => location.Id == item.UrbanLocationId);
+                return new CommitmentViewModel($"{organization.Name}：{item.Title}", item.DueDate.ToString(), $"{settlement.Name}·{location.Name}", "待交付");
+            });
+        Replace(Commitments, meetingCommitments.Concat(organizationCommitments));
         Replace(CareerOpportunities, session.CareerOpportunities.Select(item =>
             new CareerOpportunityViewModel(item, ExecuteCareerOpportunity)));
         Replace(HistoricalBranches, session.HistoricalBranches.Select(item => new HistoricalBranchViewModel(
