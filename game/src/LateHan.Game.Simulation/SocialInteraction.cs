@@ -53,6 +53,8 @@ public enum InteractionActionKind
     ScheduleMeeting,
     AttendMeeting,
     DiscussTopic,
+    SupportPlan,
+    DissuadePlan,
 }
 
 public sealed record AvailableAction(

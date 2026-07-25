@@ -30,9 +30,17 @@ public sealed class JsonGameSaveStoreTests
             Assert.Equal(session.RoadStates, restored.RoadStates);
             Assert.Equal(session.Career, restored.Career);
             Assert.Equal(session.HistoricalBranches, restored.HistoricalBranches);
+            AssertPlansEqual(session.CharacterPlans, restored.CharacterPlans);
             Assert.Equal(session.ResourceLedgers, restored.ResourceLedgers);
             Assert.Equal(session.Organizations, restored.Organizations);
             Assert.Equal(session.OrganizationCommissions, restored.OrganizationCommissions);
+
+            session.Rest(5);
+            restored.Rest(5);
+            AssertPlansEqual(session.CharacterPlans, restored.CharacterPlans);
+            Assert.Equal(session.ResourceLedgers, restored.ResourceLedgers);
+            Assert.Equal(session.Organizations, restored.Organizations);
+            Assert.Equal(session.Log, restored.Log);
 
             restored.TravelTo("settlement.henei");
             Assert.Equal("settlement.henei", restored.Player.SettlementId);
@@ -177,6 +185,30 @@ public sealed class JsonGameSaveStoreTests
     }
 
     [Fact]
+    public void VersionFiveCharacterPlansReceiveMultiStepDefaults()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds[0]);
+        var legacyPlans = session.CharacterPlans.ToDictionary(
+            item => item.Key,
+            item => new CharacterPlanState(
+                item.Value.CharacterId,
+                item.Value.Goal,
+                item.Value.KnownSettlementIds,
+                item.Value.LastIntent),
+            StringComparer.Ordinal);
+        var versionFive = session.CreateSnapshot() with
+        {
+            SchemaVersion = 5,
+            CharacterPlans = legacyPlans,
+        };
+
+        var restored = GameSession.Restore(scenario, versionFive);
+
+        Assert.All(restored.CharacterPlans.Values, item => Assert.Equal(CharacterPlanStage.Assessing, item.Stage));
+    }
+
+    [Fact]
     public void VersionOneSnapshotMigratesLegacyFavor()
     {
         var scenario = DemoScenarioFactory.Create();
@@ -195,5 +227,19 @@ public sealed class JsonGameSaveStoreTests
         Assert.Equal(RecognitionLevel.Acquainted, restored.ConnectionWith("character.cai_yan").Recognition);
         Assert.Equal(3, restored.ConnectionWith("character.cai_yan").Favor);
         Assert.Contains(restored.KnownTopics, item => item.Id == "topic.court_upheaval");
+    }
+
+    private static void AssertPlansEqual(
+        IReadOnlyDictionary<string, CharacterPlanState> expected,
+        IReadOnlyDictionary<string, CharacterPlanState> actual)
+    {
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), actual.Keys.Order(StringComparer.Ordinal));
+        foreach (var characterId in expected.Keys)
+        {
+            Assert.Equal(expected[characterId].KnownSettlementIds, actual[characterId].KnownSettlementIds);
+            Assert.Equal(
+                expected[characterId] with { KnownSettlementIds = [] },
+                actual[characterId] with { KnownSettlementIds = [] });
+        }
     }
 }

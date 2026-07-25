@@ -96,7 +96,11 @@ public sealed class UrbanLocationViewModel
 
 public sealed class CharacterViewModel
 {
-    public CharacterViewModel(CharacterState state, RelationshipState relationship, Action<CharacterViewModel> select)
+    public CharacterViewModel(
+        CharacterState state,
+        RelationshipState relationship,
+        string planSummary,
+        Action<CharacterViewModel> select)
     {
         Id = state.Profile.Id;
         Name = relationship.Recognition == RecognitionLevel.Unknown ? $"一名{state.Profile.Identity}" : state.Profile.Name;
@@ -118,6 +122,7 @@ public sealed class CharacterViewModel
             ? $"统率 {ability.Command}　武艺 {ability.Martial}　智略 {ability.Strategy}\n" +
                 $"政务 {ability.Administration}　交涉 {ability.Diplomacy}　学识 {ability.Learning}"
             : "能力尚未掌握";
+        PlanSummary = planSummary;
         SelectCommand = new RelayCommand(() => select(this));
     }
 
@@ -146,6 +151,8 @@ public sealed class CharacterViewModel
     public string Motivations { get; }
 
     public string AbilitySummary { get; }
+
+    public string PlanSummary { get; }
 
     public IRelayCommand SelectCommand { get; }
 
@@ -440,6 +447,7 @@ public partial class MainViewModel : ViewModelBase
         Replace(LocalCharacters, session.CharactersAtCurrentLocation.Select(item => new CharacterViewModel(
             item,
             session.ConnectionWith(item.Profile.Id),
+            CharacterPlanSummary(session, item.Profile.Id),
             SelectCharacter)));
         var meetingCommitments = session.Commitments
             .Where(item => item.Status == CommitmentStatus.Scheduled)
@@ -503,6 +511,37 @@ public partial class MainViewModel : ViewModelBase
         HistoricalBranchStatus.Resolved => "已自行收束",
         _ => "未知",
     };
+
+    private static string CharacterPlanSummary(GameSession session, string characterId)
+    {
+        var relationship = session.ConnectionWith(characterId);
+        var plan = session.CharacterPlans[characterId];
+        if (relationship.Recognition < RecognitionLevel.Met)
+        {
+            return "动向：尚未建立足够接触，无法判断";
+        }
+
+        var stage = plan.Stage switch
+        {
+            CharacterPlanStage.Assessing => "观察机会",
+            CharacterPlanStage.Preparing => "筹备中",
+            CharacterPlanStage.Traveling => "行途中",
+            CharacterPlanStage.Executing => "执行中",
+            CharacterPlanStage.Completed => "已经完成",
+            CharacterPlanStage.Failed => "已经失败",
+            CharacterPlanStage.Cancelled => "已经取消",
+            _ => "未知",
+        };
+        if (relationship.Recognition < RecognitionLevel.Acquainted || plan.TargetOrganizationId is null)
+        {
+            return $"动向：{stage}";
+        }
+
+        var organization = session.Organizations[plan.TargetOrganizationId];
+        var timing = plan.NextStepOn is null ? string.Empty : $"，下一节点 {plan.NextStepOn}";
+        var result = string.IsNullOrWhiteSpace(plan.Result) ? string.Empty : $"；{plan.Result}";
+        return $"动向：{stage}，目标 {organization.Name}{timing}{result}";
+    }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> source)
     {

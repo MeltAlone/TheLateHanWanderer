@@ -354,17 +354,19 @@ public sealed class GameSessionTests
     public void MissingACommissionDeadlineWorsensTheOriginalShortage()
     {
         var scenario = DemoScenarioFactory.Create();
+        var control = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
         var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        control.EnterUrbanLocation("luoyang.government");
         session.EnterUrbanLocation("luoyang.government");
         var offer = session.CareerOpportunities.Single(item =>
             item.Kind == CareerOpportunityKind.OrganizationCommission && item.IsAcceptance);
         session.ExecuteCareerOpportunity(offer.Id);
-        var grainBeforeFailure = session.CurrentResourceLedger.Grain;
 
+        control.Rest(9);
         session.Rest(9);
 
         Assert.Equal(OrganizationCommissionStatus.Failed, Assert.Single(session.OrganizationCommissions).Status);
-        Assert.True(session.CurrentResourceLedger.Grain < grainBeforeFailure);
+        Assert.True(session.CurrentResourceLedger.Grain < control.CurrentResourceLedger.Grain);
         Assert.Contains(session.Log, item =>
             item.Category == LogCategory.Commitment && item.Text.Contains("组织资产", StringComparison.Ordinal));
     }
@@ -377,11 +379,130 @@ public sealed class GameSessionTests
 
         session.Rest(90);
 
-        Assert.True(session.ResourceLedgers.Values.Select(item => item.Grain).Distinct().Count() >= 3);
-        Assert.True(session.ResourceLedgers.Values.Select(item => item.Treasury).Distinct().Count() >= 3);
+        Assert.True(session.ResourceLedgers.Values
+            .Select(item => (item.Population, item.Grain, item.Treasury, item.Labor))
+            .Distinct()
+            .Count() >= 3);
         Assert.Contains(session.Organizations, item => item.Value != initialOrganizations[item.Key]);
         Assert.Contains(session.Log, item =>
             item.Category == LogCategory.Period && item.Text.Contains("账本粮储", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NpcPlansCompareKnownOpportunitiesAndReserveOrganizationResources()
+    {
+        var session = CreateSession();
+        var initialOrganizations = session.Organizations.ToDictionary(item => item.Key, item => item.Value);
+
+        session.Rest(10);
+
+        var formedPlans = session.CharacterPlans.Values
+            .Where(item => item.TargetOrganizationId is not null)
+            .ToArray();
+        Assert.NotEmpty(formedPlans);
+        Assert.Contains(formedPlans, item => item.KnownSettlementIds.Count > 1);
+        Assert.Contains(formedPlans, item =>
+            session.Organizations[item.TargetOrganizationId!] != initialOrganizations[item.TargetOrganizationId!]);
+        Assert.Contains(session.Log, item =>
+            item.Category == LogCategory.World &&
+            item.Text.Contains("权衡目标、能力、组织资源与行程", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NpcTravelFollowsAChosenPlanInsteadOfRandomMigration()
+    {
+        var session = CreateSession();
+
+        for (var day = 0; day < 20 && !session.CharacterPlans.Values.Any(item => item.Stage == CharacterPlanStage.Traveling); day++)
+        {
+            session.Rest();
+        }
+
+        var traveler = Assert.Single(session.CharacterPlans.Values.Where(item => item.Stage == CharacterPlanStage.Traveling).Take(1));
+        Assert.NotNull(traveler.TargetSettlementId);
+        Assert.NotNull(traveler.NextStepOn);
+        Assert.True(session.Date.DaysUntil(traveler.NextStepOn.Value) > 0);
+        Assert.Contains(session.Log, item =>
+            item.Text.Contains("履行对", StringComparison.Ordinal) && item.Text.Contains("承诺", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PlayerCanSupportOrCancelAVisibleNpcPlan()
+    {
+        var supported = CreatePlanInterventionSession();
+        var supportAction = supported.GetActionsForCharacter("character.wang_yun")
+            .Single(item => item.Kind == InteractionActionKind.SupportPlan);
+
+        supported.ExecuteInteraction(supportAction.Id);
+
+        Assert.Equal(15, supported.CharacterPlans["character.wang_yun"].PlayerSupport);
+        Assert.Equal(2, supported.ConnectionWith("character.wang_yun").Favor);
+
+        var cancelled = CreatePlanInterventionSession();
+        var cancelAction = cancelled.GetActionsForCharacter("character.wang_yun")
+            .Single(item => item.Kind == InteractionActionKind.DissuadePlan);
+
+        cancelled.ExecuteInteraction(cancelAction.Id);
+
+        Assert.Equal(CharacterPlanStage.Cancelled, cancelled.CharacterPlans["character.wang_yun"].Stage);
+        Assert.Contains(cancelled.Log, item =>
+            item.Category == LogCategory.Commitment && item.Text.Contains("暂缓", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdenticalInputsReplayNpcPlansDeterministically()
+    {
+        var first = CreateSession();
+        var second = CreateSession();
+
+        first.Rest(90);
+        second.Rest(90);
+
+        Assert.Equal(first.Date, second.Date);
+        Assert.Equal(first.ResourceLedgers, second.ResourceLedgers);
+        Assert.Equal(first.Organizations, second.Organizations);
+        foreach (var characterId in first.CharacterPlans.Keys)
+        {
+            var firstPlan = first.CharacterPlans[characterId];
+            var secondPlan = second.CharacterPlans[characterId];
+            Assert.Equal(firstPlan.KnownSettlementIds, secondPlan.KnownSettlementIds);
+            Assert.Equal(
+                firstPlan with { KnownSettlementIds = [] },
+                secondPlan with { KnownSettlementIds = [] });
+        }
+
+        Assert.Equal(first.Log, second.Log);
+    }
+
+    private static GameSession CreatePlanInterventionSession()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        var testDate = session.Date.AddDays(1);
+        var plans = session.CharacterPlans.ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+        plans["character.wang_yun"] = plans["character.wang_yun"] with
+        {
+            Stage = CharacterPlanStage.Preparing,
+            TargetOrganizationId = "organization.luoyang.government",
+            Need = OrganizationNeedKind.Grain,
+            TargetSettlementId = "settlement.luoyang",
+            TargetUrbanLocationId = "luoyang.government",
+            StartedOn = testDate,
+            NextStepOn = testDate.AddDays(3),
+            ReservedEffort = 3,
+            LastIntent = "准备核查洛阳粮储",
+        };
+        var connections = session.CreateSnapshot().SocialConnections!
+            .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+        connections["character.wang_yun"] = new RelationshipState(RecognitionLevel.Acquainted, 0, 20, 0);
+        var snapshot = session.CreateSnapshot() with
+        {
+            Date = testDate,
+            UrbanLocationId = "luoyang.government",
+            SocialConnections = connections,
+            CharacterPlans = plans,
+        };
+        return GameSession.Restore(scenario, snapshot);
     }
 
     private static GameSession CreateSession()

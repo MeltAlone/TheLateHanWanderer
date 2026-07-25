@@ -58,6 +58,12 @@ public sealed record GameSnapshot(
 
 public sealed class GameSession
 {
+    private sealed record CharacterPlanCandidate(
+        OrganizationState Organization,
+        OrganizationNeedKind Need,
+        int Score,
+        int TravelDays);
+
     private readonly Dictionary<string, CharacterState> characters;
     private readonly Dictionary<string, RelationshipState> socialConnections = new(StringComparer.Ordinal);
     private readonly HashSet<string> knownTopicIds = new(StringComparer.Ordinal);
@@ -115,7 +121,7 @@ public sealed class GameSession
 
     private GameSession(GameScenario scenario, GameSnapshot snapshot)
     {
-        if (snapshot.SchemaVersion is < 1 or > 5)
+        if (snapshot.SchemaVersion is < 1 or > 6)
         {
             throw new InvalidOperationException($"不支持的存档版本：{snapshot.SchemaVersion}");
         }
@@ -257,7 +263,10 @@ public sealed class GameSession
         .ToArray();
 
     public IReadOnlyList<CharacterState> CharactersAtCurrentLocation => characters.Values
-        .Where(item => item.SettlementId == Player.SettlementId && item.UrbanLocationId == Player.UrbanLocationId)
+        .Where(item =>
+            item.SettlementId == Player.SettlementId &&
+            item.UrbanLocationId == Player.UrbanLocationId &&
+            characterPlans[item.Profile.Id].Stage != CharacterPlanStage.Traveling)
         .OrderBy(item => item.Profile.Name, StringComparer.Ordinal)
         .ToArray();
 
@@ -276,7 +285,7 @@ public sealed class GameSession
     public static GameSession Restore(GameScenario scenario, GameSnapshot snapshot) => new(scenario, snapshot);
 
     public GameSnapshot CreateSnapshot() => new(
-        5,
+        6,
         Scenario.Id,
         Date,
         Player.Background.Id,
@@ -430,6 +439,8 @@ public sealed class GameSession
                 true));
         }
 
+        AddPlanInterventions(character, connection, blockReason, actions);
+
         return actions;
     }
 
@@ -467,6 +478,12 @@ public sealed class GameSession
                 break;
             case InteractionActionKind.DiscussTopic:
                 DiscussTopic(character, action.TopicId!);
+                break;
+            case InteractionActionKind.SupportPlan:
+                SupportCharacterPlan(character);
+                break;
+            case InteractionActionKind.DissuadePlan:
+                DissuadeCharacterPlan(character);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(actionId));
@@ -620,6 +637,90 @@ public sealed class GameSession
         AdvanceDays(1);
         GainCareer(0, 1, 1);
         AddLog(LogCategory.Encounter, $"你与{character.Profile.Name}谈论“{topic.Title}”。对方愿意认真回应，彼此的判断多了一处交集（好感 +1，信任 +1）。");
+    }
+
+    private void AddPlanInterventions(
+        CharacterState character,
+        RelationshipState connection,
+        string? meetingBlockReason,
+        List<AvailableAction> actions)
+    {
+        var plan = characterPlans[character.Profile.Id];
+        if (connection.Recognition < RecognitionLevel.Met ||
+            plan.Stage is not (CharacterPlanStage.Preparing or CharacterPlanStage.Executing) ||
+            plan.TargetOrganizationId is null)
+        {
+            return;
+        }
+
+        var organization = organizations[plan.TargetOrganizationId];
+        var supportBlock = meetingBlockReason ?? (plan.PlayerSupport > 0 ? "你已经为这项计划出过力。" : null);
+        actions.Add(new AvailableAction(
+            $"interaction:support-plan:{character.Profile.Id}",
+            InteractionActionKind.SupportPlan,
+            character.Profile.Id,
+            "协助其正在推进的计划",
+            $"{character.Profile.Name}正在为{organization.Name}推进“{PlanNeedName(plan.Need!.Value)}”。投入一日协助会提高成功把握，并留下关系结果。",
+            1,
+            supportBlock is null,
+            supportBlock));
+
+        var canPersuade = connection.Recognition >= RecognitionLevel.Acquainted &&
+            Player.Abilities.Diplomacy + connection.Trust >= 60;
+        var dissuadeBlock = meetingBlockReason ?? (canPersuade
+            ? null
+            : "需要至少相识，并以交涉能力与既有信任取得足够分量。 ");
+        actions.Add(new AvailableAction(
+            $"interaction:dissuade-plan:{character.Profile.Id}",
+            InteractionActionKind.DissuadePlan,
+            character.Profile.Id,
+            "劝其暂缓当前计划",
+            $"说明局势已经变化，尝试让{character.Profile.Name}取消对{organization.Name}的这项承诺。成功会改变组织后续行动，也可能损伤彼此好感。",
+            1,
+            dissuadeBlock is null,
+            dissuadeBlock));
+    }
+
+    private void SupportCharacterPlan(CharacterState character)
+    {
+        var plan = characterPlans[character.Profile.Id];
+        if (plan.Stage is not (CharacterPlanStage.Preparing or CharacterPlanStage.Executing) || plan.PlayerSupport > 0)
+        {
+            throw new InvalidOperationException("这项人物计划现在不能再接受协助。");
+        }
+
+        characterPlans[character.Profile.Id] = plan with
+        {
+            PlayerSupport = 15,
+            LastIntent = $"获得玩家协助，继续推进{PlanNeedName(plan.Need!.Value)}",
+        };
+        UpdateConnection(character.Profile.Id, state => state.Improve(2, 1, RecognitionLevel.Acquainted));
+        GainCareer(1, 1, 1);
+        AdvanceDays(1);
+        AddLog(LogCategory.Encounter, $"你用一日协助{character.Profile.Name}推进计划。对方会把你的投入计入最后结果（好感 +2，信任 +1）。");
+    }
+
+    private void DissuadeCharacterPlan(CharacterState character)
+    {
+        var plan = characterPlans[character.Profile.Id];
+        if (plan.Stage is not (CharacterPlanStage.Preparing or CharacterPlanStage.Executing) ||
+            ConnectionWith(character.Profile.Id).Recognition < RecognitionLevel.Acquainted ||
+            Player.Abilities.Diplomacy + ConnectionWith(character.Profile.Id).Trust < 60)
+        {
+            throw new InvalidOperationException("你现在没有足够关系和分量让对方改变计划。");
+        }
+
+        ReleaseReservedPlanResources(plan, 1);
+        characterPlans[character.Profile.Id] = plan with
+        {
+            Stage = CharacterPlanStage.Cancelled,
+            NextStepOn = Date.AddDays(10),
+            LastIntent = "接受玩家劝说，暂缓原有计划",
+            Result = "玩家当面说明局势变化后，人物取消了承诺。",
+        };
+        UpdateConnection(character.Profile.Id, state => state.Improve(-1, 1, RecognitionLevel.Acquainted));
+        AdvanceDays(1);
+        AddLog(LogCategory.Commitment, $"你说服{character.Profile.Name}暂缓原有计划。组织收回了部分尚未耗用的资源；对方认可你的判断，但也记住了这次变更（好感 -1，信任 +1）。");
     }
 
     private void UpdateConnection(string characterId, Func<RelationshipState, RelationshipState> update)
@@ -1216,42 +1317,10 @@ public sealed class GameSession
 
     private void RunDailyWorldStep()
     {
-        foreach (var actor in characters.Values.OrderBy(item => item.Profile.Id, StringComparer.Ordinal))
+        foreach (var actor in characters.Values.OrderBy(item => item.Profile.Id, StringComparer.Ordinal).ToArray())
         {
-            ApplyCharacterIntent(actor);
+            AdvanceCharacterPlan(actor);
         }
-
-        if (Date.Day % 5 != 0 || characters.Count == 0)
-        {
-            return;
-        }
-
-        var ordered = characters.Values
-            .Where(item => !commitments.Any(commitment =>
-                commitment.CharacterId == item.Profile.Id && commitment.Status == CommitmentStatus.Scheduled))
-            .OrderBy(item => item.Profile.Id, StringComparer.Ordinal)
-            .ToArray();
-        if (ordered.Length == 0)
-        {
-            return;
-        }
-
-        var traveler = ordered[(Date.Day + Date.Month) % ordered.Length];
-        var destinations = Scenario.Map.GetDestinations(traveler.SettlementId);
-        if (destinations.Count == 0)
-        {
-            return;
-        }
-
-        var destination = destinations[(Date.Day / 5) % destinations.Count].Destination;
-        var road = destinations.Single(item => item.Destination.Id == destination.Id).Road;
-        characters[traveler.Profile.Id] = traveler with
-        {
-            SettlementId = destination.Id,
-            UrbanLocationId = destination.UrbanLocations[0].Id,
-        };
-        AddRoadPressure(road.Id, 1);
-        AddLog(LogCategory.World, $"传闻：{traveler.Profile.Name}离开{Scenario.Map.GetSettlement(traveler.SettlementId).Name}，动身前往{destination.Name}。这件事并非由玩家触发。");
     }
 
     private void InitializeLocalWorldState()
@@ -1467,29 +1536,386 @@ public sealed class GameSession
         _ => "征辟仍由门第与旧识主导，一批有才干却缺少声名的人没有得到机会。",
     };
 
-    private void ApplyCharacterIntent(CharacterState actor)
+    private void AdvanceCharacterPlan(CharacterState actor)
     {
-        if ((Date.Day - 1) % 10 != StableScheduleDay(actor.Profile.Id))
+        var plan = characterPlans[actor.Profile.Id];
+        switch (plan.Stage)
+        {
+            case CharacterPlanStage.Assessing:
+                if ((Date.Day - 1) % 10 == StableScheduleDay(actor.Profile.Id) &&
+                    !commitments.Any(item =>
+                        item.CharacterId == actor.Profile.Id && item.Status == CommitmentStatus.Scheduled))
+                {
+                    FormCharacterPlan(actor, plan);
+                }
+
+                break;
+            case CharacterPlanStage.Preparing when HasReached(plan.NextStepOn):
+                BeginCharacterPlanExecution(actor, plan);
+                break;
+            case CharacterPlanStage.Traveling when HasReached(plan.NextStepOn):
+                ArriveForCharacterPlan(actor, plan);
+                break;
+            case CharacterPlanStage.Executing when HasReached(plan.NextStepOn):
+                ResolveCharacterPlan(actor, plan);
+                break;
+            case CharacterPlanStage.Completed or CharacterPlanStage.Failed or CharacterPlanStage.Cancelled
+                when HasReached(plan.NextStepOn):
+                characterPlans[actor.Profile.Id] = plan with
+                {
+                    Stage = CharacterPlanStage.Assessing,
+                    TargetOrganizationId = null,
+                    Need = null,
+                    TargetSettlementId = null,
+                    TargetUrbanLocationId = null,
+                    StartedOn = null,
+                    NextStepOn = null,
+                    ReservedEffort = 0,
+                    PlayerSupport = 0,
+                    LastIntent = "重新观察已知地方，等待值得投入的机会",
+                };
+                break;
+        }
+    }
+
+    private void FormCharacterPlan(CharacterState actor, CharacterPlanState plan)
+    {
+        var candidate = BuildCharacterPlanCandidates(actor, plan)
+            .OrderByDescending(item => item.Score)
+            .ThenBy(item => item.Organization.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (candidate is null)
+        {
+            characterPlans[actor.Profile.Id] = plan with
+            {
+                LastIntent = "比较过已知机会，但没有组织能够承担眼前投入",
+            };
+            return;
+        }
+
+        ReservePlanResources(candidate.Organization.Id, candidate.Need);
+        var target = Scenario.Map.GetSettlement(candidate.Organization.SettlementId);
+        var intent = $"{PlanGoalVerb(plan.Goal)}，准备为{candidate.Organization.Name}处理{PlanNeedName(candidate.Need)}";
+        characterPlans[actor.Profile.Id] = plan with
+        {
+            Stage = CharacterPlanStage.Preparing,
+            TargetOrganizationId = candidate.Organization.Id,
+            Need = candidate.Need,
+            TargetSettlementId = candidate.Organization.SettlementId,
+            TargetUrbanLocationId = candidate.Organization.UrbanLocationId,
+            StartedOn = Date,
+            NextStepOn = Date.AddDays(1),
+            ReservedEffort = RequiredPlanEffort(candidate.Need),
+            PlayerSupport = 0,
+            LastIntent = intent,
+            Result = string.Empty,
+            KnownSettlementIds = plan.KnownSettlementIds
+                .Append(actor.SettlementId)
+                .Concat(Scenario.Map.GetDestinations(actor.SettlementId).Select(item => item.Destination.Id))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray(),
+        };
+        AddLog(
+            LogCategory.World,
+            $"传闻：{actor.Profile.Name}权衡目标、能力、组织资源与行程后，决定前往{target.Name}为{candidate.Organization.Name}处理{PlanNeedName(candidate.Need)}。这件事并非由玩家触发。");
+    }
+
+    private IReadOnlyList<CharacterPlanCandidate> BuildCharacterPlanCandidates(
+        CharacterState actor,
+        CharacterPlanState plan)
+    {
+        var destinations = Scenario.Map.GetDestinations(actor.SettlementId);
+        var reachable = destinations.ToDictionary(item => item.Destination.Id, item => item.Road, StringComparer.Ordinal);
+        var known = plan.KnownSettlementIds
+            .Append(actor.SettlementId)
+            .Concat(destinations.Select(item => item.Destination.Id))
+            .ToHashSet(StringComparer.Ordinal);
+        return organizations.Values
+            .Where(item => known.Contains(item.SettlementId))
+            .Where(item => item.SettlementId == actor.SettlementId || reachable.ContainsKey(item.SettlementId))
+            .Select(organization =>
+            {
+                var need = DetermineOrganizationNeed(organization);
+                var travelDays = organization.SettlementId == actor.SettlementId
+                    ? 0
+                    : reachable[organization.SettlementId].TravelDays;
+                return new CharacterPlanCandidate(
+                    organization,
+                    need,
+                    ScoreCharacterPlan(actor, plan.Goal, organization, need, travelDays),
+                    travelDays);
+            })
+            .Where(item => CanReservePlanResources(item.Organization, item.Need))
+            .ToArray();
+    }
+
+    private int ScoreCharacterPlan(
+        CharacterState actor,
+        CharacterGoal goal,
+        OrganizationState organization,
+        OrganizationNeedKind need,
+        int travelDays)
+    {
+        var roleFit = (actor.Profile.Roles, organization.Kind) switch
+        {
+            (var roles, OrganizationKind.Government) when roles.HasFlag(CharacterRole.Official) => 22,
+            (var roles, OrganizationKind.ScholarNetwork) when roles.HasFlag(CharacterRole.Scholar) => 22,
+            (var roles, OrganizationKind.MerchantGuild) when roles.HasFlag(CharacterRole.Merchant) => 22,
+            (var roles, OrganizationKind.LocalMilitia) when roles.HasFlag(CharacterRole.General) => 22,
+            (var roles, _) when roles.HasFlag(CharacterRole.LocalNotable) => 8,
+            _ => 0,
+        };
+        var goalFit = (goal, need) switch
+        {
+            (CharacterGoal.MaintainOrder, OrganizationNeedKind.RoadSecurity) => 35,
+            (CharacterGoal.MaintainOrder, OrganizationNeedKind.Labor) => 15,
+            (CharacterGoal.SecureSupplies, OrganizationNeedKind.Grain) => 35,
+            (CharacterGoal.SecureSupplies, OrganizationNeedKind.RoadSecurity) => 20,
+            (CharacterGoal.BuildInfluence, OrganizationNeedKind.Labor) => 30,
+            (CharacterGoal.BuildInfluence, OrganizationNeedKind.Treasury) => 15,
+            (CharacterGoal.SeekOpportunity, OrganizationNeedKind.Treasury or OrganizationNeedKind.Labor) => 22,
+            _ => 5,
+        };
+        var roadPenalty = organization.SettlementId == actor.SettlementId
+            ? 0
+            : HighestAdjacentRoadRisk(actor.SettlementId) / 8;
+        return NeedUrgency(organization, need) +
+            goalFit +
+            roleFit +
+            (RelevantPlanAbility(actor.Profile.Abilities, need) / 5) -
+            (travelDays * 6) -
+            roadPenalty;
+    }
+
+    private int NeedUrgency(OrganizationState organization, OrganizationNeedKind need)
+    {
+        var ledger = resourceLedgers[organization.SettlementId];
+        return need switch
+        {
+            OrganizationNeedKind.Grain => 100 - ledger.Grain,
+            OrganizationNeedKind.Treasury => 100 - organization.Treasury,
+            OrganizationNeedKind.Labor => 100 - ledger.Labor,
+            _ => HighestAdjacentRoadRisk(organization.SettlementId),
+        };
+    }
+
+    private static int RelevantPlanAbility(Abilities abilities, OrganizationNeedKind need) => need switch
+    {
+        OrganizationNeedKind.Grain => Math.Max(abilities.Administration, abilities.Strategy),
+        OrganizationNeedKind.Treasury => Math.Max(abilities.Administration, abilities.Diplomacy),
+        OrganizationNeedKind.Labor => Math.Max(abilities.Diplomacy, abilities.Administration),
+        _ => Math.Max(abilities.Command, abilities.Martial),
+    };
+
+    private static bool CanReservePlanResources(OrganizationState organization, OrganizationNeedKind need) => need switch
+    {
+        OrganizationNeedKind.Grain => organization.Treasury >= 2 && organization.Personnel >= 2,
+        OrganizationNeedKind.Treasury => organization.Personnel >= 3,
+        OrganizationNeedKind.Labor => organization.Treasury >= 1 && organization.Influence >= 3,
+        _ => organization.Treasury >= 3 && organization.Personnel >= 3,
+    };
+
+    private void ReservePlanResources(string organizationId, OrganizationNeedKind need)
+    {
+        var organization = organizations[organizationId];
+        organizations[organizationId] = need switch
+        {
+            OrganizationNeedKind.Grain => organization.Apply(-2, 0, -2, 0),
+            OrganizationNeedKind.Treasury => organization.Apply(0, 0, -3, 0),
+            OrganizationNeedKind.Labor => organization.Apply(-1, 0, 0, -3),
+            _ => organization.Apply(-3, 0, -3, 0),
+        };
+    }
+
+    private void ReleaseReservedPlanResources(CharacterPlanState plan, int amount)
+    {
+        if (plan.TargetOrganizationId is null || plan.Need is null)
         {
             return;
         }
 
-        var plan = characterPlans[actor.Profile.Id];
-        var settlementName = Scenario.Map.GetSettlement(actor.SettlementId).Name;
-        var (security, grain, prosperity, control, intent) = plan.Goal switch
+        var organization = organizations[plan.TargetOrganizationId];
+        organizations[plan.TargetOrganizationId] = plan.Need.Value switch
         {
-            CharacterGoal.MaintainOrder => (1, 0, 0, 1, $"{actor.Profile.Name}在{settlementName}整顿治安与公事"),
-            CharacterGoal.SecureSupplies => (0, -1, 1, 0, $"{actor.Profile.Name}在{settlementName}调度粮货与运输"),
-            CharacterGoal.BuildInfluence => (0, 0, 1, 1, $"{actor.Profile.Name}在{settlementName}经营地方关系"),
-            _ => (0, 1, 1, 0, $"{actor.Profile.Name}在{settlementName}访求机会，引来额外需求"),
-        };
-        AddLocalPressure(actor.SettlementId, security, grain, prosperity, control, intent);
-        characterPlans[actor.Profile.Id] = plan with
-        {
-            KnownSettlementIds = plan.KnownSettlementIds.Append(actor.SettlementId).Distinct(StringComparer.Ordinal).ToArray(),
-            LastIntent = intent,
+            OrganizationNeedKind.Grain => organization.Apply(amount, 0, amount, 0),
+            OrganizationNeedKind.Treasury => organization.Apply(0, 0, amount, 0),
+            OrganizationNeedKind.Labor => organization.Apply(amount, 0, 0, amount),
+            _ => organization.Apply(amount, 0, amount, 0),
         };
     }
+
+    private void BeginCharacterPlanExecution(CharacterState actor, CharacterPlanState plan)
+    {
+        var organization = organizations[plan.TargetOrganizationId!];
+        if (DetermineOrganizationNeed(organization) != plan.Need)
+        {
+            ReleaseReservedPlanResources(plan, 1);
+            characterPlans[actor.Profile.Id] = plan with
+            {
+                Stage = CharacterPlanStage.Cancelled,
+                NextStepOn = Date.AddDays(10),
+                LastIntent = "发现原有缺口已经变化，取消计划",
+                Result = "组织需求在筹备期间改变，原计划失去必要性。",
+            };
+            AddLog(LogCategory.World, $"{actor.Profile.Name}取消了为{organization.Name}准备的计划，因为原有资源缺口已经变化。");
+            return;
+        }
+
+        if (actor.SettlementId == organization.SettlementId)
+        {
+            characters[actor.Profile.Id] = actor with { UrbanLocationId = organization.UrbanLocationId };
+            characterPlans[actor.Profile.Id] = plan with
+            {
+                Stage = CharacterPlanStage.Executing,
+                NextStepOn = Date.AddDays(2),
+                LastIntent = $"已经开始为{organization.Name}处理{PlanNeedName(plan.Need!.Value)}",
+            };
+            return;
+        }
+
+        var route = Scenario.Map.GetDestinations(actor.SettlementId)
+            .SingleOrDefault(item => item.Destination.Id == organization.SettlementId);
+        if (route.Destination is null || route.Road is null)
+        {
+            FailCharacterPlan(actor, plan, "已知行程发生变化，无法抵达目标地点");
+            return;
+        }
+
+        AddRoadPressure(route.Road.Id, 1);
+        characterPlans[actor.Profile.Id] = plan with
+        {
+            Stage = CharacterPlanStage.Traveling,
+            NextStepOn = Date.AddDays(route.Road.TravelDays),
+            LastIntent = $"沿{route.Road.Description}前往{route.Destination.Name}",
+        };
+        AddLog(LogCategory.World, $"传闻：{actor.Profile.Name}离开{Scenario.Map.GetSettlement(actor.SettlementId).Name}，沿道路前往{route.Destination.Name}履行对{organization.Name}的承诺。");
+    }
+
+    private void ArriveForCharacterPlan(CharacterState actor, CharacterPlanState plan)
+    {
+        var organization = organizations[plan.TargetOrganizationId!];
+        characters[actor.Profile.Id] = actor with
+        {
+            SettlementId = organization.SettlementId,
+            UrbanLocationId = organization.UrbanLocationId,
+        };
+        characterPlans[actor.Profile.Id] = plan with
+        {
+            Stage = CharacterPlanStage.Executing,
+            NextStepOn = Date.AddDays(2),
+            KnownSettlementIds = plan.KnownSettlementIds
+                .Append(organization.SettlementId)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray(),
+            LastIntent = $"抵达{Scenario.Map.GetSettlement(organization.SettlementId).Name}，开始处理{PlanNeedName(plan.Need!.Value)}",
+        };
+        AddLog(LogCategory.World, $"{actor.Profile.Name}抵达{Scenario.Map.GetSettlement(organization.SettlementId).Name}，开始履行对{organization.Name}的承诺。");
+    }
+
+    private void ResolveCharacterPlan(CharacterState actor, CharacterPlanState plan)
+    {
+        var organization = organizations[plan.TargetOrganizationId!];
+        var ability = RelevantPlanAbility(actor.Profile.Abilities, plan.Need!.Value);
+        var executionScore = ability + plan.PlayerSupport + (organization.Influence / 5) + StableScheduleDay(actor.Profile.Id);
+        var difficulty = 72 + (NeedUrgency(organization, plan.Need.Value) / 4);
+        if (executionScore < difficulty)
+        {
+            FailCharacterPlan(actor, plan, $"能力与可用支援不足（把握 {executionScore}，难度 {difficulty}）");
+            return;
+        }
+
+        ApplyCharacterPlanImpact(actor, plan, organization);
+        characterPlans[actor.Profile.Id] = plan with
+        {
+            Stage = CharacterPlanStage.Completed,
+            NextStepOn = Date.AddDays(10),
+            LastIntent = $"完成了为{organization.Name}处理{PlanNeedName(plan.Need.Value)}的承诺",
+            Result = $"计划成功（把握 {executionScore}，难度 {difficulty}）。",
+        };
+        AddLog(LogCategory.World, $"{actor.Profile.Name}完成了对{organization.Name}的承诺：{PlanNeedName(plan.Need.Value)}得到缓解。组织资产与地方账本已经同步变化。");
+    }
+
+    private void ApplyCharacterPlanImpact(
+        CharacterState actor,
+        CharacterPlanState plan,
+        OrganizationState organization)
+    {
+        var ledger = resourceLedgers[organization.SettlementId];
+        var cause = $"{actor.Profile.Name}完成{organization.Name}的{PlanNeedName(plan.Need!.Value)}计划";
+        resourceLedgers[organization.SettlementId] = plan.Need.Value switch
+        {
+            OrganizationNeedKind.Grain => ledger.Apply(0, 6, 0, -1, cause),
+            OrganizationNeedKind.Treasury => ledger.Apply(0, 0, 6, -1, cause),
+            OrganizationNeedKind.Labor => ledger.Apply(0, 0, 0, 6, cause),
+            _ => ledger.Apply(0, 1, 0, -1, cause),
+        };
+        organizations[organization.Id] = plan.Need.Value switch
+        {
+            OrganizationNeedKind.Grain => organization.Apply(0, 4, 1, 1),
+            OrganizationNeedKind.Treasury => organization.Apply(5, 0, 1, 1),
+            OrganizationNeedKind.Labor => organization.Apply(0, 0, 5, 1),
+            _ => organization.Apply(0, 0, 2, 2),
+        };
+        if (plan.Need == OrganizationNeedKind.RoadSecurity)
+        {
+            foreach (var road in Scenario.Map.Roads.Where(item => item.Connects(organization.SettlementId)))
+            {
+                roadStates[road.Id] = roadStates[road.Id].Apply(-3);
+            }
+        }
+
+        AddLocalPressure(
+            organization.SettlementId,
+            plan.Need == OrganizationNeedKind.RoadSecurity ? 2 : 0,
+            plan.Need == OrganizationNeedKind.Grain ? -1 : 0,
+            1,
+            plan.Goal == CharacterGoal.MaintainOrder ? 1 : 0,
+            cause);
+    }
+
+    private void FailCharacterPlan(CharacterState actor, CharacterPlanState plan, string reason)
+    {
+        var organization = organizations[plan.TargetOrganizationId!];
+        var ledger = resourceLedgers[organization.SettlementId];
+        resourceLedgers[organization.SettlementId] = plan.Need switch
+        {
+            OrganizationNeedKind.Grain => ledger.Apply(0, -2, 0, 0, $"{actor.Profile.Name}的计划失败"),
+            OrganizationNeedKind.Treasury => ledger.Apply(0, 0, -2, 0, $"{actor.Profile.Name}的计划失败"),
+            OrganizationNeedKind.Labor => ledger.Apply(0, 0, 0, -2, $"{actor.Profile.Name}的计划失败"),
+            _ => ledger.Apply(0, -1, 0, -1, $"{actor.Profile.Name}的计划失败"),
+        };
+        characterPlans[actor.Profile.Id] = plan with
+        {
+            Stage = CharacterPlanStage.Failed,
+            NextStepOn = Date.AddDays(10),
+            LastIntent = $"未能完成对{organization.Name}的承诺",
+            Result = reason,
+        };
+        AddLog(LogCategory.World, $"{actor.Profile.Name}未能完成对{organization.Name}的承诺：{reason}。已经投入的资源没有凭空返还，原有缺口进一步恶化。");
+    }
+
+    private bool HasReached(GameDate? date) => date is not null && date.Value.DaysUntil(Date) >= 0;
+
+    private static int RequiredPlanEffort(OrganizationNeedKind need) =>
+        need == OrganizationNeedKind.RoadSecurity ? 4 : 3;
+
+    private static string PlanGoalVerb(CharacterGoal goal) => goal switch
+    {
+        CharacterGoal.MaintainOrder => "为整顿地方秩序寻找事务",
+        CharacterGoal.SecureSupplies => "为调度粮货寻找事务",
+        CharacterGoal.BuildInfluence => "为经营地方关系寻找事务",
+        _ => "为自身前途寻找事务",
+    };
+
+    private static string PlanNeedName(OrganizationNeedKind need) => need switch
+    {
+        OrganizationNeedKind.Grain => "粮储短缺",
+        OrganizationNeedKind.Treasury => "钱财不足",
+        OrganizationNeedKind.Labor => "人力不足",
+        _ => "道路治安",
+    };
 
     private void ResolveTenDayPeriod()
     {

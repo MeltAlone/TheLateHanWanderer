@@ -49,8 +49,29 @@ public enum CharacterGoal
     SeekOpportunity,
 }
 
+public enum CharacterPlanStage
+{
+    Assessing,
+    Preparing,
+    Traveling,
+    Executing,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
 public sealed record CharacterPlanState(
     string CharacterId,
     CharacterGoal Goal,
     IReadOnlyList<string> KnownSettlementIds,
-    string LastIntent);
+    string LastIntent,
+    CharacterPlanStage Stage = CharacterPlanStage.Assessing,
+    string? TargetOrganizationId = null,
+    OrganizationNeedKind? Need = null,
+    string? TargetSettlementId = null,
+    string? TargetUrbanLocationId = null,
+    GameDate? StartedOn = null,
+    GameDate? NextStepOn = null,
+    int ReservedEffort = 0,
+    int PlayerSupport = 0,
+    string Result = "");

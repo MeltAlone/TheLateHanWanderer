@@ -231,6 +231,7 @@
                                     <TextBlock Text="{Binding AbilitySummary}" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding Traits, StringFormat='性情：{0}'}" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding Motivations, StringFormat='动机：{0}'}" Classes="muted" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding PlanSummary}" Foreground="#D9B96E" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Grid>
                         </ScrollViewer>
