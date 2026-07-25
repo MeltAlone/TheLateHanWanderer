@@ -1,11 +1,15 @@
 # 汉末浮生（The Late Han Wanderer）
 
+> **2026-07-25 产品方向校正：** 正式游戏已在 [`game/`](game/) 下按日、旬、月尺度重新建立，采用州郡—城邑两层地图、统一人物模型和全中文可点击桌面界面。原有 `src/` 分钟级洛阳实现保留为技术原型，不再代表正式玩法尺度。详见[正式游戏实施计划](docs/game-plan.md)与[产品尺度重置](docs/design/product-scale-reset.md)。
+
 一款以汉末为背景、以个人为观察与行动尺度的动态历史模拟游戏。
 
-项目当前处于**世界机器技术尖峰阶段**。首要目标不是制作图形界面或堆叠剧情，而是建立一套能够自行运转、允许玩家介入、并能解释自身因果的世界规则。
+项目当前同时保留两条边界清晰的实现：`game/` 是正式游戏方向的可玩纵向切片；原有 `src/` 与 `tests/` 是世界机器技术尖峰，用于验证调度、认知、因果、存档和规模语义。
 
 ## 当前里程碑
 
+- 已建立正式游戏的 Avalonia 中文点击界面、日/旬/月日历、8 个战略地点、城内地点、24 名人物和 3 种身份。
+- 已走通“选择身份 -> 地图旅行 -> 进入城内地点 -> 拜访人物 -> 世界同步推进 -> 存读档”的首个宏观闭环。
 - 确立世界模拟总设计与“世界宪法”。
 - 建立历史研究的来源、置信度与争议处理规范。
 - 定义首个 189 年洛阳危机时空切片。
@@ -27,10 +31,13 @@ data/
 src/               模拟核心、场景/存档适配器与命令行界面
 tests/             确定性、因果、历史约束和压力测试
 tools/             史料导入、校验、模拟和调试工具
+game/              正式游戏领域、模拟、内容、存档、Avalonia 客户端与测试
 ```
 
 主要文档：
 
+- [正式游戏实施计划](docs/game-plan.md)
+- [正式产品尺度重置](docs/design/product-scale-reset.md)
 - [世界机器实施计划](docs/implementation-plan.md)
 - [世界模拟总设计](docs/design/overview.md)
 - [命令行 MVP 规格：雒阳四日](docs/design/mvp-spec.md)
@@ -44,6 +51,14 @@ tools/             史料导入、校验、模拟和调试工具
 - [架构决策记录](docs/decisions/README.md)
 
 ## 运行当前技术尖峰
+
+正式中文桌面切片：
+
+```powershell
+dotnet run --project game/src/LateHan.Game.App/LateHan.Game.App.csproj --configuration Release
+```
+
+以下命令运行旧分钟级世界机器技术尖峰。
 
 需要 .NET 10 SDK；`global.json` 当前锁定 `10.0.302`。
 
