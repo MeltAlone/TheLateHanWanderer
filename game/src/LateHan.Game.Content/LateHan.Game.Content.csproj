@@ -4,6 +4,10 @@
     <ProjectReference Include="..\LateHan.Game.Domain\LateHan.Game.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Data\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

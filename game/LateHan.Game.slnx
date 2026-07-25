@@ -12,4 +12,7 @@
     <Project Path="tests/LateHan.Game.Persistence.Tests/LateHan.Game.Persistence.Tests.csproj" />
     <Project Path="tests/LateHan.Game.Simulation.Tests/LateHan.Game.Simulation.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/LateHan.Game.Content.Tool/LateHan.Game.Content.Tool.csproj" />
+  </Folder>
 </Solution>

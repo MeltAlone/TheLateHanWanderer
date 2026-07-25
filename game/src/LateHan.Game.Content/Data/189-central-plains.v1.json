@@ -1,0 +1,3173 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "1.0.0",
+  "id": "scenario.189.central_plains",
+  "name": "\u4E2D\u5E73\u516D\u5E74\u00B7\u4EAC\u757F\u52A8\u8361",
+  "description": "\u6D1B\u9633\u653F\u5C40\u5267\u53D8\uFF0C\u5404\u5730\u4EBA\u7269\u5F00\u59CB\u91CD\u65B0\u9009\u62E9\u9053\u8DEF\u3002\u5386\u53F2\u63D0\u4F9B\u521D\u59CB\u7EA6\u675F\uFF0C\u6B64\u540E\u7ED3\u679C\u7531\u4E16\u754C\u4E2D\u7684\u884C\u52A8\u5171\u540C\u5F62\u6210\u3002",
+  "startDate": {
+    "year": 189,
+    "month": 8,
+    "day": 18,
+    "period": "Middle"
+  },
+  "startSettlementId": "settlement.luoyang",
+  "startUrbanLocationId": "luoyang.inn",
+  "settlements": [
+    {
+      "id": "settlement.luoyang",
+      "name": "\u6D1B\u9633",
+      "type": "Capital",
+      "regionName": "\u6CB3\u5357\u5C39",
+      "coordinate": {
+        "x": 48,
+        "y": 38
+      },
+      "description": "\u5929\u4E0B\u90FD\u57CE\uFF0C\u5BAB\u9619\u3001\u5B98\u7F72\u4E0E\u5E02\u4E95\u76F8\u4E92\u6324\u538B\u3002\u6743\u529B\u6D88\u606F\u6765\u5F97\u6700\u5FEB\uFF0C\u95E8\u7981\u548C\u8EAB\u4EFD\u4E5F\u6700\u68EE\u4E25\u3002",
+      "urbanLocations": [
+        {
+          "id": "luoyang.government",
+          "name": "\u6CB3\u5357\u5C39\u7F72",
+          "type": "GovernmentOffice",
+          "description": "\u5904\u7406\u4EAC\u757F\u6C11\u653F\u7684\u5B98\u7F72\uFF0C\u95E8\u524D\u5E38\u6709\u7B49\u5019\u901A\u62A5\u7684\u4EBA\u3002"
+        },
+        {
+          "id": "luoyang.inn",
+          "name": "\u5BA3\u9633\u91CC\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u884C\u65C5\u805A\u96C6\u7684\u5BA2\u820D\uFF0C\u6D88\u606F\u9A73\u6742\uFF0C\u5374\u662F\u5916\u6765\u8005\u6700\u5BB9\u6613\u843D\u811A\u4E4B\u5904\u3002"
+        },
+        {
+          "id": "luoyang.market",
+          "name": "\u91D1\u5E02",
+          "type": "Market",
+          "description": "\u5546\u8D3E\u3001\u5DE5\u5320\u4E0E\u6E38\u4EBA\u6C47\u805A\uFF0C\u7269\u4EF7\u4F1A\u968F\u5C40\u52BF\u53D8\u5316\u3002"
+        },
+        {
+          "id": "luoyang.school",
+          "name": "\u592A\u5B66",
+          "type": "School",
+          "description": "\u8BF8\u751F\u8BAE\u8BBA\u653F\u4E8B\u4E0E\u7ECF\u4E49\uFF0C\u540D\u671B\u548C\u5E08\u627F\u5728\u8FD9\u91CC\u683C\u5916\u91CD\u8981\u3002"
+        },
+        {
+          "id": "luoyang.residence",
+          "name": "\u5317\u90E8\u91CC\u5DF7",
+          "type": "Residence",
+          "description": "\u58EB\u4EBA\u548C\u5B98\u540F\u7684\u5B85\u90B8\u6563\u843D\u5176\u95F4\uFF0C\u62DC\u8BBF\u9700\u8981\u5173\u7CFB\u6216\u540D\u523A\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.mengjin",
+      "name": "\u5B5F\u6D25",
+      "type": "Ferry",
+      "regionName": "\u6CB3\u9633\u53BF",
+      "coordinate": {
+        "x": 46,
+        "y": 19
+      },
+      "description": "\u9EC4\u6CB3\u91CD\u8981\u6E21\u53E3\uFF0C\u821F\u8239\u3001\u519B\u9700\u548C\u8FC7\u5BA2\u8BA9\u6B64\u5730\u6BD4\u5BFB\u5E38\u53BF\u9091\u66F4\u654F\u611F\u3002",
+      "urbanLocations": [
+        {
+          "id": "mengjin.ferry",
+          "name": "\u5B5F\u6D25\u6E21",
+          "type": "Market",
+          "description": "\u6E21\u8239\u4E0E\u811A\u592B\u90FD\u53D7\u5929\u6C14\u548C\u519B\u4EE4\u5F71\u54CD\u3002"
+        },
+        {
+          "id": "mengjin.inn",
+          "name": "\u6CB3\u7554\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u5357\u6765\u5317\u5F80\u4E4B\u4EBA\u5728\u8FD9\u91CC\u7B49\u5019\u6E21\u6CB3\u3002"
+        },
+        {
+          "id": "mengjin.barracks",
+          "name": "\u6E21\u53E3\u8425",
+          "type": "Barracks",
+          "description": "\u5B88\u5352\u76D8\u67E5\u5F80\u6765\u6587\u4E66\u4E0E\u5927\u5B97\u8D27\u7269\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.henei",
+      "name": "\u6CB3\u5185",
+      "type": "CommanderySeat",
+      "regionName": "\u6CB3\u5185\u90E1",
+      "coordinate": {
+        "x": 37,
+        "y": 10
+      },
+      "description": "\u63A7\u627C\u592A\u884C\u4E0E\u9EC4\u6CB3\u5317\u5CB8\uFF0C\u7530\u5730\u548C\u4EBA\u53E3\u4F7F\u5176\u6709\u652F\u6491\u519B\u961F\u7684\u6F5C\u529B\u3002",
+      "urbanLocations": [
+        {
+          "id": "henei.government",
+          "name": "\u90E1\u5E9C",
+          "type": "GovernmentOffice",
+          "description": "\u90E1\u4E2D\u653F\u52A1\u548C\u5F81\u53D1\u7531\u6B64\u53D1\u51FA\u3002"
+        },
+        {
+          "id": "henei.inn",
+          "name": "\u5C71\u9633\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u5546\u65C5\u8C08\u8BBA\u5317\u5730\u9053\u8DEF\u548C\u90E1\u53BF\u5C40\u52BF\u3002"
+        },
+        {
+          "id": "henei.market",
+          "name": "\u6CB3\u5185\u5E02",
+          "type": "Market",
+          "description": "\u7CAE\u98DF\u3001\u7272\u755C\u548C\u5C71\u8D27\u5728\u6B64\u4EA4\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.hulao",
+      "name": "\u864E\u7262\u5173",
+      "type": "Pass",
+      "regionName": "\u6CB3\u5357\u5C39",
+      "coordinate": {
+        "x": 63,
+        "y": 37
+      },
+      "description": "\u6D1B\u9633\u4E1C\u9762\u7684\u9669\u8981\u5173\u9698\u3002\u5E73\u65F6\u68C0\u67E5\u884C\u65C5\uFF0C\u4E71\u65F6\u5219\u80FD\u51B3\u5B9A\u519B\u961F\u80FD\u5426\u8FDB\u5165\u4EAC\u757F\u3002",
+      "urbanLocations": [
+        {
+          "id": "hulao.gate",
+          "name": "\u5173\u95E8",
+          "type": "Barracks",
+          "description": "\u5B88\u5352\u3001\u62D2\u9A6C\u548C\u67E5\u9A8C\u6587\u4E66\u7684\u6848\u51E0\u5360\u636E\u9053\u8DEF\u3002"
+        },
+        {
+          "id": "hulao.inn",
+          "name": "\u5173\u4E0B\u9006\u65C5",
+          "type": "Inn",
+          "description": "\u8D76\u4E0D\u4E0A\u5F00\u5173\u65F6\u8FB0\u7684\u884C\u65C5\u53EA\u80FD\u5728\u6B64\u6295\u5BBF\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.chenggao",
+      "name": "\u6210\u768B",
+      "type": "CountySeat",
+      "regionName": "\u6CB3\u5357\u5C39",
+      "coordinate": {
+        "x": 72,
+        "y": 38
+      },
+      "description": "\u4F9D\u5C71\u4E34\u6CB3\u7684\u53BF\u9091\uFF0C\u8FDE\u63A5\u4EAC\u757F\u4E0E\u4E1C\u65B9\u8BF8\u90E1\uFF0C\u519B\u60C5\u548C\u5546\u8DEF\u5728\u8FD9\u91CC\u4EA4\u9519\u3002",
+      "urbanLocations": [
+        {
+          "id": "chenggao.government",
+          "name": "\u53BF\u5BFA",
+          "type": "GovernmentOffice",
+          "description": "\u53BF\u4E2D\u8BC9\u8BBC\u3001\u7A0E\u5F79\u4E0E\u6CBB\u5B89\u5728\u6B64\u529E\u7406\u3002"
+        },
+        {
+          "id": "chenggao.inn",
+          "name": "\u6C5C\u6C34\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u6CBF\u5B98\u9053\u4E1C\u884C\u7684\u4EBA\u5728\u6B64\u6362\u9A6C\u6B47\u811A\u3002"
+        },
+        {
+          "id": "chenggao.market",
+          "name": "\u6210\u768B\u5E02",
+          "type": "Market",
+          "description": "\u89C4\u6A21\u4E0D\u5927\uFF0C\u4F46\u80FD\u8865\u5145\u4E1C\u884C\u6240\u9700\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.xingyang",
+      "name": "\u8365\u9633",
+      "type": "CommanderySeat",
+      "regionName": "\u6CB3\u5357\u5C39\u4E1C\u90E8",
+      "coordinate": {
+        "x": 84,
+        "y": 42
+      },
+      "description": "\u4E1C\u51FA\u6D1B\u9633\u540E\u7684\u4EA4\u901A\u8282\u70B9\uFF0C\u5468\u8FB9\u4ED3\u50A8\u4E0E\u9053\u8DEF\u4F7F\u5B83\u5728\u52A8\u8361\u4E2D\u683C\u5916\u91CD\u8981\u3002",
+      "urbanLocations": [
+        {
+          "id": "xingyang.government",
+          "name": "\u8365\u9633\u5B98\u5BFA",
+          "type": "GovernmentOffice",
+          "description": "\u5730\u65B9\u5B98\u540F\u5728\u6B64\u7EF4\u6301\u5F81\u6536\u548C\u9A7F\u4F20\u3002"
+        },
+        {
+          "id": "xingyang.inn",
+          "name": "\u5E7F\u6B66\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u6765\u81EA\u9648\u7559\u3001\u988D\u5DDD\u548C\u6D1B\u9633\u7684\u6D88\u606F\u5728\u6B64\u78B0\u9762\u3002"
+        },
+        {
+          "id": "xingyang.market",
+          "name": "\u8365\u9633\u5E02",
+          "type": "Market",
+          "description": "\u7CAE\u4EF7\u548C\u8F66\u9A6C\u96C7\u4EF7\u6700\u80FD\u663E\u51FA\u5C40\u52BF\u53D8\u5316\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.chenliu",
+      "name": "\u9648\u7559",
+      "type": "CommanderySeat",
+      "regionName": "\u9648\u7559\u90E1",
+      "coordinate": {
+        "x": 103,
+        "y": 48
+      },
+      "description": "\u4EBA\u53E3\u4E0E\u4EA4\u901A\u6761\u4EF6\u4F18\u8D8A\u7684\u4E1C\u65B9\u5927\u90E1\uFF0C\u5730\u65B9\u8C6A\u5F3A\u3001\u5B98\u540F\u548C\u6E38\u58EB\u90FD\u5728\u89C2\u5BDF\u4EAC\u5E08\u53D8\u5316\u3002",
+      "urbanLocations": [
+        {
+          "id": "chenliu.government",
+          "name": "\u9648\u7559\u90E1\u5E9C",
+          "type": "GovernmentOffice",
+          "description": "\u90E1\u540F\u5F80\u6765\u9891\u7E41\uFF0C\u5730\u65B9\u5F81\u53D1\u7684\u98CE\u58F0\u4ECE\u8FD9\u91CC\u4F20\u51FA\u3002"
+        },
+        {
+          "id": "chenliu.inn",
+          "name": "\u6D5A\u4EEA\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u4E1C\u6765\u897F\u5F80\u7684\u58EB\u4EBA\u4E0E\u5546\u961F\u5728\u6B64\u505C\u7559\u3002"
+        },
+        {
+          "id": "chenliu.tavern",
+          "name": "\u57CE\u5357\u9152\u8086",
+          "type": "Tavern",
+          "description": "\u6E38\u4FA0\u3001\u5F79\u592B\u548C\u4E0D\u5F97\u5FD7\u7684\u58EB\u4EBA\u613F\u610F\u5728\u9152\u540E\u591A\u8BF4\u51E0\u53E5\u3002"
+        }
+      ]
+    },
+    {
+      "id": "settlement.yingchuan",
+      "name": "\u988D\u5DDD",
+      "type": "CommanderySeat",
+      "regionName": "\u988D\u5DDD\u90E1",
+      "coordinate": {
+        "x": 87,
+        "y": 67
+      },
+      "description": "\u58EB\u65CF\u4E0E\u5B66\u672F\u58F0\u671B\u5353\u8457\u7684\u90E1\u56FD\uFF0C\u4EBA\u7269\u54C1\u8BC4\u548C\u5730\u65B9\u5173\u7CFB\u7F51\u7EDC\u5F71\u54CD\u6DF1\u8FDC\u3002",
+      "urbanLocations": [
+        {
+          "id": "yingchuan.government",
+          "name": "\u988D\u5DDD\u90E1\u5E9C",
+          "type": "GovernmentOffice",
+          "description": "\u5C5E\u540F\u5904\u7406\u90E1\u4E2D\u653F\u52A1\uFF0C\u4E5F\u7559\u610F\u6765\u81EA\u4EAC\u5E08\u7684\u8BCF\u4EE4\u3002"
+        },
+        {
+          "id": "yingchuan.school",
+          "name": "\u988D\u5DDD\u4E66\u9662",
+          "type": "School",
+          "description": "\u58EB\u4EBA\u8BB2\u5B66\u6E05\u8BAE\uFF0C\u5E74\u8F7B\u4EBA\u7269\u5728\u6B64\u79EF\u7D2F\u58F0\u540D\u3002"
+        },
+        {
+          "id": "yingchuan.inn",
+          "name": "\u9633\u7FDF\u5BA2\u820D",
+          "type": "Inn",
+          "description": "\u6C42\u5B66\u3001\u6C42\u4ED5\u548C\u907F\u4E71\u8005\u5728\u6B64\u4EA4\u6362\u6D88\u606F\u3002"
+        }
+      ]
+    }
+  ],
+  "roads": [
+    {
+      "id": "road.luoyang.mengjin",
+      "fromSettlementId": "settlement.luoyang",
+      "toSettlementId": "settlement.mengjin",
+      "travelDays": 2,
+      "description": "\u5317\u4E0A\u5B5F\u6D25\u7684\u5B98\u9053"
+    },
+    {
+      "id": "road.mengjin.henei",
+      "fromSettlementId": "settlement.mengjin",
+      "toSettlementId": "settlement.henei",
+      "travelDays": 3,
+      "description": "\u6E21\u8FC7\u9EC4\u6CB3\u540E\u901A\u5F80\u6CB3\u5185\u7684\u9053\u8DEF"
+    },
+    {
+      "id": "road.luoyang.hulao",
+      "fromSettlementId": "settlement.luoyang",
+      "toSettlementId": "settlement.hulao",
+      "travelDays": 3,
+      "description": "\u6CBF\u6D1B\u6C34\u4E1C\u51FA\u7684\u5B98\u9053"
+    },
+    {
+      "id": "road.hulao.chenggao",
+      "fromSettlementId": "settlement.hulao",
+      "toSettlementId": "settlement.chenggao",
+      "travelDays": 2,
+      "description": "\u7A7F\u8FC7\u5173\u9698\u4E0E\u6C5C\u6C34\u7684\u5C71\u9053"
+    },
+    {
+      "id": "road.chenggao.xingyang",
+      "fromSettlementId": "settlement.chenggao",
+      "toSettlementId": "settlement.xingyang",
+      "travelDays": 2,
+      "description": "\u6CBF\u9EC4\u6CB3\u5357\u5CB8\u4E1C\u884C\u7684\u9A7F\u8DEF"
+    },
+    {
+      "id": "road.xingyang.chenliu",
+      "fromSettlementId": "settlement.xingyang",
+      "toSettlementId": "settlement.chenliu",
+      "travelDays": 4,
+      "description": "\u901A\u5411\u9648\u7559\u5E73\u539F\u7684\u5B98\u9053"
+    },
+    {
+      "id": "road.xingyang.yingchuan",
+      "fromSettlementId": "settlement.xingyang",
+      "toSettlementId": "settlement.yingchuan",
+      "travelDays": 5,
+      "description": "\u6298\u5411\u4E1C\u5357\u3001\u8FDE\u63A5\u988D\u5DDD\u7684\u90E1\u9053"
+    },
+    {
+      "id": "road.luoyang.yingchuan",
+      "fromSettlementId": "settlement.luoyang",
+      "toSettlementId": "settlement.yingchuan",
+      "travelDays": 7,
+      "description": "\u7ECF\u8F58\u8F95\u5173\u5357\u4E0B\u988D\u5DDD\u7684\u957F\u8DEF"
+    }
+  ],
+  "characters": [
+    {
+      "id": "character.cao_cao",
+      "name": "\u66F9\u64CD",
+      "courtesyName": "\u5B5F\u5FB7",
+      "gender": "Male",
+      "roles": "General, Official",
+      "identity": "\u897F\u56ED\u65E7\u90E8",
+      "abilities": {
+        "command": 72,
+        "martial": 68,
+        "strategy": 82,
+        "administration": 70,
+        "diplomacy": 76,
+        "learning": 74
+      },
+      "traits": [
+        "\u679C\u51B3",
+        "\u591A\u7591"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.residence",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.yuan_shao",
+      "name": "\u8881\u7ECD",
+      "courtesyName": "\u672C\u521D",
+      "gender": "Male",
+      "roles": "General, LocalNotable",
+      "identity": "\u540D\u95E8\u58EB\u4EBA",
+      "abilities": {
+        "command": 78,
+        "martial": 64,
+        "strategy": 70,
+        "administration": 62,
+        "diplomacy": 88,
+        "learning": 72
+      },
+      "traits": [
+        "\u77DC\u6301",
+        "\u91CD\u540D"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.residence",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.wang_yun",
+      "name": "\u738B\u5141",
+      "courtesyName": "\u5B50\u5E08",
+      "gender": "Male",
+      "roles": "Official",
+      "identity": "\u671D\u5EF7\u5B98\u5458",
+      "abilities": {
+        "command": 42,
+        "martial": 30,
+        "strategy": 76,
+        "administration": 84,
+        "diplomacy": 78,
+        "learning": 82
+      },
+      "traits": [
+        "\u521A\u76F4",
+        "\u6DF1\u8C0B"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.government",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.cai_yong",
+      "name": "\u8521\u9095",
+      "courtesyName": "\u4F2F\u5588",
+      "gender": "Male",
+      "roles": "Official, Scholar",
+      "identity": "\u540D\u58EB",
+      "abilities": {
+        "command": 22,
+        "martial": 18,
+        "strategy": 68,
+        "administration": 64,
+        "diplomacy": 76,
+        "learning": 96
+      },
+      "traits": [
+        "\u535A\u5B66",
+        "\u5FF5\u65E7"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.school",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.cai_yan",
+      "name": "\u8521\u7430",
+      "courtesyName": "\u6587\u59EC",
+      "gender": "Female",
+      "roles": "Scholar",
+      "identity": "\u58EB\u4EBA",
+      "abilities": {
+        "command": 18,
+        "martial": 14,
+        "strategy": 61,
+        "administration": 52,
+        "diplomacy": 66,
+        "learning": 91
+      },
+      "traits": [
+        "\u806A\u654F",
+        "\u575A\u97E7"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.school",
+      "affiliation": null
+    },
+    {
+      "id": "character.lady_bian",
+      "name": "\u535E\u6C0F",
+      "courtesyName": "",
+      "gender": "Female",
+      "roles": "LocalNotable",
+      "identity": "\u66F9\u6C0F\u5BB6\u7737",
+      "abilities": {
+        "command": 24,
+        "martial": 18,
+        "strategy": 70,
+        "administration": 72,
+        "diplomacy": 82,
+        "learning": 64
+      },
+      "traits": [
+        "\u6C89\u7740",
+        "\u8282\u4FED"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.residence",
+      "affiliation": "\u66F9\u6C0F"
+    },
+    {
+      "id": "character.lu_zhi",
+      "name": "\u5362\u690D",
+      "courtesyName": "\u5B50\u5E72",
+      "gender": "Male",
+      "roles": "General, Official, Scholar",
+      "identity": "\u5BBF\u5112",
+      "abilities": {
+        "command": 78,
+        "martial": 61,
+        "strategy": 82,
+        "administration": 80,
+        "diplomacy": 72,
+        "learning": 90
+      },
+      "traits": [
+        "\u521A\u6B63",
+        "\u6301\u91CD"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.luoyang",
+      "urbanLocationId": "luoyang.school",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.chunyu_qiong",
+      "name": "\u6DF3\u4E8E\u743C",
+      "courtesyName": "\u4EF2\u7B80",
+      "gender": "Male",
+      "roles": "General",
+      "identity": "\u519B\u5B98",
+      "abilities": {
+        "command": 64,
+        "martial": 67,
+        "strategy": 48,
+        "administration": 40,
+        "diplomacy": 56,
+        "learning": 42
+      },
+      "traits": [
+        "\u52C7\u608D",
+        "\u597D\u80DC"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.mengjin",
+      "urbanLocationId": "mengjin.barracks",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.han_hao",
+      "name": "\u97E9\u6D69",
+      "courtesyName": "\u5143\u55E3",
+      "gender": "Male",
+      "roles": "General, LocalNotable",
+      "identity": "\u6CB3\u5185\u8C6A\u6770",
+      "abilities": {
+        "command": 70,
+        "martial": 65,
+        "strategy": 62,
+        "administration": 68,
+        "diplomacy": 58,
+        "learning": 54
+      },
+      "traits": [
+        "\u4E25\u6574",
+        "\u52A1\u5B9E"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.henei",
+      "urbanLocationId": "henei.government",
+      "affiliation": null
+    },
+    {
+      "id": "character.sima_fang",
+      "name": "\u53F8\u9A6C\u9632",
+      "courtesyName": "\u5EFA\u516C",
+      "gender": "Male",
+      "roles": "Official, LocalNotable",
+      "identity": "\u90E1\u4E2D\u540D\u58EB",
+      "abilities": {
+        "command": 36,
+        "martial": 28,
+        "strategy": 70,
+        "administration": 80,
+        "diplomacy": 72,
+        "learning": 76
+      },
+      "traits": [
+        "\u4E25\u8083",
+        "\u5BA1\u614E"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.henei",
+      "urbanLocationId": "henei.government",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.xu_rong",
+      "name": "\u5F90\u8363",
+      "courtesyName": "",
+      "gender": "Male",
+      "roles": "General",
+      "identity": "\u8FB9\u519B\u5C06\u9886",
+      "abilities": {
+        "command": 78,
+        "martial": 71,
+        "strategy": 68,
+        "administration": 52,
+        "diplomacy": 44,
+        "learning": 46
+      },
+      "traits": [
+        "\u6C89\u6BC5",
+        "\u5B88\u804C"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.hulao",
+      "urbanLocationId": "hulao.gate",
+      "affiliation": "\u51C9\u5DDE\u519B"
+    },
+    {
+      "id": "character.li_su",
+      "name": "\u674E\u8083",
+      "courtesyName": "",
+      "gender": "Male",
+      "roles": "General, Official",
+      "identity": "\u519B\u4E2D\u4F7F\u8005",
+      "abilities": {
+        "command": 58,
+        "martial": 61,
+        "strategy": 64,
+        "administration": 48,
+        "diplomacy": 67,
+        "learning": 50
+      },
+      "traits": [
+        "\u673A\u654F",
+        "\u8D8B\u5229"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.hulao",
+      "urbanLocationId": "hulao.gate",
+      "affiliation": "\u5E76\u5DDE\u519B"
+    },
+    {
+      "id": "character.zhang_miao",
+      "name": "\u5F20\u9088",
+      "courtesyName": "\u5B5F\u5353",
+      "gender": "Male",
+      "roles": "Official, LocalNotable",
+      "identity": "\u9648\u7559\u540D\u58EB",
+      "abilities": {
+        "command": 54,
+        "martial": 48,
+        "strategy": 66,
+        "administration": 72,
+        "diplomacy": 84,
+        "learning": 70
+      },
+      "traits": [
+        "\u597D\u5BA2",
+        "\u91CD\u4E49"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.chenliu",
+      "urbanLocationId": "chenliu.government",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.wei_zi",
+      "name": "\u536B\u5179",
+      "courtesyName": "\u5B50\u8BB8",
+      "gender": "Male",
+      "roles": "Merchant, LocalNotable",
+      "identity": "\u5730\u65B9\u8C6A\u53F3",
+      "abilities": {
+        "command": 44,
+        "martial": 42,
+        "strategy": 62,
+        "administration": 70,
+        "diplomacy": 78,
+        "learning": 60
+      },
+      "traits": [
+        "\u6177\u6168",
+        "\u6709\u8BC6"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.chenliu",
+      "urbanLocationId": "chenliu.tavern",
+      "affiliation": null
+    },
+    {
+      "id": "character.zang_hong",
+      "name": "\u81E7\u6D2A",
+      "courtesyName": "\u5B50\u6E90",
+      "gender": "Male",
+      "roles": "Official",
+      "identity": "\u90E1\u5E9C\u5C5E\u540F",
+      "abilities": {
+        "command": 66,
+        "martial": 58,
+        "strategy": 74,
+        "administration": 73,
+        "diplomacy": 78,
+        "learning": 69
+      },
+      "traits": [
+        "\u6177\u6168",
+        "\u521A\u70C8"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.chenliu",
+      "urbanLocationId": "chenliu.government",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.xun_yu",
+      "name": "\u8340\u5F67",
+      "courtesyName": "\u6587\u82E5",
+      "gender": "Male",
+      "roles": "Official, Scholar",
+      "identity": "\u988D\u5DDD\u58EB\u4EBA",
+      "abilities": {
+        "command": 44,
+        "martial": 28,
+        "strategy": 91,
+        "administration": 93,
+        "diplomacy": 89,
+        "learning": 88
+      },
+      "traits": [
+        "\u96C5\u6B63",
+        "\u8FDC\u89C1"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.yingchuan",
+      "urbanLocationId": "yingchuan.school",
+      "affiliation": null
+    },
+    {
+      "id": "character.xun_you",
+      "name": "\u8340\u6538",
+      "courtesyName": "\u516C\u8FBE",
+      "gender": "Male",
+      "roles": "Official, Scholar",
+      "identity": "\u988D\u5DDD\u58EB\u4EBA",
+      "abilities": {
+        "command": 52,
+        "martial": 32,
+        "strategy": 94,
+        "administration": 88,
+        "diplomacy": 80,
+        "learning": 86
+      },
+      "traits": [
+        "\u7F1C\u5BC6",
+        "\u5BE1\u8A00"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.yingchuan",
+      "urbanLocationId": "yingchuan.school",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.guo_jia",
+      "name": "\u90ED\u5609",
+      "courtesyName": "\u5949\u5B5D",
+      "gender": "Male",
+      "roles": "Scholar",
+      "identity": "\u9752\u5E74\u58EB\u4EBA",
+      "abilities": {
+        "command": 35,
+        "martial": 24,
+        "strategy": 93,
+        "administration": 65,
+        "diplomacy": 76,
+        "learning": 82
+      },
+      "traits": [
+        "\u6D1E\u5BDF",
+        "\u4E0D\u7F81"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.yingchuan",
+      "urbanLocationId": "yingchuan.inn",
+      "affiliation": null
+    },
+    {
+      "id": "character.zhong_yao",
+      "name": "\u949F\u7E47",
+      "courtesyName": "\u5143\u5E38",
+      "gender": "Male",
+      "roles": "Official, Scholar",
+      "identity": "\u90E1\u4E2D\u58EB\u4EBA",
+      "abilities": {
+        "command": 38,
+        "martial": 30,
+        "strategy": 83,
+        "administration": 88,
+        "diplomacy": 82,
+        "learning": 90
+      },
+      "traits": [
+        "\u6C89\u7740",
+        "\u52E4\u52C9"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.yingchuan",
+      "urbanLocationId": "yingchuan.government",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.xi_zhi_cai",
+      "name": "\u620F\u5FD7\u624D",
+      "courtesyName": "",
+      "gender": "Male",
+      "roles": "Scholar",
+      "identity": "\u988D\u5DDD\u58EB\u4EBA",
+      "abilities": {
+        "command": 30,
+        "martial": 22,
+        "strategy": 88,
+        "administration": 64,
+        "diplomacy": 74,
+        "learning": 78
+      },
+      "traits": [
+        "\u654F\u9510",
+        "\u4F53\u5F31"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.yingchuan",
+      "urbanLocationId": "yingchuan.inn",
+      "affiliation": null
+    },
+    {
+      "id": "character.cheng_yu",
+      "name": "\u7A0B\u6631",
+      "courtesyName": "\u4EF2\u5FB7",
+      "gender": "Male",
+      "roles": "Scholar, LocalNotable",
+      "identity": "\u4E1C\u90E1\u540D\u58EB",
+      "abilities": {
+        "command": 68,
+        "martial": 48,
+        "strategy": 87,
+        "administration": 81,
+        "diplomacy": 66,
+        "learning": 75
+      },
+      "traits": [
+        "\u521A\u623E",
+        "\u6709\u65AD"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.xingyang",
+      "urbanLocationId": "xingyang.inn",
+      "affiliation": null
+    },
+    {
+      "id": "character.bao_xin",
+      "name": "\u9C8D\u4FE1",
+      "courtesyName": "\u5141\u8BDA",
+      "gender": "Male",
+      "roles": "General, Official",
+      "identity": "\u6D4E\u5317\u5B98\u5458",
+      "abilities": {
+        "command": 72,
+        "martial": 64,
+        "strategy": 69,
+        "administration": 61,
+        "diplomacy": 70,
+        "learning": 60
+      },
+      "traits": [
+        "\u679C\u51B3",
+        "\u5FE0\u76F4"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.chenggao",
+      "urbanLocationId": "chenggao.inn",
+      "affiliation": "\u6C49\u5EF7"
+    },
+    {
+      "id": "character.bian_rang",
+      "name": "\u8FB9\u8BA9",
+      "courtesyName": "\u6587\u793C",
+      "gender": "Male",
+      "roles": "Scholar",
+      "identity": "\u540D\u58EB",
+      "abilities": {
+        "command": 24,
+        "martial": 20,
+        "strategy": 67,
+        "administration": 54,
+        "diplomacy": 82,
+        "learning": 86
+      },
+      "traits": [
+        "\u8FA9\u6377",
+        "\u81EA\u8D1F"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.chenliu",
+      "urbanLocationId": "chenliu.inn",
+      "affiliation": null
+    },
+    {
+      "id": "character.ren_jun",
+      "name": "\u4EFB\u5CFB",
+      "courtesyName": "\u4F2F\u8FBE",
+      "gender": "Male",
+      "roles": "Official, LocalNotable",
+      "identity": "\u5730\u65B9\u540F",
+      "abilities": {
+        "command": 52,
+        "martial": 44,
+        "strategy": 68,
+        "administration": 84,
+        "diplomacy": 65,
+        "learning": 58
+      },
+      "traits": [
+        "\u52A1\u5B9E",
+        "\u6709\u5E72"
+      ],
+      "motivations": [
+        "\u5728\u52A8\u8361\u4E2D\u4FDD\u5168\u81EA\u8EAB\u6240\u73CD\u89C6\u7684\u4EBA\u4E0E\u4E8B",
+        "\u5BFB\u627E\u80FD\u591F\u65BD\u5C55\u80FD\u529B\u7684\u4F4D\u7F6E"
+      ],
+      "settlementId": "settlement.xingyang",
+      "urbanLocationId": "xingyang.government",
+      "affiliation": "\u6C49\u5EF7"
+    }
+  ],
+  "backgrounds": [
+    {
+      "id": "background.scholar",
+      "name": "\u5BD2\u95E8\u58EB\u5B50",
+      "description": "\u6709\u5B66\u95EE\u5374\u7F3A\u5C11\u95E8\u7B2C\uFF0C\u9700\u8981\u9760\u6E38\u5B66\u3001\u4EA4\u5F80\u548C\u65F6\u52BF\u6253\u5F00\u4ED5\u9014\u3002",
+      "identity": "\u767D\u8EAB\u58EB\u4EBA",
+      "startingMoney": 600,
+      "startingAbilities": {
+        "command": 28,
+        "martial": 24,
+        "strategy": 58,
+        "administration": 46,
+        "diplomacy": 42,
+        "learning": 62
+      },
+      "startingTraits": [
+        "\u8C28\u614E",
+        "\u597D\u5B66"
+      ]
+    },
+    {
+      "id": "background.clerk",
+      "name": "\u90E1\u5E9C\u5C0F\u540F",
+      "description": "\u719F\u6089\u6587\u4E66\u4E0E\u5730\u65B9\u8FD0\u4F5C\uFF0C\u6536\u5165\u7A33\u5B9A\uFF0C\u4F46\u6DF1\u53D7\u5B98\u5E9C\u5C42\u7EA7\u7EA6\u675F\u3002",
+      "identity": "\u90E1\u5E9C\u5C5E\u540F",
+      "startingMoney": 900,
+      "startingAbilities": {
+        "command": 34,
+        "martial": 28,
+        "strategy": 48,
+        "administration": 62,
+        "diplomacy": 46,
+        "learning": 50
+      },
+      "startingTraits": [
+        "\u52A1\u5B9E",
+        "\u5B88\u5E8F"
+      ]
+    },
+    {
+      "id": "background.ranger",
+      "name": "\u6E38\u4FA0",
+      "description": "\u6709\u6B66\u827A\u548C\u5730\u65B9\u4EBA\u8109\uFF0C\u884C\u52A8\u81EA\u7531\uFF0C\u5374\u96BE\u4EE5\u76F4\u63A5\u8FDB\u5165\u9AD8\u95E8\u4E0E\u5B98\u7F72\u3002",
+      "identity": "\u6E38\u4FA0",
+      "startingMoney": 450,
+      "startingAbilities": {
+        "command": 42,
+        "martial": 64,
+        "strategy": 38,
+        "administration": 24,
+        "diplomacy": 55,
+        "learning": 30
+      },
+      "startingTraits": [
+        "\u679C\u51B3",
+        "\u91CD\u8BFA"
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic.court_upheaval",
+      "title": "\u4EAC\u5E08\u53D8\u5C40",
+      "summary": "\u6D1B\u9633\u671D\u5C40\u9AA4\u53D8\uFF0C\u5B98\u5458\u3001\u519B\u961F\u548C\u540D\u95E8\u90FD\u5728\u91CD\u65B0\u9009\u62E9\u7ACB\u573A\u3002"
+    },
+    {
+      "id": "topic.eastern_roads",
+      "title": "\u4E1C\u65B9\u9053\u8DEF",
+      "summary": "\u864E\u7262\u5173\u4EE5\u4E1C\u7684\u5173\u6D25\u76D8\u67E5\u548C\u884C\u65C5\u98CE\u9669\u6B63\u5728\u53D1\u751F\u53D8\u5316\u3002"
+    },
+    {
+      "id": "topic.grain_prices",
+      "title": "\u7CAE\u4EF7\u6CE2\u52A8",
+      "summary": "\u4EAC\u757F\u5F81\u53D1\u4E0E\u5546\u8DEF\u4E0D\u7A33\u6B63\u5728\u5F71\u54CD\u6CBF\u9014\u57CE\u9091\u7684\u7CAE\u4EF7\u3002"
+    },
+    {
+      "id": "topic.local_recruitment",
+      "title": "\u5730\u65B9\u5F81\u8F9F",
+      "summary": "\u90E8\u5206\u90E1\u5E9C\u6B63\u5728\u7269\u8272\u80FD\u5904\u7406\u6587\u4E66\u3001\u6CBB\u5B89\u548C\u519B\u9700\u7684\u4EBA\u624D\u3002"
+    }
+  ],
+  "settlementConditions": [
+    {
+      "settlementId": "settlement.luoyang",
+      "security": 42,
+      "grainPrice": 68,
+      "prosperity": 78,
+      "governmentControl": 82
+    },
+    {
+      "settlementId": "settlement.mengjin",
+      "security": 55,
+      "grainPrice": 61,
+      "prosperity": 58,
+      "governmentControl": 66
+    },
+    {
+      "settlementId": "settlement.henei",
+      "security": 67,
+      "grainPrice": 46,
+      "prosperity": 64,
+      "governmentControl": 61
+    },
+    {
+      "settlementId": "settlement.hulao",
+      "security": 74,
+      "grainPrice": 57,
+      "prosperity": 42,
+      "governmentControl": 78
+    },
+    {
+      "settlementId": "settlement.chenggao",
+      "security": 59,
+      "grainPrice": 52,
+      "prosperity": 55,
+      "governmentControl": 57
+    },
+    {
+      "settlementId": "settlement.xingyang",
+      "security": 56,
+      "grainPrice": 49,
+      "prosperity": 63,
+      "governmentControl": 60
+    },
+    {
+      "settlementId": "settlement.chenliu",
+      "security": 62,
+      "grainPrice": 44,
+      "prosperity": 72,
+      "governmentControl": 55
+    },
+    {
+      "settlementId": "settlement.yingchuan",
+      "security": 69,
+      "grainPrice": 48,
+      "prosperity": 76,
+      "governmentControl": 58
+    }
+  ],
+  "roadConditions": [
+    {
+      "roadId": "road.luoyang.mengjin",
+      "risk": 38
+    },
+    {
+      "roadId": "road.mengjin.henei",
+      "risk": 33
+    },
+    {
+      "roadId": "road.luoyang.hulao",
+      "risk": 46
+    },
+    {
+      "roadId": "road.hulao.chenggao",
+      "risk": 41
+    },
+    {
+      "roadId": "road.chenggao.xingyang",
+      "risk": 35
+    },
+    {
+      "roadId": "road.xingyang.chenliu",
+      "risk": 31
+    },
+    {
+      "roadId": "road.xingyang.yingchuan",
+      "risk": 29
+    },
+    {
+      "roadId": "road.luoyang.yingchuan",
+      "risk": 44
+    }
+  ],
+  "sources": [
+    {
+      "id": "source.hhs.069.wikisource",
+      "title": "\u300A\u540E\u6C49\u4E66\u300B\u5377\u516D\u5341\u4E5D\u00B7\u4F55\u8FDB\u4F20",
+      "url": "https://zh.wikisource.org/wiki/\u5F8C\u6F22\u66F8/\u537769",
+      "verificationStatus": "checked_online",
+      "limitations": "\u5728\u7EBF\u8F6C\u5F55\u7528\u4E8E\u68C0\u7D22\uFF0C\u6B63\u5F0F\u53D1\u5E03\u4ECD\u9700\u70B9\u6821\u672C\u590D\u6838\u3002"
+    },
+    {
+      "id": "source.hhs.109.wikisource",
+      "title": "\u300A\u540E\u6C49\u4E66\u300B\u5377\u4E00\u767E\u96F6\u4E5D\u00B7\u90E1\u56FD\u4E00",
+      "url": "https://zh.wikisource.org/wiki/\u5F8C\u6F22\u66F8/\u5377109",
+      "verificationStatus": "checked_online",
+      "limitations": "\u6237\u53E3\u4E0E\u5730\u7406\u6750\u6599\u4E0D\u80FD\u76F4\u63A5\u5F53\u4F5C 189 \u5E74\u5B9E\u65F6\u72B6\u6001\u3002"
+    },
+    {
+      "id": "source.hhs.111.wikisource",
+      "title": "\u300A\u540E\u6C49\u4E66\u300B\u5377\u4E00\u767E\u4E00\u5341\u4E00\u00B7\u90E1\u56FD\u4E09",
+      "url": "https://zh.wikisource.org/wiki/\u5F8C\u6F22\u66F8/\u5377111",
+      "verificationStatus": "checked_online",
+      "limitations": "\u884C\u653F\u8BB0\u5F55\u4E0E\u4E2D\u5E73\u516D\u5E74\u73B0\u573A\u72B6\u6001\u4E4B\u95F4\u5B58\u5728\u65F6\u95F4\u5DEE\u3002"
+    },
+    {
+      "id": "source.zztj.059.wikisource",
+      "title": "\u300A\u8D44\u6CBB\u901A\u9274\u300B\u5377\u4E94\u5341\u4E5D",
+      "url": "https://zh.wikisource.org/wiki/\u8CC7\u6CBB\u901A\u9451/\u5377059",
+      "verificationStatus": "checked_online",
+      "limitations": "\u5317\u5B8B\u7F16\u5E74\u91CD\u6784\uFF0C\u9700\u4E0E\u66F4\u65E9\u6750\u6599\u4E92\u8BC1\u3002"
+    },
+    {
+      "id": "source.chgis.online",
+      "title": "China Historical GIS（中国历史地理信息系统）",
+      "url": "https://chgis.fas.harvard.edu/",
+      "verificationStatus": "service_checked",
+      "limitations": "\u5750\u6807\u53EA\u4F5C\u5730\u70B9\u5BF9\u9F50\u5019\u9009\uFF0C\u4E0D\u7B49\u4E8E\u6C49\u4EE3\u57CE\u5740\u4E2D\u5FC3\u3002"
+    }
+  ],
+  "audit": [
+    {
+      "entityId": "scenario.189.central_plains",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "description",
+            "startDate",
+            "startLocation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u516B\u6708\u53D8\u5C40\u6709\u53F2\u6599\u7EA6\u675F\uFF0C\u4F46\u672C\u5207\u7247\u8D77\u59CB\u65E5\u4E0E\u5BA2\u820D\u4F4D\u7F6E\u662F\u4EA7\u54C1\u65F6\u95F4\u8F74\u951A\u70B9\u3002",
+          "gameplayAssumption": "\u5F00\u5C40\u65E5\u3001\u73A9\u5BB6\u843D\u811A\u70B9\u548C\u573A\u666F\u6458\u8981\u5C5E\u4E8E\u53EF\u66FF\u6362\u7684\u73A9\u6CD5\u88C1\u51B3\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.luoyang",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "luoyang.government",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "luoyang.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "luoyang.market",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "luoyang.school",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "luoyang.residence",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.mengjin",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "mengjin.ferry",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "mengjin.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "mengjin.barracks",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.henei",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "henei.government",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "henei.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "henei.market",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.hulao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "hulao.gate",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "hulao.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.chenggao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "chenggao.government",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "chenggao.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "chenggao.market",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.xingyang",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "xingyang.government",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "xingyang.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "xingyang.market",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.chenliu",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "chenliu.government",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "chenliu.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "chenliu.tavern",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "settlement.yingchuan",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "regionName",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u884C\u653F\u5C42\u7EA7\u3001\u6CBB\u6240\u548C\u5173\u6E21\u79F0\u8C13\u8DE8\u6587\u732E\u65F6\u671F\uFF0C\u63CF\u8FF0\u4E3A\u7814\u7A76\u5207\u7247\u4E0B\u7684\u7EFC\u5408\u6982\u62EC\u3002",
+          "gameplayAssumption": "\u5730\u70B9\u63CF\u8FF0\u670D\u52A1\u53EF\u8BFB\u6027\uFF0C\u4E0D\u4EE3\u8868\u9010\u53E5\u53F2\u6599\u539F\u6587\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "coordinate",
+            "initialCondition"
+          ],
+          "sourceIds": [
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u753B\u5E03\u5750\u6807\u548C\u6CBB\u5B89\u3001\u7CAE\u4EF7\u3001\u7E41\u8363\u3001\u63A7\u5236\u6570\u503C\u6CA1\u6709\u7CBE\u786E\u53F2\u6599\u4F9D\u636E\u3002",
+          "gameplayAssumption": "\u5750\u6807\u662F\u76F8\u5BF9\u5E03\u5C40\uFF1B0..100 \u6570\u503C\u4EC5\u4E3A\u6A21\u62DF\u521D\u6001\u6807\u5B9A\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "yingchuan.government",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "yingchuan.school",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "yingchuan.inn",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "type",
+            "description"
+          ],
+          "sourceIds": [
+            "source.hhs.111.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u57CE\u5185\u5730\u70B9\u6CA1\u6709\u5B8C\u6210\u8003\u53E4\u6BD4\u4F8B\u590D\u539F\u3002",
+          "gameplayAssumption": "\u57CE\u5185\u5730\u70B9\u662F\u628A\u5B98\u7F72\u3001\u5E02\u4E95\u3001\u5B66\u820D\u548C\u65C5\u5BBF\u529F\u80FD\u6620\u5C04\u4E3A\u53EF\u4EA4\u4E92\u7A7A\u95F4\u7684\u62BD\u8C61\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.luoyang.mengjin",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.mengjin.henei",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.luoyang.hulao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.hulao.chenggao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.chenggao.xingyang",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.xingyang.chenliu",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.xingyang.yingchuan",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "road.luoyang.yingchuan",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "endpoints",
+            "travelDays",
+            "description",
+            "initialRisk"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource",
+            "source.chgis.online"
+          ],
+          "confidence": "D",
+          "dispute": "\u9053\u8DEF\u65B9\u5411\u53D7\u5386\u53F2\u5730\u7406\u7EA6\u675F\uFF0C\u4F46\u5177\u4F53\u8DEF\u7EBF\u3001\u65E5\u7A0B\u4E0E\u98CE\u9669\u6CA1\u6709\u7CBE\u786E\u8BB0\u5F55\u3002",
+          "gameplayAssumption": "\u65C5\u884C\u5929\u6570\u548C\u98CE\u9669\u6309\u6B63\u5F0F\u6E38\u620F\u65E5\u5C3A\u5EA6\u6807\u5B9A\uFF0C\u53EF\u7531\u540E\u7EED\u4EA4\u901A\u7814\u7A76\u66FF\u6362\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.cao_cao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.yuan_shao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.wang_yun",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.cai_yong",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.cai_yan",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.lady_bian",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.lu_zhi",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.chunyu_qiong",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.han_hao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.sima_fang",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.xu_rong",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.li_su",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.zhang_miao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.wei_zi",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.zang_hong",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.xun_yu",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.xun_you",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.guo_jia",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.zhong_yao",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.xi_zhi_cai",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.cheng_yu",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.bao_xin",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.bian_rang",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "character.ren_jun",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "courtesyName",
+            "gender",
+            "roles",
+            "identity",
+            "affiliation"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u4EBA\u7269\u5B58\u5728\u4E0E\u5927\u4F53\u8EAB\u4EFD\u6709\u53F2\u4F20\u4F9D\u636E\uFF0C\u4F46\u672C\u5207\u7247\u5C1A\u672A\u4E3A\u6BCF\u4EBA\u5B8C\u6210\u72EC\u7ACB\u4F20\u8BB0\u4E3B\u5F20\u7ED1\u5B9A\u3002",
+          "gameplayAssumption": "\u89D2\u8272\u6807\u7B7E\u662F\u5BF9\u53F2\u4F20\u8EAB\u4EFD\u7684\u73A9\u6CD5\u5F52\u7C7B\uFF0C\u4E0D\u7B49\u540C\u4E8E\u7CBE\u786E\u5B98\u804C\u8868\u3002"
+        },
+        {
+          "kind": "gameplay_assumption",
+          "appliesTo": [
+            "abilities",
+            "traits",
+            "motivations",
+            "initialLocation"
+          ],
+          "sourceIds": [
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u516D\u7EF4\u80FD\u529B\u3001\u6027\u683C\u8BCD\u3001\u52A8\u673A\u548C\u5F00\u5C40\u7CBE\u786E\u4F4D\u7F6E\u591A\u65E0\u76F4\u63A5\u53F2\u6599\u652F\u6301\u3002",
+          "gameplayAssumption": "\u8FD9\u4E9B\u5B57\u6BB5\u7528\u4E8E\u4EA7\u751F\u5DEE\u5F02\u5316\u884C\u52A8\uFF1B\u4E0D\u5F97\u4F5C\u4E3A\u5386\u53F2\u8BC4\u4EF7\u5F15\u7528\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "background.scholar",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "description",
+            "identity",
+            "startingMoney",
+            "startingAbilities",
+            "startingTraits"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u73A9\u5BB6\u8EAB\u4EFD\u662F\u5236\u5EA6\u4E0E\u793E\u4F1A\u4F4D\u7F6E\u7684\u7EFC\u5408\u62BD\u8C61\u3002",
+          "gameplayAssumption": "\u91D1\u94B1\u3001\u80FD\u529B\u548C\u6027\u683C\u4E3A\u5F00\u5C40\u5E73\u8861\u53C2\u6570\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "background.clerk",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "description",
+            "identity",
+            "startingMoney",
+            "startingAbilities",
+            "startingTraits"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u73A9\u5BB6\u8EAB\u4EFD\u662F\u5236\u5EA6\u4E0E\u793E\u4F1A\u4F4D\u7F6E\u7684\u7EFC\u5408\u62BD\u8C61\u3002",
+          "gameplayAssumption": "\u91D1\u94B1\u3001\u80FD\u529B\u548C\u6027\u683C\u4E3A\u5F00\u5C40\u5E73\u8861\u53C2\u6570\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "background.ranger",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "name",
+            "description",
+            "identity",
+            "startingMoney",
+            "startingAbilities",
+            "startingTraits"
+          ],
+          "sourceIds": [
+            "source.hhs.109.wikisource"
+          ],
+          "confidence": "D",
+          "dispute": "\u73A9\u5BB6\u8EAB\u4EFD\u662F\u5236\u5EA6\u4E0E\u793E\u4F1A\u4F4D\u7F6E\u7684\u7EFC\u5408\u62BD\u8C61\u3002",
+          "gameplayAssumption": "\u91D1\u94B1\u3001\u80FD\u529B\u548C\u6027\u683C\u4E3A\u5F00\u5C40\u5E73\u8861\u53C2\u6570\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "topic.court_upheaval",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "title",
+            "summary"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u8BDD\u9898\u6982\u62EC\u538B\u7F29\u4E86\u591A\u6761\u6750\u6599\uFF0C\u4F20\u64AD\u8303\u56F4\u5E76\u975E\u53F2\u6599\u4E8B\u5B9E\u3002",
+          "gameplayAssumption": "\u8BDD\u9898\u4F5C\u4E3A\u4EA4\u8C08\u5165\u53E3\uFF0C\u6458\u8981\u4E0D\u9884\u8BBE\u6700\u7EC8\u5386\u53F2\u7ED3\u679C\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "topic.eastern_roads",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "title",
+            "summary"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u8BDD\u9898\u6982\u62EC\u538B\u7F29\u4E86\u591A\u6761\u6750\u6599\uFF0C\u4F20\u64AD\u8303\u56F4\u5E76\u975E\u53F2\u6599\u4E8B\u5B9E\u3002",
+          "gameplayAssumption": "\u8BDD\u9898\u4F5C\u4E3A\u4EA4\u8C08\u5165\u53E3\uFF0C\u6458\u8981\u4E0D\u9884\u8BBE\u6700\u7EC8\u5386\u53F2\u7ED3\u679C\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "topic.grain_prices",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "title",
+            "summary"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u8BDD\u9898\u6982\u62EC\u538B\u7F29\u4E86\u591A\u6761\u6750\u6599\uFF0C\u4F20\u64AD\u8303\u56F4\u5E76\u975E\u53F2\u6599\u4E8B\u5B9E\u3002",
+          "gameplayAssumption": "\u8BDD\u9898\u4F5C\u4E3A\u4EA4\u8C08\u5165\u53E3\uFF0C\u6458\u8981\u4E0D\u9884\u8BBE\u6700\u7EC8\u5386\u53F2\u7ED3\u679C\u3002"
+        }
+      ]
+    },
+    {
+      "entityId": "topic.local_recruitment",
+      "origins": [
+        {
+          "kind": "bounded_inference",
+          "appliesTo": [
+            "title",
+            "summary"
+          ],
+          "sourceIds": [
+            "source.hhs.069.wikisource",
+            "source.zztj.059.wikisource"
+          ],
+          "confidence": "C",
+          "dispute": "\u8BDD\u9898\u6982\u62EC\u538B\u7F29\u4E86\u591A\u6761\u6750\u6599\uFF0C\u4F20\u64AD\u8303\u56F4\u5E76\u975E\u53F2\u6599\u4E8B\u5B9E\u3002",
+          "gameplayAssumption": "\u8BDD\u9898\u4F5C\u4E3A\u4EA4\u8C08\u5165\u53E3\uFF0C\u6458\u8981\u4E0D\u9884\u8BBE\u6700\u7EC8\u5386\u53F2\u7ED3\u679C\u3002"
+        }
+      ]
+    }
+  ]
+}
