@@ -1,0 +1,240 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LateHan.Game.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1400"
+        d:DesignHeight="880"
+        x:Class="LateHan.Game.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1400"
+        Height="880"
+        MinWidth="1100"
+        MinHeight="720"
+        Background="#171510"
+        Title="汉末浮生">
+
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI, Noto Sans CJK SC, sans-serif" />
+            <Setter Property="Foreground" Value="#E8DFC9" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI, Noto Sans CJK SC, sans-serif" />
+            <Setter Property="Foreground" Value="#F0E7D2" />
+            <Setter Property="Background" Value="#4C402C" />
+            <Setter Property="BorderBrush" Value="#76664A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="CornerRadius" Value="2" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#675638" />
+        </Style>
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="#211E18" />
+            <Setter Property="BorderBrush" Value="#514833" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+        <Style Selector="TextBlock.sectionTitle">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#D9B96E" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="#A99E86" />
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <Grid IsVisible="{Binding !IsGameStarted}" RowDefinitions="*,Auto,*" Margin="64">
+            <StackPanel Grid.Row="1" Spacing="18" MaxWidth="1050" HorizontalAlignment="Center">
+                <TextBlock Text="汉末浮生" FontSize="46" FontWeight="SemiBold" Foreground="#D9B96E" HorizontalAlignment="Center" />
+                <TextBlock Text="个人生涯与动态历史模拟" FontSize="18" Foreground="#B8A982" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding ScenarioName}" FontSize="24" HorizontalAlignment="Center" Margin="0,18,0,0" />
+                <TextBlock Text="{Binding ScenarioDescription}" FontSize="15" TextWrapping="Wrap" TextAlignment="Center" />
+
+                <ItemsControl ItemsSource="{Binding Backgrounds}" Margin="0,18,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="3" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BackgroundOptionViewModel">
+                            <Border Classes="panel" Padding="20" Margin="7">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="{Binding Name}" FontSize="21" Foreground="#D9B96E" />
+                                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MinHeight="66" />
+                                    <TextBlock Text="{Binding AbilitySummary}" Classes="muted" TextWrapping="Wrap" FontSize="12" />
+                                    <Button Content="以此身份开局" Command="{Binding StartCommand}" HorizontalAlignment="Stretch" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button Content="载入上次存档" Command="{Binding LoadGameCommand}" IsEnabled="{Binding CanLoad}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding StatusMessage}" Classes="muted" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <Grid IsVisible="{Binding IsGameStarted}" RowDefinitions="72,*,42">
+            <Border Grid.Row="0" Background="#262116" BorderBrush="#655534" BorderThickness="0,0,0,1" Padding="24,10">
+                <Grid ColumnDefinitions="Auto,28,Auto,*,Auto,12,Auto">
+                    <StackPanel>
+                        <TextBlock Text="{Binding DateText}" FontSize="18" Foreground="#D9B96E" />
+                        <TextBlock Text="日为行动尺度 · 旬为世界结算尺度" Classes="muted" FontSize="11" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="{Binding PlaceText}" FontSize="18" />
+                        <TextBlock Text="{Binding PlayerSummary}" Classes="muted" FontSize="11" />
+                    </StackPanel>
+                    <Button Grid.Column="4" Content="保存" Command="{Binding SaveGameCommand}" />
+                    <Button Grid.Column="6" Content="载入" Command="{Binding LoadGameCommand}" />
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" ColumnDefinitions="330,*,350" Margin="12" ColumnSpacing="12">
+                <Border Grid.Column="0" Classes="panel" Padding="14">
+                    <Grid RowDefinitions="Auto,*,Auto,210">
+                        <StackPanel>
+                            <TextBlock Text="天下舆图" Classes="sectionTitle" />
+                            <TextBlock Text="只显示道路节点；可点击且标有日程的地点当前可达。" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="1" Margin="0,12,0,8">
+                            <ItemsControl ItemsSource="{Binding MapNodes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:MapNodeViewModel">
+                                        <Button Command="{Binding TravelCommand}" IsEnabled="{Binding IsReachable}" Padding="10" Margin="0,0,0,7" HorizontalContentAlignment="Stretch">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="16" />
+                                                    <TextBlock Text="{Binding Region}" Classes="muted" FontSize="11" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                    <TextBlock Text="{Binding Status}" Foreground="#D9B96E" FontSize="11" HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{Binding Coordinate}" Classes="muted" FontSize="10" HorizontalAlignment="Right" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock Grid.Row="2" Text="城内地点" Classes="sectionTitle" Margin="0,8,0,8" />
+                        <ScrollViewer Grid.Row="3">
+                            <ItemsControl ItemsSource="{Binding UrbanLocations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:UrbanLocationViewModel">
+                                        <Button Command="{Binding EnterCommand}" Margin="0,0,0,6" Padding="9" HorizontalContentAlignment="Stretch">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="#D9B96E" FontSize="11" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Column="1" RowDefinitions="Auto,210,*,Auto" RowSpacing="12">
+                    <Border Grid.Row="0" Classes="panel" Padding="18">
+                        <StackPanel Spacing="7">
+                            <TextBlock Text="{Binding SettlementName}" FontSize="24" Foreground="#D9B96E" />
+                            <TextBlock Text="{Binding SettlementDescription}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding LocationDescription}" Classes="muted" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Classes="panel" Padding="14">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Text="此处人物" Classes="sectionTitle" />
+                            <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                                <ItemsControl ItemsSource="{Binding LocalCharacters}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:CharacterViewModel">
+                                            <Button Command="{Binding SelectCommand}" Width="180" Margin="0,0,8,8" HorizontalContentAlignment="Left">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="16" />
+                                                    <TextBlock Text="{Binding Identity}" Classes="muted" FontSize="11" />
+                                                    <TextBlock Text="{Binding Relationship, StringFormat='关系 {0}'}" Foreground="#D9B96E" FontSize="11" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2" Classes="panel" Padding="14">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Text="世界记录" Classes="sectionTitle" />
+                            <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                                <ItemsControl ItemsSource="{Binding LogEntries}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:LogEntryViewModel">
+                                            <Border BorderBrush="#403927" BorderThickness="0,0,0,1" Padding="2,8">
+                                                <Grid ColumnDefinitions="118,58,*">
+                                                    <TextBlock Text="{Binding Date}" Classes="muted" FontSize="11" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Category}" Foreground="#D9B96E" FontSize="11" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Text}" TextWrapping="Wrap" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Foreground="#D9B96E" TextWrapping="Wrap" Margin="4,0" />
+                </Grid>
+
+                <Border Grid.Column="2" Classes="panel" Padding="14">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+                        <TextBlock Text="可做之事" Classes="sectionTitle" />
+                        <UniformGrid Grid.Row="1" Columns="2" Margin="0,10,0,0">
+                            <Button Content="打听消息（1日）" Command="{Binding GatherInformationCommand}" Margin="3" />
+                            <Button Content="读书训练（3日）" Command="{Binding TrainCommand}" Margin="3" />
+                            <Button Content="谋生做事（3日）" Command="{Binding WorkCommand}" Margin="3" />
+                            <Button Content="休整一日" Command="{Binding RestOneDayCommand}" Margin="3" />
+                            <Button Content="静观十日" Command="{Binding RestTenDaysCommand}" Margin="3" />
+                        </UniformGrid>
+
+                        <TextBlock Grid.Row="2" Text="所选人物" Classes="sectionTitle" Margin="0,20,0,8" />
+                        <Border Grid.Row="3" Background="#181611" BorderBrush="#403927" BorderThickness="1" Padding="14">
+                            <Grid>
+                                <TextBlock Text="点击中间的人物卡片查看详情。人物只会出现在其当前所在地点。" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasNoSelectedCharacter}" />
+                                <StackPanel DataContext="{Binding SelectedCharacter}" Spacing="8" IsVisible="{Binding $parent[Window].DataContext.HasSelectedCharacter}">
+                                    <TextBlock Text="{Binding Name}" FontSize="23" Foreground="#D9B96E" />
+                                    <TextBlock Text="{Binding Identity}" />
+                                    <TextBlock Text="{Binding Affiliation}" Classes="muted" />
+                                    <TextBlock Text="{Binding AbilitySummary}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Traits, StringFormat='性情：{0}'}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Motivations, StringFormat='动机：{0}'}" Classes="muted" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Relationship, StringFormat='与你的关系：{0}'}" Foreground="#D9B96E" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Button Grid.Row="4" Content="拜访所选人物（1日）" Command="{Binding VisitSelectedCharacterCommand}" Margin="0,12,0,0" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Border Grid.Row="2" Background="#100F0C" BorderBrush="#403927" BorderThickness="0,1,0,0" Padding="18,8">
+                <TextBlock Text="当前版本：方向验证切片。地图、时间、人物与世界推进是真实领域状态；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

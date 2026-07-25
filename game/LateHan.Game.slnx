@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LateHan.Game.App/LateHan.Game.App.csproj" />
+    <Project Path="src/LateHan.Game.Content/LateHan.Game.Content.csproj" />
+    <Project Path="src/LateHan.Game.Domain/LateHan.Game.Domain.csproj" />
+    <Project Path="src/LateHan.Game.Persistence/LateHan.Game.Persistence.csproj" />
+    <Project Path="src/LateHan.Game.Simulation/LateHan.Game.Simulation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LateHan.Game.Content.Tests/LateHan.Game.Content.Tests.csproj" />
+    <Project Path="tests/LateHan.Game.Domain.Tests/LateHan.Game.Domain.Tests.csproj" />
+    <Project Path="tests/LateHan.Game.Persistence.Tests/LateHan.Game.Persistence.Tests.csproj" />
+    <Project Path="tests/LateHan.Game.Simulation.Tests/LateHan.Game.Simulation.Tests.csproj" />
+  </Folder>
+</Solution>
