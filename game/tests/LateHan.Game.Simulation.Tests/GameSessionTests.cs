@@ -30,16 +30,109 @@ public sealed class GameSessionTests
     }
 
     [Fact]
-    public void VisitingRequiresCoLocationAndBuildsRelationship()
+    public void BackgroundChangesAccessToTheSameOfficial()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var scholar = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.scholar"));
+        var clerk = new GameSession(scenario, scenario.Backgrounds.Single(item => item.Id == "background.clerk"));
+        scholar.Rest();
+        clerk.Rest();
+        scholar.EnterUrbanLocation("luoyang.government");
+        clerk.EnterUrbanLocation("luoyang.government");
+
+        var scholarAction = scholar.GetActionsForCharacter("character.wang_yun")
+            .Single(item => item.Kind == InteractionActionKind.Introduce);
+        var clerkAction = clerk.GetActionsForCharacter("character.wang_yun")
+            .Single(item => item.Kind == InteractionActionKind.Introduce);
+
+        Assert.False(scholarAction.IsEnabled);
+        Assert.Contains("官署", scholarAction.BlockReason, StringComparison.Ordinal);
+        Assert.True(clerkAction.IsEnabled);
+    }
+
+    [Fact]
+    public void BusyCharacterCanBeScheduledAndMetByAppointment()
     {
         var session = CreateSession();
         session.EnterUrbanLocation("luoyang.school");
 
-        session.VisitCharacter("character.cai_yan");
+        var initialActions = session.GetActionsForCharacter("character.cai_yan");
+        Assert.False(initialActions.Single(item => item.Kind == InteractionActionKind.Introduce).IsEnabled);
+        var schedule = initialActions.Single(item => item.Kind == InteractionActionKind.ScheduleMeeting);
+        session.ExecuteInteraction(schedule.Id);
 
-        Assert.Equal(3, session.RelationshipWith("character.cai_yan"));
+        var commitment = Assert.Single(session.Commitments);
+        Assert.Equal(new(189, 8, 20), commitment.DueDate);
         Assert.Equal(new(189, 8, 19), session.Date);
-        Assert.Throws<InvalidOperationException>(() => session.VisitCharacter("character.xun_yu"));
+
+        session.Rest();
+        var attend = Assert.Single(session.GetActionsForCharacter("character.cai_yan"));
+        Assert.Equal(InteractionActionKind.AttendMeeting, attend.Kind);
+        Assert.True(attend.IsEnabled);
+        session.ExecuteInteraction(attend.Id);
+
+        var connection = session.ConnectionWith("character.cai_yan");
+        Assert.Equal(RecognitionLevel.Acquainted, connection.Recognition);
+        Assert.Equal(3, connection.Favor);
+        Assert.Equal(2, connection.Trust);
+        Assert.Equal(CommitmentStatus.Fulfilled, Assert.Single(session.Commitments).Status);
+    }
+
+    [Fact]
+    public void MissingAppointmentLeavesAWorldFact()
+    {
+        var session = CreateSession();
+        session.EnterUrbanLocation("luoyang.school");
+        var schedule = session.GetActionsForCharacter("character.cai_yan")
+            .Single(item => item.Kind == InteractionActionKind.ScheduleMeeting);
+        session.ExecuteInteraction(schedule.Id);
+
+        session.Rest(2);
+
+        Assert.Equal(CommitmentStatus.Missed, Assert.Single(session.Commitments).Status);
+        Assert.Contains(session.Log, item => item.Category == LogCategory.Commitment && item.Text.Contains("失约", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void KnownTopicsGenerateContextualConversationActions()
+    {
+        var session = CreateSession();
+        session.EnterUrbanLocation("luoyang.school");
+        var schedule = session.GetActionsForCharacter("character.cai_yan")
+            .Single(item => item.Kind == InteractionActionKind.ScheduleMeeting);
+        session.ExecuteInteraction(schedule.Id);
+        session.Rest();
+        var attend = Assert.Single(session.GetActionsForCharacter("character.cai_yan"));
+        session.ExecuteInteraction(attend.Id);
+
+        var topicAction = session.GetActionsForCharacter("character.cai_yan")
+            .Single(item => item.Kind == InteractionActionKind.DiscussTopic && item.TopicId == "topic.court_upheaval");
+        Assert.True(topicAction.IsEnabled);
+        session.ExecuteInteraction(topicAction.Id);
+
+        Assert.Equal(3, session.ConnectionWith("character.cai_yan").Trust);
+        Assert.Contains(session.Log, item => item.Text.Contains("京师变局", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void InformationGatheringAddsAUsableTopic()
+    {
+        var session = CreateSession();
+        var initialTopics = session.KnownTopics.Count;
+
+        session.GatherInformation();
+
+        Assert.Equal(initialTopics + 1, session.KnownTopics.Count);
+        Assert.Contains(session.Log, item => item.Text.Contains("开始了解", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NonColocatedCharacterHasNoInteractionMenu()
+    {
+        var session = CreateSession();
+
+        Assert.Empty(session.GetActionsForCharacter("character.xun_yu"));
+        Assert.Throws<InvalidOperationException>(() => session.ExecuteInteraction("interaction:visit:character.xun_yu"));
     }
 
     [Fact]

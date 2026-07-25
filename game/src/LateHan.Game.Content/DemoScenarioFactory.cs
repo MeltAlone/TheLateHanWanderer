@@ -16,7 +16,8 @@ public static class DemoScenarioFactory
             "luoyang.inn",
             new WorldMap(settlements, CreateRoads()),
             CreateCharacters(),
-            CreateBackgrounds());
+            CreateBackgrounds(),
+            CreateTopics());
     }
 
     private static IReadOnlyList<Settlement> CreateSettlements() =>
@@ -84,6 +85,14 @@ public static class DemoScenarioFactory
             new Abilities(34, 28, 48, 62, 46, 50), ["务实", "守序"]),
         new("background.ranger", "游侠", "有武艺和地方人脉，行动自由，却难以直接进入高门与官署。", "游侠", 450,
             new Abilities(42, 64, 38, 24, 55, 30), ["果决", "重诺"]),
+    ];
+
+    private static IReadOnlyList<ConversationTopic> CreateTopics() =>
+    [
+        new("topic.court_upheaval", "京师变局", "洛阳朝局骤变，官员、军队和名门都在重新选择立场。"),
+        new("topic.eastern_roads", "东方道路", "虎牢关以东的关津盘查和行旅风险正在发生变化。"),
+        new("topic.grain_prices", "粮价波动", "京畿征发与商路不稳正在影响沿途城邑的粮价。"),
+        new("topic.local_recruitment", "地方征辟", "部分郡府正在物色能处理文书、治安和军需的人才。"),
     ];
 
     private static IReadOnlyList<Character> CreateCharacters() =>

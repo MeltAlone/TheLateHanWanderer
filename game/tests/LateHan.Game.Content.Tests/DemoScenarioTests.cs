@@ -11,6 +11,7 @@ public sealed class DemoScenarioTests
 
         Assert.Equal(8, scenario.Map.Settlements.Count);
         Assert.Equal(3, scenario.Backgrounds.Count);
+        Assert.Equal(4, scenario.Topics.Count);
         Assert.InRange(scenario.Characters.Count, 20, 30);
         Assert.All(scenario.Map.Settlements, settlement => Assert.NotEmpty(settlement.UrbanLocations));
     }
@@ -45,5 +46,10 @@ public sealed class DemoScenarioTests
         });
         Assert.All(scenario.Characters, item => Assert.False(string.IsNullOrWhiteSpace(item.Name)));
         Assert.All(scenario.Backgrounds, item => Assert.False(string.IsNullOrWhiteSpace(item.Description)));
+        Assert.All(scenario.Topics, item =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(item.Title));
+            Assert.False(string.IsNullOrWhiteSpace(item.Summary));
+        });
     }
 }

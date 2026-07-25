@@ -86,18 +86,28 @@ public sealed class UrbanLocationViewModel
 
 public sealed class CharacterViewModel
 {
-    public CharacterViewModel(CharacterState state, int relationship, Action<CharacterViewModel> select)
+    public CharacterViewModel(CharacterState state, RelationshipState relationship, Action<CharacterViewModel> select)
     {
         Id = state.Profile.Id;
-        Name = state.Profile.Name;
+        Name = relationship.Recognition == RecognitionLevel.Unknown ? $"一名{state.Profile.Identity}" : state.Profile.Name;
+        HistoricalName = state.Profile.Name;
         Identity = state.Profile.Identity;
         Affiliation = state.Profile.Affiliation ?? "无明确归属";
-        Relationship = relationship;
-        Traits = string.Join("、", state.Profile.Traits);
-        Motivations = string.Join("；", state.Profile.Motivations);
+        Recognition = RecognitionName(relationship.Recognition);
+        Favor = relationship.Favor;
+        Trust = relationship.Trust;
+        Obligation = relationship.Obligation;
+        Traits = relationship.Recognition >= RecognitionLevel.Met
+            ? string.Join("、", state.Profile.Traits)
+            : "尚未通过相处了解";
+        Motivations = relationship.Recognition >= RecognitionLevel.Acquainted
+            ? string.Join("；", state.Profile.Motivations)
+            : "尚不清楚";
         var ability = state.Profile.Abilities;
-        AbilitySummary = $"统率 {ability.Command}　武艺 {ability.Martial}　智略 {ability.Strategy}\n" +
-            $"政务 {ability.Administration}　交涉 {ability.Diplomacy}　学识 {ability.Learning}";
+        AbilitySummary = relationship.Recognition >= RecognitionLevel.Met
+            ? $"统率 {ability.Command}　武艺 {ability.Martial}　智略 {ability.Strategy}\n" +
+                $"政务 {ability.Administration}　交涉 {ability.Diplomacy}　学识 {ability.Learning}"
+            : "能力尚未掌握";
         SelectCommand = new RelayCommand(() => select(this));
     }
 
@@ -105,11 +115,21 @@ public sealed class CharacterViewModel
 
     public string Name { get; }
 
+    public string HistoricalName { get; }
+
     public string Identity { get; }
 
     public string Affiliation { get; }
 
-    public int Relationship { get; }
+    public string Recognition { get; }
+
+    public int Favor { get; }
+
+    public int Trust { get; }
+
+    public int Obligation { get; }
+
+    public string RelationshipSummary => $"{Recognition}　好感 {Favor}　信任 {Trust}";
 
     public string Traits { get; }
 
@@ -118,7 +138,43 @@ public sealed class CharacterViewModel
     public string AbilitySummary { get; }
 
     public IRelayCommand SelectCommand { get; }
+
+    private static string RecognitionName(RecognitionLevel recognition) => recognition switch
+    {
+        RecognitionLevel.Unknown => "陌生",
+        RecognitionLevel.HeardOf => "有所耳闻",
+        RecognitionLevel.Met => "见过",
+        RecognitionLevel.Acquainted => "相识",
+        RecognitionLevel.Trusted => "信赖",
+        _ => "未知",
+    };
 }
+
+public sealed class ContextActionViewModel
+{
+    public ContextActionViewModel(AvailableAction action, Action<AvailableAction> execute)
+    {
+        Action = action;
+        Title = action.DurationDays > 0 ? $"{action.Title}（{action.DurationDays}日）" : action.Title;
+        Description = action.IsEnabled
+            ? action.Description
+            : $"{action.Description}\n受阻：{action.BlockReason}";
+        IsEnabled = action.IsEnabled;
+        ExecuteCommand = new RelayCommand(() => execute(action), () => action.IsEnabled);
+    }
+
+    public AvailableAction Action { get; }
+
+    public string Title { get; }
+
+    public string Description { get; }
+
+    public bool IsEnabled { get; }
+
+    public IRelayCommand ExecuteCommand { get; }
+}
+
+public sealed record CommitmentViewModel(string CharacterName, string DueDate, string Place, string Status);
 
 public sealed record LogEntryViewModel(string Date, string Category, string Text);
 
@@ -149,6 +205,10 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<UrbanLocationViewModel> UrbanLocations { get; } = [];
 
     public ObservableCollection<CharacterViewModel> LocalCharacters { get; } = [];
+
+    public ObservableCollection<ContextActionViewModel> ContextActions { get; } = [];
+
+    public ObservableCollection<CommitmentViewModel> Commitments { get; } = [];
 
     public ObservableCollection<LogEntryViewModel> LogEntries { get; } = [];
 
@@ -214,18 +274,6 @@ public partial class MainViewModel : ViewModelBase
     private void RestTenDays() => RunAction(current => current.Rest(10));
 
     [RelayCommand]
-    private void VisitSelectedCharacter()
-    {
-        if (SelectedCharacter is null)
-        {
-            StatusMessage = "请先从当前地点的人物中选择一人。";
-            return;
-        }
-
-        RunAction(current => current.VisitCharacter(SelectedCharacter.Id));
-    }
-
-    [RelayCommand]
     private void SaveGame()
     {
         if (session is null)
@@ -269,8 +317,13 @@ public partial class MainViewModel : ViewModelBase
     private void SelectCharacter(CharacterViewModel character)
     {
         SelectedCharacter = character;
-        StatusMessage = $"你开始留意{character.Name}。是否拜访，要看你的身份与打算。";
+        Replace(ContextActions, session?.GetActionsForCharacter(character.Id)
+            .Select(item => new ContextActionViewModel(item, ExecuteInteraction)) ?? []);
+        StatusMessage = $"你开始留意{character.Name}。下方行动由身份、认识、日程、地点和已知话题共同决定。";
     }
+
+    private void ExecuteInteraction(AvailableAction action) =>
+        RunAction(current => current.ExecuteInteraction(action.Id));
 
     private void RunAction(Action<GameSession> action)
     {
@@ -318,13 +371,23 @@ public partial class MainViewModel : ViewModelBase
             EnterLocation)));
         Replace(LocalCharacters, session.CharactersAtCurrentLocation.Select(item => new CharacterViewModel(
             item,
-            session.RelationshipWith(item.Profile.Id),
+            session.ConnectionWith(item.Profile.Id),
             SelectCharacter)));
+        Replace(Commitments, session.Commitments
+            .Where(item => item.Status == CommitmentStatus.Scheduled)
+            .Select(item =>
+            {
+                var character = scenario.Characters.Single(character => character.Id == item.CharacterId);
+                var settlement = scenario.Map.GetSettlement(item.SettlementId);
+                var location = settlement.UrbanLocations.Single(location => location.Id == item.UrbanLocationId);
+                return new CommitmentViewModel(character.Name, item.DueDate.ToString(), $"{settlement.Name}·{location.Name}", "待履行");
+            }));
         Replace(LogEntries, session.Log.Reverse().Take(80).Select(item => new LogEntryViewModel(
             item.Date.ToString(),
             CategoryName(item.Category),
             item.Text)));
         SelectedCharacter = null;
+        ContextActions.Clear();
     }
 
     private static string CategoryName(LogCategory category) => category switch
@@ -334,6 +397,7 @@ public partial class MainViewModel : ViewModelBase
         LogCategory.Encounter => "交游",
         LogCategory.World => "天下",
         LogCategory.Period => "旬报",
+        LogCategory.Commitment => "约定",
         _ => "记录",
     };
 

@@ -54,6 +54,11 @@ public sealed record PlayerBackground(
     Abilities StartingAbilities,
     IReadOnlyList<string> StartingTraits);
 
+public sealed record ConversationTopic(
+    string Id,
+    string Title,
+    string Summary);
+
 public sealed record GameScenario(
     string Id,
     string Name,
@@ -63,4 +68,5 @@ public sealed record GameScenario(
     string StartUrbanLocationId,
     WorldMap Map,
     IReadOnlyList<Character> Characters,
-    IReadOnlyList<PlayerBackground> Backgrounds);
+    IReadOnlyList<PlayerBackground> Backgrounds,
+    IReadOnlyList<ConversationTopic> Topics);
