@@ -5,6 +5,7 @@ namespace LateHan.Game.Simulation;
 public enum LogCategory
 {
     Personal,
+    Growth,
     Career,
     Travel,
     Encounter,
@@ -54,7 +55,10 @@ public sealed record GameSnapshot(
     IReadOnlyList<GameLogEntry> Log,
     IReadOnlyDictionary<string, SettlementResourceLedger>? ResourceLedgers = null,
     IReadOnlyDictionary<string, OrganizationState>? Organizations = null,
-    IReadOnlyList<OrganizationCommissionState>? OrganizationCommissions = null);
+    IReadOnlyList<OrganizationCommissionState>? OrganizationCommissions = null,
+    CharacterDevelopmentState? PlayerDevelopment = null,
+    IReadOnlyDictionary<string, CharacterDevelopmentState>? CharacterDevelopments = null,
+    IReadOnlyDictionary<string, CharacterRelationshipState>? CharacterRelationships = null);
 
 public sealed class GameSession
 {
@@ -77,7 +81,10 @@ public sealed class GameSession
     private readonly Dictionary<string, SettlementResourceLedger> resourceLedgers = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OrganizationState> organizations = new(StringComparer.Ordinal);
     private readonly List<OrganizationCommissionState> organizationCommissions = [];
+    private readonly Dictionary<string, CharacterDevelopmentState> characterDevelopments = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CharacterRelationshipState> characterRelationships = new(StringComparer.Ordinal);
     private readonly List<GameLogEntry> log = [];
+    private CharacterDevelopmentState playerDevelopment = null!;
 
     public GameSession(GameScenario scenario, PlayerBackground background, string playerName = "无名")
     {
@@ -90,6 +97,7 @@ public sealed class GameSession
             item => item.Id,
             item => new CharacterState(item, item.SettlementId, item.UrbanLocationId),
             StringComparer.Ordinal);
+        InitializeCharacterDevelopment(background.StartingAbilities);
         InitializeLocalWorldState();
         InitializeOrganizationWorldState();
         Career = CreateInitialCareerState(background);
@@ -121,7 +129,7 @@ public sealed class GameSession
 
     private GameSession(GameScenario scenario, GameSnapshot snapshot)
     {
-        if (snapshot.SchemaVersion is < 1 or > 6)
+        if (snapshot.SchemaVersion is < 1 or > 7)
         {
             throw new InvalidOperationException($"不支持的存档版本：{snapshot.SchemaVersion}");
         }
@@ -134,6 +142,7 @@ public sealed class GameSession
         Scenario = scenario;
         Date = snapshot.Date;
         var background = scenario.Backgrounds.Single(item => item.Id == snapshot.BackgroundId);
+        InitializeCharacterDevelopment(snapshot.Abilities);
         InitializeLocalWorldState();
         InitializeOrganizationWorldState();
         Career = CreateInitialCareerState(background);
@@ -192,6 +201,13 @@ public sealed class GameSession
             organizationCommissions.AddRange(snapshot.OrganizationCommissions ?? []);
         }
 
+        if (snapshot.SchemaVersion >= 7)
+        {
+            playerDevelopment = snapshot.PlayerDevelopment ?? playerDevelopment;
+            ReplaceDictionary(characterDevelopments, snapshot.CharacterDevelopments);
+            ReplaceDictionary(characterRelationships, snapshot.CharacterRelationships);
+        }
+
         var savedLocations = snapshot.CharacterLocations.ToDictionary(item => item.CharacterId, StringComparer.Ordinal);
         characters = scenario.Characters.ToDictionary(
             item => item.Id,
@@ -205,7 +221,7 @@ public sealed class GameSession
             snapshot.SettlementId,
             snapshot.UrbanLocationId,
             snapshot.Money,
-            snapshot.Abilities);
+            playerDevelopment.Abilities);
         log.AddRange(snapshot.Log);
         if (snapshot.SchemaVersion < 4)
         {
@@ -240,6 +256,12 @@ public sealed class GameSession
     public IReadOnlyDictionary<string, OrganizationState> Organizations => organizations;
 
     public IReadOnlyList<OrganizationCommissionState> OrganizationCommissions => organizationCommissions;
+
+    public CharacterDevelopmentState PlayerDevelopment => playerDevelopment;
+
+    public IReadOnlyDictionary<string, CharacterDevelopmentState> CharacterDevelopments => characterDevelopments;
+
+    public IReadOnlyDictionary<string, CharacterRelationshipState> CharacterRelationships => characterRelationships;
 
     public SettlementResourceLedger CurrentResourceLedger => resourceLedgers[Player.SettlementId];
 
@@ -278,6 +300,16 @@ public sealed class GameSession
     public RelationshipState ConnectionWith(string characterId) =>
         socialConnections.GetValueOrDefault(characterId, RelationshipState.Unknown);
 
+    public Abilities AbilitiesOfCharacter(string characterId) => characterDevelopments[characterId].Abilities;
+
+    public IReadOnlyList<CharacterRelationshipState> RelationshipsOfCharacter(string characterId) =>
+        characterRelationships.Values
+            .Where(item => item.Involves(characterId))
+            .OrderByDescending(item => item.Trust)
+            .ThenByDescending(item => item.SharedExperiences)
+            .ThenBy(item => item.OtherCharacterId(characterId), StringComparer.Ordinal)
+            .ToArray();
+
     public SettlementState StateOf(string settlementId) => settlementStates[settlementId];
 
     public RoadState StateOfRoad(string roadId) => roadStates[roadId];
@@ -285,7 +317,7 @@ public sealed class GameSession
     public static GameSession Restore(GameScenario scenario, GameSnapshot snapshot) => new(scenario, snapshot);
 
     public GameSnapshot CreateSnapshot() => new(
-        6,
+        7,
         Scenario.Id,
         Date,
         Player.Background.Id,
@@ -312,7 +344,10 @@ public sealed class GameSession
         log.ToArray(),
         new Dictionary<string, SettlementResourceLedger>(resourceLedgers, StringComparer.Ordinal),
         new Dictionary<string, OrganizationState>(organizations, StringComparer.Ordinal),
-        organizationCommissions.ToArray());
+        organizationCommissions.ToArray(),
+        playerDevelopment,
+        new Dictionary<string, CharacterDevelopmentState>(characterDevelopments, StringComparer.Ordinal),
+        new Dictionary<string, CharacterRelationshipState>(characterRelationships, StringComparer.Ordinal));
 
     public void TravelTo(string destinationId)
     {
@@ -495,6 +530,7 @@ public sealed class GameSession
         var unknownTopic = Scenario.Topics.FirstOrDefault(item => !knownTopicIds.Contains(item.Id));
         AddLocalPressure(Player.SettlementId, 0, 0, 1, 0, "玩家在市井搜集并转述消息");
         AdvanceDays(1);
+        GainPlayerExperience(AbilityDomain.Strategy, 4, "在市井辨别消息来源与可信度");
         if (unknownTopic is not null)
         {
             knownTopicIds.Add(unknownTopic.Id);
@@ -513,9 +549,9 @@ public sealed class GameSession
     public void Train()
     {
         AdvanceDays(3);
-        Player = Player with { Abilities = Player.Abilities.ImproveLearning(1) };
+        GainPlayerExperience(AbilityDomain.Learning, 12, "闭门读书并整理三日所得");
         GainCareer(Player.Background.Id == "background.scholar" ? 1 : 0, 1, 0);
-        AddLog(LogCategory.Personal, "你闭门读书三日，学识有所精进（学识 +1）。");
+        AddLog(LogCategory.Personal, "你闭门读书三日，所得已经记入学识经历。能力只有在积累足够经历后才会提升。");
     }
 
     public void Work()
@@ -541,6 +577,13 @@ public sealed class GameSession
             _ => 80,
         };
         Player = Player with { Money = Player.Money + income };
+        var experienceDomain = Player.Background.Id switch
+        {
+            "background.clerk" => AbilityDomain.Administration,
+            "background.ranger" => AbilityDomain.Martial,
+            _ => AbilityDomain.Learning,
+        };
+        GainPlayerExperience(experienceDomain, 8, contribution.Source);
         var careerProgress = Player.Background.Id == "background.clerk" ? 2 : 1;
         GainCareer(careerProgress, 1, 1);
         AddLog(LogCategory.Personal, $"你用三日谋生，挣得{income}钱。身份和能力决定了你能接触到什么差事。");
@@ -626,6 +669,7 @@ public sealed class GameSession
         commitments[index] = commitments[index] with { Status = CommitmentStatus.Fulfilled };
         UpdateConnection(character.Profile.Id, state => state.Improve(3, 2, RecognitionLevel.Acquainted));
         AdvanceDays(1);
+        GainPlayerExperience(AbilityDomain.Diplomacy, 4, $"依约与{character.Profile.Name}会面", character.Profile.Id);
         GainCareer(0, 1, 2);
         AddLog(LogCategory.Commitment, $"你依约与{character.Profile.Name}会面，双方都记住了这次守约（好感 +3，信任 +2）。");
     }
@@ -635,6 +679,7 @@ public sealed class GameSession
         var topic = KnownTopics.Single(item => item.Id == topicId);
         UpdateConnection(character.Profile.Id, state => state.Improve(1, 1, RecognitionLevel.Acquainted));
         AdvanceDays(1);
+        GainPlayerExperience(AbilityDomain.Diplomacy, 4, $"与{character.Profile.Name}讨论“{topic.Title}”", character.Profile.Id);
         GainCareer(0, 1, 1);
         AddLog(LogCategory.Encounter, $"你与{character.Profile.Name}谈论“{topic.Title}”。对方愿意认真回应，彼此的判断多了一处交集（好感 +1，信任 +1）。");
     }
@@ -697,6 +742,12 @@ public sealed class GameSession
         UpdateConnection(character.Profile.Id, state => state.Improve(2, 1, RecognitionLevel.Acquainted));
         GainCareer(1, 1, 1);
         AdvanceDays(1);
+        GainPlayerExperience(
+            AbilityDomainForNeed(plan.Need!.Value),
+            6,
+            $"协助{character.Profile.Name}处理{PlanNeedName(plan.Need.Value)}",
+            character.Profile.Id,
+            plan.TargetOrganizationId);
         AddLog(LogCategory.Encounter, $"你用一日协助{character.Profile.Name}推进计划。对方会把你的投入计入最后结果（好感 +2，信任 +1）。");
     }
 
@@ -736,6 +787,57 @@ public sealed class GameSession
             SocialConnections = new Dictionary<string, RelationshipState>(socialConnections, StringComparer.Ordinal),
             KnownTopicIds = knownTopicIds.Order(StringComparer.Ordinal).ToArray(),
         };
+    }
+
+    private void GainPlayerExperience(
+        AbilityDomain domain,
+        int amount,
+        string description,
+        string? relatedCharacterId = null,
+        string? relatedOrganizationId = null)
+    {
+        var previousAbility = AbilityValue(playerDevelopment.Abilities, domain);
+        playerDevelopment = playerDevelopment.Gain(
+            Date,
+            domain,
+            amount,
+            description,
+            relatedCharacterId,
+            relatedOrganizationId);
+        Player = Player with { Abilities = playerDevelopment.Abilities };
+        var currentAbility = AbilityValue(playerDevelopment.Abilities, domain);
+        var improvement = currentAbility > previousAbility
+            ? $"，{AbilityDomainName(domain)} {previousAbility}→{currentAbility}"
+            : string.Empty;
+        AddLog(
+            LogCategory.Growth,
+            $"经历：{description}（{AbilityDomainName(domain)}经验 +{amount}，进度 {playerDevelopment.ProgressFor(domain)}/{CharacterDevelopmentState.ExperiencePerAbilityPoint}{improvement}）。");
+    }
+
+    private void GainCharacterExperience(
+        string characterId,
+        AbilityDomain domain,
+        int amount,
+        string description,
+        string? relatedOrganizationId)
+    {
+        var development = characterDevelopments[characterId];
+        var previousAbility = AbilityValue(development.Abilities, domain);
+        development = development.Gain(
+            Date,
+            domain,
+            amount,
+            description,
+            relatedOrganizationId: relatedOrganizationId);
+        characterDevelopments[characterId] = development;
+        var currentAbility = AbilityValue(development.Abilities, domain);
+        if (currentAbility > previousAbility)
+        {
+            var characterName = characters[characterId].Profile.Name;
+            AddLog(
+                LogCategory.Growth,
+                $"{characterName}因“{description}”积累了足够经历，{AbilityDomainName(domain)} {previousAbility}→{currentAbility}。");
+        }
     }
 
     private (bool HasAccess, string? Reason) CanApproach(CharacterState character, RelationshipState connection)
@@ -979,6 +1081,11 @@ public sealed class GameSession
         AdvanceDays(commission.DurationDays);
         ApplyCommissionImpact(commission, succeeded: true);
         Player = Player with { Money = Player.Money + commission.RewardMoney };
+        GainPlayerExperience(
+            AbilityDomainForNeed(commission.Need),
+            10,
+            $"完成{organization.Name}的“{commission.Title}”",
+            relatedOrganizationId: organization.Id);
         GainCareer(2, 2, 1);
         organizationCommissions[index] = commission with
         {
@@ -1139,6 +1246,10 @@ public sealed class GameSession
             FinancialPressure = Math.Clamp(Career.FinancialPressure + 1, 0, 100),
             Goal = Career.Goal with { Progress = Math.Min(Career.Goal.Target, Career.Goal.Progress + progress) },
         };
+        GainPlayerExperience(
+            BackgroundAbilityDomain(Player.Background.Id),
+            8,
+            $"完成生涯事务“{opportunity.Title}”");
         AddLocalPressure(Player.SettlementId, 1, -1, 1, 1, $"玩家完成“{opportunity.Title}”");
         AddLog(LogCategory.Career, $"你完成了“{opportunity.Title}”，阶段目标推进 {progress}，声望 +2，人脉 +1。");
         CompleteCareerGoalIfReady();
@@ -1162,6 +1273,10 @@ public sealed class GameSession
             PlayerApproach = opportunity.Title,
             Result = $"你以“{opportunity.Title}”介入，使局势向更有秩序的一面收束。",
         };
+        GainPlayerExperience(
+            BackgroundAbilityDomain(Player.Background.Id),
+            10,
+            $"介入局势“{branch.Title}”");
         var settlementId = branch.Id switch
         {
             "branch.capital_refugees" => "settlement.luoyang",
@@ -1320,6 +1435,15 @@ public sealed class GameSession
         foreach (var actor in characters.Values.OrderBy(item => item.Profile.Id, StringComparer.Ordinal).ToArray())
         {
             AdvanceCharacterPlan(actor);
+        }
+    }
+
+    private void InitializeCharacterDevelopment(Abilities playerAbilities)
+    {
+        playerDevelopment = CharacterDevelopmentState.Create("player", playerAbilities);
+        foreach (var character in Scenario.Characters)
+        {
+            characterDevelopments[character.Id] = CharacterDevelopmentState.Create(character.Id, character.Abilities);
         }
     }
 
@@ -1683,7 +1807,7 @@ public sealed class GameSession
         return NeedUrgency(organization, need) +
             goalFit +
             roleFit +
-            (RelevantPlanAbility(actor.Profile.Abilities, need) / 5) -
+            (RelevantPlanAbility(characterDevelopments[actor.Profile.Id].Abilities, need) / 5) -
             (travelDays * 6) -
             roadPenalty;
     }
@@ -1814,25 +1938,90 @@ public sealed class GameSession
         AddLog(LogCategory.World, $"{actor.Profile.Name}抵达{Scenario.Map.GetSettlement(organization.SettlementId).Name}，开始履行对{organization.Name}的承诺。");
     }
 
+    private int CharacterPlanAllySupport(string characterId, string organizationId)
+    {
+        var support = characterPlans.Values
+            .Where(item =>
+                item.CharacterId != characterId &&
+                item.TargetOrganizationId == organizationId &&
+                item.Stage == CharacterPlanStage.Executing)
+            .Select(item => characterRelationships.GetValueOrDefault(
+                CharacterRelationshipState.KeyFor(characterId, item.CharacterId)))
+            .Where(item => item is not null && item.Trust > 0)
+            .Sum(item => Math.Max(1, item!.Trust / 2));
+        return Math.Clamp(support, 0, 10);
+    }
+
+    private void RecordCharacterCollaboration(
+        string characterId,
+        CharacterPlanState plan,
+        bool succeeded)
+    {
+        if (plan.TargetOrganizationId is null || plan.StartedOn is null)
+        {
+            return;
+        }
+
+        var collaborators = characterPlans.Values
+            .Where(item =>
+                string.Compare(characterId, item.CharacterId, StringComparison.Ordinal) < 0 &&
+                item.TargetOrganizationId == plan.TargetOrganizationId &&
+                item.StartedOn is not null &&
+                item.StartedOn.Value.DaysUntil(Date) is >= 0 and <= 5 &&
+                item.Stage is CharacterPlanStage.Executing or CharacterPlanStage.Completed)
+            .OrderBy(item => item.CharacterId, StringComparer.Ordinal)
+            .ToArray();
+        foreach (var collaborator in collaborators)
+        {
+            var key = CharacterRelationshipState.KeyFor(characterId, collaborator.CharacterId);
+            var organization = organizations[plan.TargetOrganizationId];
+            var reason = succeeded
+                ? $"共同为{organization.Name}处理{PlanNeedName(plan.Need!.Value)}"
+                : $"共同承担{organization.Name}事务受挫";
+            var isNew = !characterRelationships.TryGetValue(key, out var relationship);
+            relationship ??= CharacterRelationshipState.Create(characterId, collaborator.CharacterId, Date, reason);
+            characterRelationships[key] = relationship.Improve(
+                succeeded ? 2 : 1,
+                succeeded ? 2 : 1,
+                0,
+                Date,
+                reason);
+            if (isNew)
+            {
+                AddLog(
+                    LogCategory.World,
+                    $"{characters[characterId].Profile.Name}与{characters[collaborator.CharacterId].Profile.Name}因{reason}形成了可延续的共事关系。");
+            }
+        }
+    }
+
     private void ResolveCharacterPlan(CharacterState actor, CharacterPlanState plan)
     {
         var organization = organizations[plan.TargetOrganizationId!];
-        var ability = RelevantPlanAbility(actor.Profile.Abilities, plan.Need!.Value);
-        var executionScore = ability + plan.PlayerSupport + (organization.Influence / 5) + StableScheduleDay(actor.Profile.Id);
+        var ability = RelevantPlanAbility(characterDevelopments[actor.Profile.Id].Abilities, plan.Need!.Value);
+        var allySupport = CharacterPlanAllySupport(actor.Profile.Id, organization.Id);
+        var executionScore = ability + plan.PlayerSupport + allySupport + (organization.Influence / 5) + StableScheduleDay(actor.Profile.Id);
         var difficulty = 72 + (NeedUrgency(organization, plan.Need.Value) / 4);
         if (executionScore < difficulty)
         {
-            FailCharacterPlan(actor, plan, $"能力与可用支援不足（把握 {executionScore}，难度 {difficulty}）");
+            FailCharacterPlan(actor, plan, $"能力与可用支援不足（把握 {executionScore}，难度 {difficulty}，同伴协力 {allySupport}）");
             return;
         }
 
         ApplyCharacterPlanImpact(actor, plan, organization);
+        GainCharacterExperience(
+            actor.Profile.Id,
+            AbilityDomainForNeed(plan.Need.Value),
+            8,
+            $"完成{organization.Name}的{PlanNeedName(plan.Need.Value)}计划",
+            organization.Id);
+        RecordCharacterCollaboration(actor.Profile.Id, plan, succeeded: true);
         characterPlans[actor.Profile.Id] = plan with
         {
             Stage = CharacterPlanStage.Completed,
             NextStepOn = Date.AddDays(10),
             LastIntent = $"完成了为{organization.Name}处理{PlanNeedName(plan.Need.Value)}的承诺",
-            Result = $"计划成功（把握 {executionScore}，难度 {difficulty}）。",
+            Result = $"计划成功（把握 {executionScore}，难度 {difficulty}，同伴协力 {allySupport}）。",
         };
         AddLog(LogCategory.World, $"{actor.Profile.Name}完成了对{organization.Name}的承诺：{PlanNeedName(plan.Need.Value)}得到缓解。组织资产与地方账本已经同步变化。");
     }
@@ -1886,6 +2075,13 @@ public sealed class GameSession
             OrganizationNeedKind.Labor => ledger.Apply(0, 0, 0, -2, $"{actor.Profile.Name}的计划失败"),
             _ => ledger.Apply(0, -1, 0, -1, $"{actor.Profile.Name}的计划失败"),
         };
+        GainCharacterExperience(
+            actor.Profile.Id,
+            AbilityDomainForNeed(plan.Need!.Value),
+            4,
+            $"承担{organization.Name}计划失败的后果",
+            organization.Id);
+        RecordCharacterCollaboration(actor.Profile.Id, plan, succeeded: false);
         characterPlans[actor.Profile.Id] = plan with
         {
             Stage = CharacterPlanStage.Failed,
@@ -2073,6 +2269,41 @@ public sealed class GameSession
 
     private static int StableScheduleDay(string characterId) =>
         characterId.Aggregate(0, (sum, character) => (sum + character) % 10);
+
+    private static AbilityDomain BackgroundAbilityDomain(string backgroundId) => backgroundId switch
+    {
+        "background.clerk" => AbilityDomain.Administration,
+        "background.ranger" => AbilityDomain.Martial,
+        _ => AbilityDomain.Learning,
+    };
+
+    private static AbilityDomain AbilityDomainForNeed(OrganizationNeedKind need) => need switch
+    {
+        OrganizationNeedKind.Grain => AbilityDomain.Administration,
+        OrganizationNeedKind.Treasury => AbilityDomain.Diplomacy,
+        OrganizationNeedKind.Labor => AbilityDomain.Diplomacy,
+        _ => AbilityDomain.Command,
+    };
+
+    private static int AbilityValue(Abilities abilities, AbilityDomain domain) => domain switch
+    {
+        AbilityDomain.Command => abilities.Command,
+        AbilityDomain.Martial => abilities.Martial,
+        AbilityDomain.Strategy => abilities.Strategy,
+        AbilityDomain.Administration => abilities.Administration,
+        AbilityDomain.Diplomacy => abilities.Diplomacy,
+        _ => abilities.Learning,
+    };
+
+    public static string AbilityDomainName(AbilityDomain domain) => domain switch
+    {
+        AbilityDomain.Command => "统率",
+        AbilityDomain.Martial => "武艺",
+        AbilityDomain.Strategy => "智略",
+        AbilityDomain.Administration => "政务",
+        AbilityDomain.Diplomacy => "交涉",
+        _ => "学识",
+    };
 
     private static string Signed(int value) => value >= 0 ? $"+{value}" : value.ToString();
 

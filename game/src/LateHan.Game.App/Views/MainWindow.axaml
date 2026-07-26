@@ -229,9 +229,11 @@
                                     <TextBlock Text="{Binding Recognition, StringFormat='认识：{0}'}" Foreground="#D9B96E" />
                                     <TextBlock Text="{Binding RelationshipSummary}" />
                                     <TextBlock Text="{Binding AbilitySummary}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding GrowthSummary}" Classes="muted" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding Traits, StringFormat='性情：{0}'}" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding Motivations, StringFormat='动机：{0}'}" Classes="muted" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding PlanSummary}" Foreground="#D9B96E" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding NetworkSummary}" Foreground="#D9B96E" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Grid>
                         </ScrollViewer>
@@ -304,7 +306,7 @@
             </Grid>
 
             <Border Grid.Row="2" Background="#100F0C" BorderBrush="#403927" BorderThickness="0,1,0,0" Padding="18,8">
-                <TextBlock Text="当前版本：个人生涯与组织资源纵向切片。组织需求会形成限时委托，完成或失约都会改变地方账本与后续旬报；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
+                <TextBlock Text="当前版本：人物成长与关系网络纵向切片。行动会沉淀经历，共事会形成可追溯关系并影响后续计划；内部 ID 不对玩家暴露。" Classes="muted" FontSize="11" />
             </Border>
         </Grid>
     </Grid>

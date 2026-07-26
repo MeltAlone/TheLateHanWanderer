@@ -192,7 +192,10 @@ public sealed class GameSessionTests
         session.Train();
         session.Work();
 
-        Assert.Equal(learning + 1, session.Player.Abilities.Learning);
+        Assert.Equal(learning + 2, session.Player.Abilities.Learning);
+        Assert.Equal(20, session.PlayerDevelopment.LearningExperience);
+        Assert.Equal(2, session.PlayerDevelopment.RecentExperiences.Count);
+        Assert.Contains(session.Log, item => item.Category == LogCategory.Growth);
         Assert.NotEqual(money, session.Player.Money);
         Assert.Equal(90, session.Career.UpkeepPaid);
         Assert.Equal(new(189, 8, 24), session.Date);
@@ -461,6 +464,7 @@ public sealed class GameSessionTests
         Assert.Equal(first.Date, second.Date);
         Assert.Equal(first.ResourceLedgers, second.ResourceLedgers);
         Assert.Equal(first.Organizations, second.Organizations);
+        Assert.Equal(first.CharacterRelationships, second.CharacterRelationships);
         foreach (var characterId in first.CharacterPlans.Keys)
         {
             var firstPlan = first.CharacterPlans[characterId];
@@ -469,9 +473,82 @@ public sealed class GameSessionTests
             Assert.Equal(
                 firstPlan with { KnownSettlementIds = [] },
                 secondPlan with { KnownSettlementIds = [] });
+            var firstDevelopment = first.CharacterDevelopments[characterId];
+            var secondDevelopment = second.CharacterDevelopments[characterId];
+            Assert.Equal(firstDevelopment.RecentExperiences, secondDevelopment.RecentExperiences);
+            Assert.Equal(
+                firstDevelopment with { RecentExperiences = [] },
+                secondDevelopment with { RecentExperiences = [] });
         }
 
         Assert.Equal(first.Log, second.Log);
+    }
+
+    [Fact]
+    public void NpcPlansCreateGrowthMemoriesAndPersistentWorkingRelationships()
+    {
+        var session = CreateSession();
+
+        session.Rest(30);
+
+        Assert.Contains(session.CharacterDevelopments.Values, item => item.TotalExperience > 0);
+        Assert.Contains(session.CharacterDevelopments.Values, item => item.RecentExperiences.Count > 0);
+        Assert.NotEmpty(session.CharacterRelationships);
+        Assert.All(session.CharacterRelationships.Values, item =>
+        {
+            Assert.True(item.SharedExperiences > 0);
+            Assert.Contains("共同", item.LastReason, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void TrustedNpcCoworkersContributeToPlanResolution()
+    {
+        var session = CreateSession();
+        var snapshot = session.CreateSnapshot();
+        var plans = snapshot.CharacterPlans!.ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+        var resolveOn = snapshot.Date.AddDays(1);
+        foreach (var characterId in new[] { "character.cai_yong", "character.wang_yun" })
+        {
+            plans[characterId] = plans[characterId] with
+            {
+                Stage = CharacterPlanStage.Executing,
+                TargetOrganizationId = "organization.luoyang.government",
+                Need = OrganizationNeedKind.Grain,
+                TargetSettlementId = "settlement.luoyang",
+                TargetUrbanLocationId = "luoyang.government",
+                StartedOn = snapshot.Date,
+                NextStepOn = resolveOn,
+                ReservedEffort = 3,
+            };
+        }
+
+        var relationship = CharacterRelationshipState.Create(
+            "character.cai_yong",
+            "character.wang_yun",
+            snapshot.Date,
+            "此前共同处理官署事务") with
+        {
+            Favor = 6,
+            Trust = 10,
+            SharedExperiences = 2,
+        };
+        var relationships = new Dictionary<string, CharacterRelationshipState>(StringComparer.Ordinal)
+        {
+            [CharacterRelationshipState.KeyFor(relationship.FirstCharacterId, relationship.SecondCharacterId)] = relationship,
+        };
+        var restored = GameSession.Restore(
+            session.Scenario,
+            snapshot with
+            {
+                CharacterPlans = plans,
+                CharacterRelationships = relationships,
+            });
+
+        restored.Rest();
+
+        Assert.Contains("同伴协力 5", restored.CharacterPlans["character.cai_yong"].Result, StringComparison.Ordinal);
+        Assert.True(restored.CharacterRelationships.Values.Single().SharedExperiences >= 3);
     }
 
     private static GameSession CreatePlanInterventionSession()

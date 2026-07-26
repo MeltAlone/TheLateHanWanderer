@@ -99,7 +99,9 @@ public sealed class CharacterViewModel
     public CharacterViewModel(
         CharacterState state,
         RelationshipState relationship,
+        CharacterDevelopmentState development,
         string planSummary,
+        string networkSummary,
         Action<CharacterViewModel> select)
     {
         Id = state.Profile.Id;
@@ -117,12 +119,19 @@ public sealed class CharacterViewModel
         Motivations = relationship.Recognition >= RecognitionLevel.Acquainted
             ? string.Join("；", state.Profile.Motivations)
             : "尚不清楚";
-        var ability = state.Profile.Abilities;
+        var ability = development.Abilities;
         AbilitySummary = relationship.Recognition >= RecognitionLevel.Met
             ? $"统率 {ability.Command}　武艺 {ability.Martial}　智略 {ability.Strategy}\n" +
                 $"政务 {ability.Administration}　交涉 {ability.Diplomacy}　学识 {ability.Learning}"
             : "能力尚未掌握";
+        var latestExperience = development.RecentExperiences.LastOrDefault();
+        GrowthSummary = relationship.Recognition >= RecognitionLevel.Met
+            ? latestExperience is null
+                ? "阅历：尚未留下新的可确认经历"
+                : $"阅历：累计 {development.TotalExperience}；最近因“{latestExperience.Description}”获得{GameSession.AbilityDomainName(latestExperience.Domain)}经验 {latestExperience.Amount}"
+            : "阅历：尚未建立足够接触，无法判断";
         PlanSummary = planSummary;
+        NetworkSummary = networkSummary;
         SelectCommand = new RelayCommand(() => select(this));
     }
 
@@ -152,7 +161,11 @@ public sealed class CharacterViewModel
 
     public string AbilitySummary { get; }
 
+    public string GrowthSummary { get; }
+
     public string PlanSummary { get; }
+
+    public string NetworkSummary { get; }
 
     public IRelayCommand SelectCommand { get; }
 
@@ -413,7 +426,8 @@ public partial class MainViewModel : ViewModelBase
         DateText = session.Date.ToString();
         PlaceText = $"{session.CurrentSettlement.Name} · {session.CurrentUrbanLocation.Name}";
         PlayerSummary = $"{session.Player.Background.Name}　钱财 {session.Player.Money}　" +
-            $"声望 {session.Career.Reputation}　人脉 {session.Career.Network}　生计压力 {session.Career.FinancialPressure}";
+            $"声望 {session.Career.Reputation}　人脉 {session.Career.Network}　阅历 {session.PlayerDevelopment.TotalExperience}　" +
+            $"生计压力 {session.Career.FinancialPressure}";
         CareerGoalText = $"阶段目标：{session.Career.Goal.Title}　" +
             $"进度 {session.Career.Goal.Progress}/{session.Career.Goal.Target}　" +
             $"期限 {session.Career.Goal.Deadline}　{CareerGoalStatusName(session.Career.Goal.Status)}";
@@ -447,7 +461,9 @@ public partial class MainViewModel : ViewModelBase
         Replace(LocalCharacters, session.CharactersAtCurrentLocation.Select(item => new CharacterViewModel(
             item,
             session.ConnectionWith(item.Profile.Id),
+            session.CharacterDevelopments[item.Profile.Id],
             CharacterPlanSummary(session, item.Profile.Id),
+            CharacterNetworkSummary(session, item.Profile.Id),
             SelectCharacter)));
         var meetingCommitments = session.Commitments
             .Where(item => item.Status == CommitmentStatus.Scheduled)
@@ -486,6 +502,7 @@ public partial class MainViewModel : ViewModelBase
     private static string CategoryName(LogCategory category) => category switch
     {
         LogCategory.Personal => "个人",
+        LogCategory.Growth => "成长",
         LogCategory.Career => "生涯",
         LogCategory.Travel => "行旅",
         LogCategory.Encounter => "交游",
@@ -541,6 +558,24 @@ public partial class MainViewModel : ViewModelBase
         var timing = plan.NextStepOn is null ? string.Empty : $"，下一节点 {plan.NextStepOn}";
         var result = string.IsNullOrWhiteSpace(plan.Result) ? string.Empty : $"；{plan.Result}";
         return $"动向：{stage}，目标 {organization.Name}{timing}{result}";
+    }
+
+    private static string CharacterNetworkSummary(GameSession session, string characterId)
+    {
+        if (session.ConnectionWith(characterId).Recognition < RecognitionLevel.Acquainted)
+        {
+            return "人际：尚未熟悉到可以判断其私下关系";
+        }
+
+        var relationship = session.RelationshipsOfCharacter(characterId).FirstOrDefault();
+        if (relationship is null)
+        {
+            return "人际：尚无可确认的长期共事关系";
+        }
+
+        var otherCharacterId = relationship.OtherCharacterId(characterId);
+        var otherName = session.Scenario.Characters.Single(item => item.Id == otherCharacterId).Name;
+        return $"人际：与{otherName}共事 {relationship.SharedExperiences} 次，信任 {relationship.Trust}；最近因“{relationship.LastReason}”发生变化";
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> source)

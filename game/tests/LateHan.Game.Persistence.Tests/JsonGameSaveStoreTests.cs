@@ -34,12 +34,17 @@ public sealed class JsonGameSaveStoreTests
             Assert.Equal(session.ResourceLedgers, restored.ResourceLedgers);
             Assert.Equal(session.Organizations, restored.Organizations);
             Assert.Equal(session.OrganizationCommissions, restored.OrganizationCommissions);
+            AssertDevelopmentEqual(session.PlayerDevelopment, restored.PlayerDevelopment);
+            AssertDevelopmentsEqual(session.CharacterDevelopments, restored.CharacterDevelopments);
+            Assert.Equal(session.CharacterRelationships, restored.CharacterRelationships);
 
             session.Rest(5);
             restored.Rest(5);
             AssertPlansEqual(session.CharacterPlans, restored.CharacterPlans);
             Assert.Equal(session.ResourceLedgers, restored.ResourceLedgers);
             Assert.Equal(session.Organizations, restored.Organizations);
+            AssertDevelopmentsEqual(session.CharacterDevelopments, restored.CharacterDevelopments);
+            Assert.Equal(session.CharacterRelationships, restored.CharacterRelationships);
             Assert.Equal(session.Log, restored.Log);
 
             restored.TravelTo("settlement.henei");
@@ -209,6 +214,27 @@ public sealed class JsonGameSaveStoreTests
     }
 
     [Fact]
+    public void VersionSixSnapshotReceivesDevelopmentAndRelationshipDefaults()
+    {
+        var scenario = DemoScenarioFactory.Create();
+        var session = new GameSession(scenario, scenario.Backgrounds[0]);
+        var versionSix = session.CreateSnapshot() with
+        {
+            SchemaVersion = 6,
+            PlayerDevelopment = null,
+            CharacterDevelopments = null,
+            CharacterRelationships = null,
+        };
+
+        var restored = GameSession.Restore(scenario, versionSix);
+
+        Assert.Equal(session.Player.Abilities, restored.PlayerDevelopment.Abilities);
+        Assert.Equal(0, restored.PlayerDevelopment.TotalExperience);
+        Assert.Equal(scenario.Characters.Count, restored.CharacterDevelopments.Count);
+        Assert.Empty(restored.CharacterRelationships);
+    }
+
+    [Fact]
     public void VersionOneSnapshotMigratesLegacyFavor()
     {
         var scenario = DemoScenarioFactory.Create();
@@ -241,5 +267,26 @@ public sealed class JsonGameSaveStoreTests
                 expected[characterId] with { KnownSettlementIds = [] },
                 actual[characterId] with { KnownSettlementIds = [] });
         }
+    }
+
+    private static void AssertDevelopmentsEqual(
+        IReadOnlyDictionary<string, CharacterDevelopmentState> expected,
+        IReadOnlyDictionary<string, CharacterDevelopmentState> actual)
+    {
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), actual.Keys.Order(StringComparer.Ordinal));
+        foreach (var characterId in expected.Keys)
+        {
+            AssertDevelopmentEqual(expected[characterId], actual[characterId]);
+        }
+    }
+
+    private static void AssertDevelopmentEqual(
+        CharacterDevelopmentState expected,
+        CharacterDevelopmentState actual)
+    {
+        Assert.Equal(expected.RecentExperiences, actual.RecentExperiences);
+        Assert.Equal(
+            expected with { RecentExperiences = [] },
+            actual with { RecentExperiences = [] });
     }
 }

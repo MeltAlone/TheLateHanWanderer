@@ -6,6 +6,16 @@ public enum Gender
     Female,
 }
 
+public enum AbilityDomain
+{
+    Command,
+    Martial,
+    Strategy,
+    Administration,
+    Diplomacy,
+    Learning,
+}
+
 [Flags]
 public enum CharacterRole
 {
@@ -29,6 +39,16 @@ public sealed record Abilities(
     int Learning)
 {
     public Abilities ImproveLearning(int amount) => this with { Learning = Math.Clamp(Learning + amount, 1, 100) };
+
+    public Abilities Improve(AbilityDomain domain, int amount) => domain switch
+    {
+        AbilityDomain.Command => this with { Command = Math.Clamp(Command + amount, 1, 100) },
+        AbilityDomain.Martial => this with { Martial = Math.Clamp(Martial + amount, 1, 100) },
+        AbilityDomain.Strategy => this with { Strategy = Math.Clamp(Strategy + amount, 1, 100) },
+        AbilityDomain.Administration => this with { Administration = Math.Clamp(Administration + amount, 1, 100) },
+        AbilityDomain.Diplomacy => this with { Diplomacy = Math.Clamp(Diplomacy + amount, 1, 100) },
+        _ => this with { Learning = Math.Clamp(Learning + amount, 1, 100) },
+    };
 }
 
 public sealed record Character(
